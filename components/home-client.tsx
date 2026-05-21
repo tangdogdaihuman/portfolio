@@ -35,20 +35,30 @@ export default function HomeClient() {
   // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
   useEffect(() => { fetchData(); const iv = setInterval(fetchData, 30000); return () => clearInterval(iv); }, []);
 
-  // Cursor
+  // Cursor with lerp ring
   useEffect(() => {
     const cursor = cursorRef.current, ring = ringRef.current;
     if (!cursor || !ring) return;
+    let rx = 0, ry = 0;
     const onMove = (e: MouseEvent) => {
       const hovering = (e.target as HTMLElement).closest(".work-card, a, button, [data-hover]");
       cursor.style.transform = `translate3d(${e.clientX - 3}px,${e.clientY - 3}px,0) scale(${hovering ? 0 : 1})`;
-      ring.style.transform = `translate3d(${e.clientX - 20}px,${e.clientY - 20}px,0)`;
       ring.style.width = hovering ? "80px" : "40px";
       ring.style.height = hovering ? "80px" : "40px";
       ring.style.borderColor = hovering ? "var(--color-text)" : "var(--color-accent)";
+      rx = e.clientX; ry = e.clientY;
     };
+    const animate = () => {
+      const cx = parseFloat(ring.style.left || "0");
+      const cy = parseFloat(ring.style.top || "0");
+      ring.style.left = `${cx + (rx - cx) * 0.15}px`;
+      ring.style.top = `${cy + (ry - cy) * 0.15}px`;
+      ring.style.transform = "translate3d(-50%,-50%,0)";
+      raf = requestAnimationFrame(animate);
+    };
+    let raf = requestAnimationFrame(animate);
     window.addEventListener("mousemove", onMove, { passive: true });
-    return () => window.removeEventListener("mousemove", onMove);
+    return () => { window.removeEventListener("mousemove", onMove); cancelAnimationFrame(raf); };
   }, []);
 
   // Reveal
@@ -93,6 +103,16 @@ export default function HomeClient() {
       <div ref={cursorRef} className="fixed w-1.5 h-1.5 bg-accent rounded-full pointer-events-none z-[9999] hidden md:block" />
       <div ref={ringRef} className="fixed w-10 h-10 border border-accent rounded-full pointer-events-none z-[9998] hidden md:block" />
 
+      {/* Nav */}
+      <nav className="fixed top-0 left-0 right-0 z-40 px-6 md:px-12 py-5 flex justify-between items-center bg-bg/50 backdrop-blur-sm">
+        <a href="#" className="font-display text-lg tracking-wider text-text">Portfolio</a>
+        <div className="flex gap-8 text-xs tracking-[0.25em] uppercase text-text-muted">
+          <a href="#works" className="nav-link">作品</a>
+          <a href="#about" className="nav-link">关于</a>
+          <a href="#contact" className="nav-link">联系</a>
+        </div>
+      </nav>
+
       {/* Hero */}
       <section className="min-h-screen flex flex-col items-center justify-center relative px-4">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8 }} className="text-center">
@@ -131,7 +151,7 @@ export default function HomeClient() {
       </section>
 
       {/* Works */}
-      <section className="px-4 md:px-6 pt-16 pb-24 max-w-7xl mx-auto">
+      <section id="works" className="px-4 md:px-6 pt-16 pb-24 max-w-7xl mx-auto">
         <div className="flex items-center gap-4 mb-12 reveal">
           <span className="font-display italic text-accent text-xl">01</span>
           <div className="divider-line" />
@@ -150,38 +170,41 @@ export default function HomeClient() {
         {filtered.length === 0 ? (
           <div className="text-center py-20 text-text-muted reveal">还没有作品</div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-            {filtered.map((work, i) => (
-              <motion.div
-                key={work.id}
-                initial={{ opacity: 0, y: 40 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-40px" }}
-                transition={{ ...springSlow, delay: i * 0.06 }}
-                className="work-card reveal cursor-pointer img-frame group"
-                onClick={() => openLightbox(work)}
-                data-hover
-                whileHover={{ scale: 1.02 }}
-              >
-                <img src={work.thumb_url} alt={work.title} className="w-full h-full object-cover" loading="lazy" decoding="async" />
-                <div className="card-overlay">
-                  {work.pinned && <span className="text-[10px] tracking-widest uppercase text-accent mb-2">Featured</span>}
-                  <h3 className="font-display text-xl md:text-2xl text-text">{work.title}</h3>
-                  <div className="flex items-center gap-3 mt-2 flex-wrap">
-                    {work.work_date && <span className="text-xs text-text-muted">{work.work_date}</span>}
-                    {work.tags.slice(0, 2).map((t) => <span key={t} className="text-xs text-accent-dim tracking-wider">{t}</span>)}
-                    {(work.image_count || 1) > 1 && <span className="text-xs text-text-muted/50">{work.image_count} 张</span>}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6">
+            {filtered.map((work, i) => {
+              const span = i % 3 === 0 ? "md:col-span-7" : "md:col-span-5";
+              return (
+                <motion.div
+                  key={work.id}
+                  initial={{ opacity: 0, y: 40 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-40px" }}
+                  transition={{ ...springSlow, delay: i * 0.06 }}
+                  className={`work-card reveal cursor-pointer img-frame group ${span}`}
+                  onClick={() => openLightbox(work)}
+                  data-hover
+                  whileHover={{ scale: 1.02 }}
+                >
+                  <img src={work.thumb_url} alt={work.title} className="w-full h-full object-cover" loading="lazy" decoding="async" />
+                  <div className="card-overlay">
+                    {work.pinned && <span className="text-[10px] tracking-widest uppercase text-accent mb-2">Featured</span>}
+                    <h3 className="font-display text-xl md:text-2xl text-text">{work.title}</h3>
+                    <div className="flex items-center gap-3 mt-2 flex-wrap">
+                      {work.work_date && <span className="text-xs text-text-muted">{work.work_date}</span>}
+                      {work.tags.slice(0, 2).map((t) => <span key={t} className="text-xs text-accent-dim tracking-wider">{t}</span>)}
+                      {(work.image_count || 1) > 1 && <span className="text-xs text-text-muted/50">{work.image_count} 张</span>}
+                    </div>
                   </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              );
+            })}
           </div>
         )}
       </section>
 
       {/* About */}
       {intro && (
-        <section className="px-4 md:px-6 pb-16 max-w-7xl mx-auto">
+        <section id="about" className="px-4 md:px-6 pb-16 max-w-7xl mx-auto">
           <div className="flex items-center gap-4 mb-10 reveal">
             <span className="font-display italic text-accent text-xl">02</span>
             <div className="divider-line" />
@@ -264,7 +287,7 @@ export default function HomeClient() {
       </AnimatePresence>
 
       {/* Contact */}
-      <section className="px-4 md:px-6 py-16 md:py-24 border-t border-border/20">
+      <section id="contact" className="px-4 md:px-6 py-16 md:py-24 border-t border-border/20">
         <div className="max-w-2xl mx-auto text-center reveal">
           <div className="flex items-center justify-center gap-4 mb-10">
             <span className="font-display italic text-accent text-xl">03</span>

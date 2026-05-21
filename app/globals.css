@@ -87,6 +87,10 @@ body::before {
   transform: translateY(0);
 }
 
+.img-frame {
+  aspect-ratio: 4/5;
+}
+
 .work-card {
   position: relative;
   overflow: hidden;
