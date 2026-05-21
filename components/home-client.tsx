@@ -232,7 +232,12 @@ export default function HomeClient() {
             <div className="divider-line" />
             <span className="text-[0.65rem] tracking-[0.35em] uppercase text-text-muted">Contact</span>
           </div>
-          <a href="mailto:1193662756@qq.com" className="font-display text-2xl md:text-3xl text-text-muted hover:text-accent transition-colors duration-500">1193662756@qq.com</a>
+          <button
+            onClick={() => { window.location.href = `mailto:${["1193662756", "qq.com"].join("@")}`; }}
+            className="font-display text-2xl md:text-3xl text-text-muted hover:text-accent transition-colors duration-500"
+          >
+            邮箱联系
+          </button>
 
           <div className="flex items-center justify-center gap-8 mt-10">
             {/* GitHub */}
