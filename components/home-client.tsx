@@ -160,7 +160,7 @@ export default function HomeClient() {
             <div className="divider-line" />
             <span className="text-xs tracking-[0.4em] uppercase text-text-muted">Selected Works</span>
           </div>
-          <h2 className="font-display text-4xl md:text-6xl mb-12">精选 <span className="italic text-accent">作品</span></h2>
+          <h2 className="font-display text-3xl md:text-5xl mb-12">精选作品</h2>
         </div>
 
         {tags.length > 0 && (
@@ -216,7 +216,7 @@ export default function HomeClient() {
               <div className="divider-line" />
               <span className="text-xs tracking-[0.4em] uppercase text-text-muted">About</span>
             </div>
-            <h2 className="font-display text-4xl md:text-6xl mb-10">关于 <span className="italic text-accent">我</span></h2>
+            <h2 className="font-display text-3xl md:text-5xl mb-10">关于我</h2>
           </div>
           <div className="max-w-2xl reveal">
             {intro.split("\n").map((p, i) =>
@@ -304,10 +304,14 @@ export default function HomeClient() {
                 <div className="divider-line" />
                 <span className="text-xs tracking-[0.4em] uppercase text-text-muted">Contact</span>
               </div>
-              <h2 className="font-display text-5xl md:text-7xl leading-[0.95] mb-10">
-                保持 <span className="italic text-accent">联系</span>
+              <h2 className="font-display text-4xl md:text-6xl leading-[0.95] mb-10">
+                联系方式
               </h2>
-              <a href="mailto:1193662756@qq.com" className="font-display text-xl md:text-2xl text-text-muted nav-link inline-block">1193662756@qq.com</a>
+              <div className="space-y-3 text-text-muted">
+                <p className="font-display text-xl md:text-2xl">邮箱：<a href="mailto:1193662756@qq.com" className="nav-link inline-block text-text-muted hover:text-accent transition-colors">1193662756@qq.com</a></p>
+                <p className="text-sm">微信号：T15918177465</p>
+                <p className="text-sm">电话：15918177465</p>
+              </div>
             </div>
             <div className="md:col-span-5 md:pt-24">
               <div className="space-y-8">
