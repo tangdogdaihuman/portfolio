@@ -19,7 +19,25 @@ export async function GET(
     sql: "SELECT * FROM work_images WHERE work_id = ? ORDER BY sort_order ASC, created_at ASC",
     args: [id],
   });
-  return NextResponse.json(result.rows);
+  if (result.rows.length > 0) return NextResponse.json(result.rows);
+
+  // Fallback: return cover image if no sub-images exist
+  const work = await db.execute({
+    sql: "SELECT image_url, thumb_url FROM works WHERE id = ?",
+    args: [id],
+  });
+  if (work.rows.length > 0 && work.rows[0].image_url) {
+    return NextResponse.json([{
+      id: "",
+      work_id: id,
+      image_url: work.rows[0].image_url,
+      thumb_url: work.rows[0].thumb_url,
+      sort_order: 0,
+      image_size: 0,
+      created_at: "",
+    }]);
+  }
+  return NextResponse.json([]);
 }
 
 export async function POST(
