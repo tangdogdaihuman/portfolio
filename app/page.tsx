@@ -1,39 +1,45 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import WorkGrid from "@/components/work-grid";
 
 export default function HomePage() {
   const [intro, setIntro] = useState("");
   const [works, setWorks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const fetchData = useCallback(async () => {
+    try {
+      const [introRes, worksRes] = await Promise.all([
+        fetch("/api/intro"),
+        fetch("/api/works"),
+      ]);
+      if (introRes.ok) {
+        const data = await introRes.json();
+        setIntro(data.content || "");
+      }
+      if (worksRes.ok) {
+        setWorks(await worksRes.json());
+      }
+    } catch {
+      // no-op
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    async function fetchData() {
-      try {
-        const [introRes, worksRes] = await Promise.all([
-          fetch("/api/intro"),
-          fetch("/api/works"),
-        ]);
-        if (introRes.ok) {
-          const data = await introRes.json();
-          setIntro(data.content || "");
-        }
-        if (worksRes.ok) {
-          setWorks(await worksRes.json());
-        }
-      } catch {
-        // no-op
-      } finally {
-        setLoading(false);
-      }
-    }
     fetchData();
-  }, []);
+    intervalRef.current = setInterval(fetchData, 30000);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [fetchData]);
 
   return (
     <div className="min-h-screen">
-      <header className="pt-24 md:pt-32 px-6 pb-12">
+      <header className="py-24 md:py-32 px-6">
         <div className="max-w-2xl mx-auto">
           {loading ? (
             <div className="text-text-muted/30 text-lg">加载中...</div>
@@ -50,18 +56,16 @@ export default function HomePage() {
                 ) : null
               )}
             </div>
-          ) : null}
+          ) : (
+            <div className="text-center hero-line">
+              <h1 className="font-display text-5xl md:text-7xl text-text tracking-tight">
+                Portfolio
+              </h1>
+              <p className="mt-6 text-text-muted text-lg">精选作品展示</p>
+            </div>
+          )}
         </div>
       </header>
-
-      <section className="px-4 mb-8">
-        <div className="text-center">
-          <h1 className="font-display text-4xl md:text-5xl text-text tracking-tight">
-            Portfolio
-          </h1>
-          <p className="mt-3 text-text-muted text-base">精选作品展示</p>
-        </div>
-      </section>
 
       <main className="px-4 pb-24 max-w-6xl mx-auto">
         {loading ? null : <WorkGrid works={works} />}

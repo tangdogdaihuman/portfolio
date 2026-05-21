@@ -10,6 +10,8 @@ interface Work {
   image_url: string;
   thumb_url: string;
   tags: string[];
+  work_date: string;
+  image_count: number;
   pinned: boolean;
   sort_order: number;
   created_at: string;
@@ -139,6 +141,9 @@ function LazyImage({ work, onClick }: { work: Work; onClick: () => void }) {
       <div className="absolute inset-0 bg-gradient-to-t from-bg/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
         <div>
           <h3 className="font-display text-lg text-text">{work.title}</h3>
+          {work.work_date && (
+            <p className="text-xs text-text-muted mt-1">{work.work_date}</p>
+          )}
           {work.tags.length > 0 && (
             <div className="flex gap-1.5 mt-1.5 flex-wrap">
               {work.tags.map((tag) => (
@@ -156,6 +161,11 @@ function LazyImage({ work, onClick }: { work: Work; onClick: () => void }) {
       {work.pinned && (
         <span className="absolute top-3 left-3 text-[10px] uppercase tracking-widest bg-accent text-bg px-2 py-0.5">
           Top
+        </span>
+      )}
+      {(work.image_count || 1) > 1 && (
+        <span className="absolute top-3 right-3 text-[10px] bg-bg/70 text-text-muted px-2 py-0.5">
+          {work.image_count} 张
         </span>
       )}
     </div>

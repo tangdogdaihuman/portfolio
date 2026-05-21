@@ -1,6 +1,8 @@
 import { createClient, Client } from "@libsql/client";
 
 let _client: Client | null = null;
+let _migrated = false;
+let _migrationPromise: Promise<void> | null = null;
 
 function getClient(): Client {
   if (!_client) {
@@ -16,6 +18,20 @@ function getClient(): Client {
   return _client;
 }
 
+async function runMigrations() {
+  if (_migrated) return;
+  if (_migrationPromise) return _migrationPromise;
+  _migrationPromise = (async () => {
+    const client = getClient();
+    try { await client.execute("ALTER TABLE works ADD COLUMN work_date TEXT DEFAULT ''"); } catch {}
+    try { await client.execute("ALTER TABLE works ADD COLUMN image_size INTEGER DEFAULT 0"); } catch {}
+    try { await client.execute(`CREATE TABLE IF NOT EXISTS work_images (id TEXT PRIMARY KEY, work_id TEXT NOT NULL, image_url TEXT NOT NULL, thumb_url TEXT NOT NULL, sort_order INTEGER DEFAULT 0, image_size INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')))`); } catch {}
+    try { await client.execute("ALTER TABLE work_images ADD COLUMN image_size INTEGER DEFAULT 0"); } catch {}
+    _migrated = true;
+  })();
+  return _migrationPromise;
+}
+
 export function initializeDb() {
   const client = getClient();
   return client.executeMultiple(`
@@ -28,9 +44,26 @@ export function initializeDb() {
       thumb_url TEXT NOT NULL,
       pinned INTEGER DEFAULT 0,
       sort_order INTEGER DEFAULT 0,
+      work_date TEXT DEFAULT '',
+      image_size INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))
     );
+
+    ALTER TABLE works ADD COLUMN work_date TEXT DEFAULT '';
+    ALTER TABLE works ADD COLUMN image_size INTEGER DEFAULT 0;
+
+    CREATE TABLE IF NOT EXISTS work_images (
+      id TEXT PRIMARY KEY,
+      work_id TEXT NOT NULL,
+      image_url TEXT NOT NULL,
+      thumb_url TEXT NOT NULL,
+      sort_order INTEGER DEFAULT 0,
+      image_size INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    ALTER TABLE work_images ADD COLUMN image_size INTEGER DEFAULT 0;
 
     CREATE TABLE IF NOT EXISTS intro (
       id INTEGER PRIMARY KEY DEFAULT 1 CHECK(id=1),
@@ -45,6 +78,10 @@ export function initializeDb() {
 const db = new Proxy({} as Client, {
   get(_target, prop) {
     const client = getClient();
+    if (!_migrated) {
+      // fire-and-forget migration on first DB access
+      runMigrations().catch(() => {});
+    }
     const value = (client as unknown as Record<string | symbol, unknown>)[prop];
     if (typeof value === "function") {
       return value.bind(client);

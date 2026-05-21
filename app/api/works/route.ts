@@ -12,16 +12,21 @@ const workSchema = z.object({
   thumbUrl: z.string().url(),
   pinned: z.boolean().default(false),
   sortOrder: z.number().int().default(0),
+  workDate: z.string().default(""),
+  imageSize: z.number().int().default(0),
 });
 
 export async function GET() {
   const result = await db.execute(
-    "SELECT * FROM works ORDER BY pinned DESC, sort_order DESC, created_at DESC"
+    `SELECT w.*, (SELECT COUNT(*) FROM work_images WHERE work_id = w.id) as image_count,
+     COALESCE((SELECT SUM(image_size) FROM work_images WHERE work_id = w.id), w.image_size) as total_size
+     FROM works w ORDER BY w.pinned DESC, w.sort_order DESC, w.created_at DESC`
   );
   const works = result.rows.map((row) => ({
     ...row,
     tags: row.tags ? (row.tags as string).split(",").filter(Boolean) : [],
     pinned: Boolean(row.pinned),
+    image_count: (row.image_count as number) ?? 0,
   }));
   return NextResponse.json(works);
 }
@@ -40,15 +45,15 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { title, description, tags, imageUrl, thumbUrl, pinned, sortOrder } =
+  const { title, description, tags, imageUrl, thumbUrl, pinned, sortOrder, workDate, imageSize } =
     parsed.data;
   const id = createId();
   const tagString = tags.join(",");
 
   await db.execute({
-    sql: `INSERT INTO works (id, title, description, tags, image_url, thumb_url, pinned, sort_order)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    args: [id, title, description, tagString, imageUrl, thumbUrl, pinned ? 1 : 0, sortOrder],
+    sql: `INSERT INTO works (id, title, description, tags, image_url, thumb_url, pinned, sort_order, work_date, image_size)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [id, title, description, tagString, imageUrl, thumbUrl, pinned ? 1 : 0, sortOrder, workDate, imageSize],
   });
 
   return NextResponse.json({ id }, { status: 201 });

@@ -11,6 +11,7 @@ const updateSchema = z.object({
   thumbUrl: z.string().url().optional(),
   pinned: z.boolean().optional(),
   sortOrder: z.number().int().optional(),
+  workDate: z.string().optional(),
 });
 
 export async function GET(
@@ -98,6 +99,7 @@ export async function DELETE(
   }
 
   const { id } = await params;
+  await db.execute({ sql: "DELETE FROM work_images WHERE work_id = ?", args: [id] });
   await db.execute({ sql: "DELETE FROM works WHERE id = ?", args: [id] });
   return NextResponse.json({ ok: true });
 }
