@@ -17,16 +17,24 @@ export default function HomeClient() {
   const [lightboxImages, setLightboxImages] = useState<ImageItem[]>([]);
   const [fullImage, setFullImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [hovering, setHovering] = useState(false);
   const cursorRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
 
-  const fetchData = useCallback(async () => {
-    try {
-      const [introRes, worksRes] = await Promise.all([fetch("/api/intro"), fetch("/api/works")]);
-      if (introRes.ok) setIntro((await introRes.json()).content || "");
-      if (worksRes.ok) setWorks(await worksRes.json());
-    } catch {} finally { setLoading(false); }
+  // Cursor: direct DOM update, no React state
+  useEffect(() => {
+    const cursor = cursorRef.current, ring = ringRef.current;
+    if (!cursor || !ring) return;
+    const onMove = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const hovering = target.closest(".work-card, a, button, [data-hover]");
+      cursor.style.transform = `translate3d(${e.clientX - 3}px,${e.clientY - 3}px,0) scale(${hovering ? 0 : 1})`;
+      ring.style.transform = `translate3d(${e.clientX - 20}px,${e.clientY - 20}px,0)`;
+      ring.style.width = hovering ? "80px" : "40px";
+      ring.style.height = hovering ? "80px" : "40px";
+      ring.style.borderColor = hovering ? "var(--color-text)" : "var(--color-accent)";
+    };
+    window.addEventListener("mousemove", onMove, { passive: true });
+    return () => window.removeEventListener("mousemove", onMove);
   }, []);
 
   useEffect(() => { fetchData(); const iv = setInterval(fetchData, 30000); return () => clearInterval(iv); }, [fetchData]);
@@ -67,8 +75,8 @@ export default function HomeClient() {
   return (
     <>
       {/* Cursor - GPU transform based */}
-      <div ref={cursorRef} className={`fixed w-1.5 h-1.5 bg-accent rounded-full pointer-events-none z-[9999] hidden md:block ${hovering ? "scale-0" : ""}`} />
-      <div ref={ringRef} className={`fixed w-10 h-10 border border-accent rounded-full pointer-events-none z-[9998] hidden md:block ${hovering ? "!w-20 !h-20 !border-text" : ""}`} />
+      <div ref={cursorRef} className="fixed w-1.5 h-1.5 bg-accent rounded-full pointer-events-none z-[9999] hidden md:block" />
+      <div ref={ringRef} className="fixed w-10 h-10 border border-accent rounded-full pointer-events-none z-[9998] hidden md:block" />
 
       {/* Hero */}
       <section className="min-h-screen flex flex-col items-center justify-center relative px-4">
@@ -136,8 +144,7 @@ export default function HomeClient() {
                 key={work.id}
                 className="work-card reveal cursor-pointer img-frame group"
                 onClick={() => openLightbox(work)}
-                onMouseEnter={() => setHovering(true)}
-                onMouseLeave={() => setHovering(false)}
+                data-hover
               >
                 <img src={work.thumb_url} alt={work.title} className="w-full h-full object-cover" />
                 <div className="card-overlay">
