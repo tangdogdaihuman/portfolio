@@ -1,0 +1,53 @@
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - link "Portfolio" [ref=e3] [cursor=pointer]:
+      - /url: "#"
+    - generic [ref=e4]:
+      - link "作品" [ref=e5] [cursor=pointer]:
+        - /url: "#works"
+      - link "关于" [ref=e6] [cursor=pointer]:
+        - /url: "#about"
+      - link "联系" [ref=e7] [cursor=pointer]:
+        - /url: "#contact"
+  - generic [ref=e8]:
+    - generic [ref=e10]: ...
+    - paragraph [ref=e12]: Scroll
+  - generic [ref=e15]:
+    - generic [ref=e16]: Digital Art · Character Design · 3D · Illustration ·
+    - generic [ref=e17]: Digital Art · Character Design · 3D · Illustration ·
+    - generic [ref=e18]: Digital Art · Character Design · 3D · Illustration ·
+    - generic [ref=e19]: Digital Art · Character Design · 3D · Illustration ·
+    - generic [ref=e20]: Digital Art · Character Design · 3D · Illustration ·
+    - generic [ref=e21]: Digital Art · Character Design · 3D · Illustration ·
+    - generic [ref=e22]: Digital Art · Character Design · 3D · Illustration ·
+    - generic [ref=e23]: Digital Art · Character Design · 3D · Illustration
+  - generic [ref=e24]:
+    - generic [ref=e25]:
+      - generic [ref=e26]:
+        - generic [ref=e27]: "01"
+        - generic [ref=e29]: Selected Works
+      - heading "精选作品" [level=2] [ref=e30]
+    - generic [ref=e31]: 还没有作品
+  - generic [ref=e34]:
+    - generic [ref=e35]:
+      - generic [ref=e36]:
+        - generic [ref=e37]: "03"
+        - generic [ref=e39]: Contact
+      - heading "联系方式" [level=2] [ref=e40]
+      - generic [ref=e41]:
+        - paragraph [ref=e42]:
+          - text: 邮箱：
+          - link "1193662756@qq.com" [ref=e43] [cursor=pointer]:
+            - /url: mailto:1193662756@qq.com
+        - paragraph [ref=e44]: 微信号：T15918177465
+        - paragraph [ref=e45]: 电话：15918177465
+    - generic [ref=e48]:
+      - generic [ref=e49]: Follow
+      - generic [ref=e50]:
+        - link "GitHub ↗" [ref=e51] [cursor=pointer]:
+          - /url: https://github.com/tangdogdaihuman
+        - link "ArtStation ↗" [ref=e52] [cursor=pointer]:
+          - /url: https://www.artstation.com/uuey7
+  - contentinfo [ref=e53]:
+    - paragraph [ref=e55]: © 2026 · All Rights Reserved
+  - alert [ref=e56]

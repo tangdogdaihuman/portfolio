@@ -43,7 +43,6 @@ export default function HomeClient() {
     let mx = 0, my = 0, rx = 0, ry = 0;
     const onMove = (e: MouseEvent) => {
       mx = e.clientX; my = e.clientY;
-      cursor.style.transform = "none";
       cursor.style.left = mx + "px";
       cursor.style.top = my + "px";
       const hovering = (e.target as HTMLElement).closest(".work-card, a, button, [data-hover]");
@@ -55,7 +54,6 @@ export default function HomeClient() {
       ry += (my - ry) * 0.15;
       ring.style.left = rx + "px";
       ring.style.top = ry + "px";
-      ring.style.transform = "translate(-50%, -50%)";
       raf = requestAnimationFrame(animate);
     };
     let raf = requestAnimationFrame(animate);
