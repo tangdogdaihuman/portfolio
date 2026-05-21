@@ -648,12 +648,14 @@ function EditWorkForm({
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState("");
   const [workDate, setWorkDate] = useState("");
-  const [images, setImages] = useState<{ id: string; image_url: string; thumb_url: string; sort_order: number }[]>([]);
-  const [newFiles, setNewFiles] = useState<UploadedFile[]>([]);
+  const [allImages, setAllImages] = useState<{ id: string; image_url: string; thumb_url: string; source: "existing" | "new"; size: number }[]>([]);
+  const [coverIndex, setCoverIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [uploadTotal, setUploadTotal] = useState(0);
+  const [uploadDone, setUploadDone] = useState(0);
   const [saving, setSaving] = useState(false);
-  const [removedIds, setRemovedIds] = useState<string[]>([]);
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -670,7 +672,13 @@ function EditWorkForm({
       }
       if (imagesRes.ok) {
         const imgs = await imagesRes.json();
-        setImages(imgs);
+        setAllImages(imgs.map((img: Record<string, unknown>) => ({
+          id: (img.id as string) || "",
+          image_url: img.image_url as string,
+          thumb_url: img.thumb_url as string,
+          source: "existing" as const,
+          size: (img.image_size as number) || 0,
+        })));
       }
       setLoading(false);
     }
@@ -680,70 +688,58 @@ function EditWorkForm({
   const uploadNewFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-    setUploading(true);
-    const results: UploadedFile[] = [];
+    const total = files.length;
+    setUploading(true); setUploadTotal(total); setUploadDone(0);
+    const results: { imageUrl: string; thumbUrl: string; size: number }[] = [];
+    let done = 0;
     await Promise.all(
       Array.from(files).map(async (file) => {
         try {
           const presignedRes = await fetch("/api/upload/presigned", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+            method: "POST", headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ contentType: file.type }),
           });
-          if (!presignedRes.ok) return;
+          if (!presignedRes.ok) { done++; setUploadDone(done); return; }
           const { uploadUrl, originalKey } = await presignedRes.json();
           await fetch(uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
           const processRes = await fetch("/api/upload/process", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+            method: "POST", headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ originalKey }),
           });
           if (processRes.ok) {
             const data = await processRes.json();
-            results.push({ imageUrl: data.imageUrl, thumbUrl: data.thumbUrl, size: file.size, fileName: file.name });
+            results.push({ imageUrl: data.imageUrl, thumbUrl: data.thumbUrl, size: file.size });
           }
-        } catch { /* skip */ }
+        } catch {}
+        done++; setUploadDone(done);
       })
     );
-    setNewFiles((prev) => [...prev, ...results]);
+    setAllImages((prev) => [...prev, ...results.map((r) => ({
+      id: "", image_url: r.imageUrl, thumb_url: r.thumbUrl, source: "new" as const, size: r.size,
+    }))]);
     setUploading(false);
-    showMsg(`${results.length} 张新图上传成功`, results.length > 0);
+    showMsg(`${results.length}/${total} 张新图上传成功`, results.length > 0);
   };
 
-  const removeExisting = (imgIndex: number) => {
-    const img = images[imgIndex];
-    if (img.id) setRemovedIds((prev) => [...prev, img.id]);
-    setImages((prev) => prev.filter((_, i) => i !== imgIndex));
+  const removeImage = (i: number) => {
+    setAllImages((prev) => prev.filter((_, idx) => idx !== i));
+    if (i <= coverIndex && coverIndex > 0) setCoverIndex((c) => c - 1);
   };
 
   const handleSave = async () => {
     setSaving(true);
-    // Update metadata
-    const updateBody: Record<string, unknown> = {
-      title,
-      description,
-      tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
-      workDate,
-    };
-    // Refresh cover: first remaining existing image, or first new image
-    const cover = images[0] || (newFiles[0] ? { image_url: newFiles[0].imageUrl, thumb_url: newFiles[0].thumbUrl } : null);
-    if (cover) {
-      updateBody.imageUrl = cover.image_url;
-      updateBody.thumbUrl = cover.thumb_url;
-    }
+    const cover = allImages[coverIndex];
+    const tagArray = tags.split(",").map((t) => t.trim()).filter(Boolean);
     await fetch(`/api/works/${workId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updateBody),
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, description, tags: tagArray, workDate, imageUrl: cover?.image_url, thumbUrl: cover?.thumb_url }),
     });
-    for (const id of removedIds) {
-      await fetch(`/api/works/images/${id}`, { method: "DELETE" });
-    }
-    if (newFiles.length > 0) {
+    await fetch(`/api/works/${workId}/images`, { method: "DELETE" });
+    const toInsert = allImages.filter((img) => img.image_url);
+    if (toInsert.length > 0) {
       await fetch(`/api/works/${workId}/images`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newFiles.map((f) => ({ imageUrl: f.imageUrl, thumbUrl: f.thumbUrl, imageSize: f.size }))),
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(toInsert.map((img) => ({ imageUrl: img.image_url, thumbUrl: img.thumb_url, imageSize: img.size }))),
       });
     }
     showMsg("已保存", true);
@@ -776,35 +772,57 @@ function EditWorkForm({
         <input value={workDate} onChange={(e) => setWorkDate(e.target.value)} className="w-full bg-bg border border-border text-text px-4 py-2 text-sm focus:outline-none focus:border-accent-dim" />
       </div>
       <div>
-        <label className="block text-sm text-text-muted mb-1">现有图片（x 移除）</label>
+        <label className="block text-sm text-text-muted mb-1">所有图片 · 拖拽排序 · 点击设封面（{allImages.length} 张）</label>
         <div className="flex flex-wrap gap-2">
-          {images.map((img, i) => (
-            <div key={img.id || i} className="relative">
+          {allImages.map((img, i) => (
+            <div
+              key={img.id || `new_${i}`}
+              draggable
+              onDragStart={() => setDragIdx(i)}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={() => {
+                if (dragIdx === null || dragIdx === i) return;
+                const updated = [...allImages];
+                const [moved] = updated.splice(dragIdx, 1);
+                updated.splice(i, 0, moved);
+                if (dragIdx === coverIndex) setCoverIndex(i);
+                else if (dragIdx < coverIndex && i >= coverIndex) setCoverIndex(coverIndex - 1);
+                else if (dragIdx > coverIndex && i <= coverIndex) setCoverIndex(coverIndex + 1);
+                setAllImages(updated);
+                setDragIdx(null);
+              }}
+              onClick={() => setCoverIndex(i)}
+              className={`relative inline-block cursor-grab active:cursor-grabbing group ${i === coverIndex ? "ring-2 ring-accent" : ""}`}
+            >
               <img src={img.thumb_url} alt="" className="w-20 h-16 object-cover border border-border" />
-              <button onClick={() => removeExisting(i)} className="absolute -top-1.5 -right-1.5 bg-bg border border-border text-text-muted text-[10px] w-4 h-4 flex items-center justify-center hover:text-red-400">x</button>
+              {i === coverIndex && <span className="absolute bottom-0.5 left-0.5 text-[9px] bg-accent text-bg px-1">封面</span>}
+              <button onClick={(e) => { e.stopPropagation(); removeImage(i); }} className="absolute -top-1.5 -right-1.5 bg-bg border border-border text-text-muted text-[10px] w-4 h-4 flex items-center justify-center hover:text-red-400">x</button>
             </div>
           ))}
+          {allImages.length === 0 && <p className="text-text-muted text-xs">暂无图片</p>}
         </div>
       </div>
       <div>
         <label className="block text-sm text-text-muted mb-1">添加新图片</label>
-        <label className="inline-block px-6 py-6 border-2 border-dashed border-border text-text-muted text-sm cursor-pointer hover:border-accent-dim">
-          {uploading ? "上传中..." : "点击选择"}
-          <input type="file" accept="image/*" multiple onChange={uploadNewFiles} className="hidden" disabled={uploading} />
-        </label>
-        {newFiles.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-2">
-            {newFiles.map((f, i) => <img key={i} src={f.thumbUrl} alt="" className="w-20 h-16 object-cover border border-border" />)}
+        {uploading ? (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs text-text-muted">
+              <span>上传中</span><span>{uploadDone} / {uploadTotal}</span>
+            </div>
+            <div className="h-2 bg-surface overflow-hidden">
+              <div className="h-full bg-accent transition-all duration-300 ease-out" style={{ width: `${uploadTotal > 0 ? (uploadDone / uploadTotal) * 100 : 0}%` }} />
+            </div>
           </div>
+        ) : (
+          <label className="inline-block px-6 py-6 border-2 border-dashed border-border text-text-muted text-sm cursor-pointer hover:border-accent-dim">
+            点击选择（可多选）
+            <input type="file" accept="image/*" multiple onChange={uploadNewFiles} className="hidden" />
+          </label>
         )}
       </div>
       <div className="flex gap-3">
-        <button onClick={handleSave} disabled={saving} className="px-8 py-2.5 bg-accent text-bg text-sm font-medium hover:bg-accent-dim disabled:opacity-50">
-          {saving ? "保存中..." : "保存修改"}
-        </button>
-        <button onClick={onCancel} className="px-6 py-2.5 border border-border text-text-muted text-sm hover:text-text">
-          取消
-        </button>
+        <button onClick={handleSave} disabled={saving} className="px-8 py-2.5 bg-accent text-bg text-sm font-medium hover:bg-accent-dim disabled:opacity-50">{saving ? "保存中..." : "保存修改"}</button>
+        <button onClick={onCancel} className="px-6 py-2.5 border border-border text-text-muted text-sm hover:text-text">取消</button>
       </div>
     </div>
   );

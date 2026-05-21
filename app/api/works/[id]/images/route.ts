@@ -89,3 +89,15 @@ export async function POST(
 
   return NextResponse.json({ ids }, { status: 201 });
 }
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  if (!(await verifyAuthRequest(req))) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const { id: workId } = await params;
+  await db.execute({ sql: "DELETE FROM work_images WHERE work_id = ?", args: [workId] });
+  return NextResponse.json({ ok: true });
+}
