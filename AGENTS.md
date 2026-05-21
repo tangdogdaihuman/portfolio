@@ -1,127 +1,121 @@
 # AGENTS.md
 
-## 项目概述
-个人作品集网站。前台：个人介绍 + 可增删改的作品展示。后台：密钥链接登录后可编辑所有内容。部署到 Vercel，所有人可看，仅管理员可改。
-
-## 前端交互要求
-- **作品展示**：垂直滚动浏览，缩略图渐进加载（lazy load），点击打开灯箱查看原图
-- **分类标签**：作品支持分类标签，前台可按标签筛选
-- **排序置顶**：作品可手动排序、置顶（pinned）
-- **响应式**：必须适配移动端（手机竖屏为主），Tailwind responsive class
-- **个人介绍**：后台可编辑，前端以优雅排版展示（支持换行/段落）
-
 ## 技术栈
-| 层 | 选型 | 原因 |
-|---|---|---|
-| 框架 | Next.js 14+ App Router | 全栈一体，LLM 支持最好 |
-| 数据库 | Turso (libsql) | SQLite 兼容，serverless 友好，Vercel 上不丢数据 |
-| 图片存储 | Cloudflare R2 (S3 协议) | 免费 10GB，无流量费，存超大原图 |
-| 图片处理 | Sharp | 上传时自动生成缩略图+转 webp |
-| 认证 | 密钥 URL 参数 → httpOnly cookie | 单管理员，最简单安全 |
-| 校验 | Zod | 所有 API 入参必须校验 |
-| 样式 | Tailwind CSS | |
-| 部署 | Vercel | git push 自动部署 |
-| 包管理 | npm | |
+Next.js **16** (App Router) · React **19** · Tailwind **v4** (CSS `@theme`, 无 tailwind.config.ts) · Turso (libsql) · Cloudflare R2 (S3) · Sharp · Zod · Framer Motion · TypeScript strict
 
-## 目录结构
+## 实际目录结构（以代码为准）
 ```
 app/
-  layout.tsx
-  page.tsx                # 首页：个人介绍 + 作品网格
-  work/[id]/page.tsx      # 单作品详情
+  layout.tsx                         # 强制暗色, Playfair+Inter 字体, metadata title="Portfolio"
+  page.tsx                           # 纯客户端: 直接返回 <HomeClient />
+  globals.css                        # Tailwind v4 @theme (暗色调+金色强调), 噪声纹理背景
   admin/
-    page.tsx              # 后台面板（检查 cookie，无则跳登录）
-    layout.tsx            # 后台布局
+    layout.tsx                       # 后台顶栏（"管理后台" + 回前台链接）
+    page.tsx                         # Tab: 作品列表/新增/介绍/存储 (829行, 5个内部组件)
+    login/
+      page.tsx                       # 密钥输入 → POST /api/auth/login
   api/
-    works/route.ts        # GET 列表, POST 新增
-    works/[id]/route.ts   # GET 单件, PUT 编辑, DELETE 删除
-    intro/route.ts        # GET 内容, PUT 更新
-    upload/route.ts       # POST 上传图片 → R2
-    auth/login/route.ts   # POST 验证密钥 → set cookie
+    auth/login/route.ts              # POST {key} → setCookie → {ok:true}
+    intro/route.ts                   # GET / PUT (需auth)
+    works/route.ts                   # GET 列表(含image_count/total_size) / POST 新增
+    works/[id]/route.ts              # GET/PUT(部分更新)/DELETE
+    works/[id]/images/route.ts       # GET 图片列表 / POST 批量添加 / DELETE 清空
+    works/images/[imageId]/route.ts  # DELETE 单张
+    upload/route.ts                  # POST multipart 直传 (旧版, ≤4.5MB)
+    upload/presigned/route.ts        # POST 生成 R2 presigned PUT URL (5分钟有效)
+    upload/process/route.ts          # POST 从R2拉原图→Sharp缩略图→上传R2
+components/
+  home-client.tsx                    # 实际首页 (294行): Hero/标签筛选/灯箱/介绍/联系
+  lightbox.tsx                       # 备用灯箱 (未被使用)
+  work-grid.tsx                      # 备用手风琴列表 (未被使用)
 lib/
-  db.ts                   # Turso 客户端
-  r2.ts                   # S3 客户端 (Cloudflare R2)
-  auth.ts                 # cookie 签发/验证
-  image.ts                # Sharp 缩略图生成
-proxy.ts                  # Next.js 16 proxy（替代 middleware）处理 /admin 密钥登录
+  db.ts                              # Turso 懒初始化 (Proxy单例, 首次访问auto migrate)
+  r2.ts                              # S3Client + publicUrl()
+  auth.ts                            # base64 token签发/验证, cookie名 admin_token
+  image.ts                           # Sharp缩略图 800px webp quality 85
+proxy.ts                             # Next.js 16 proxy: /admin/:path* 路由守卫
+scripts/push-schema.ts               # 手动建表/加列
 ```
 
-## 数据模型
+## 数据模型（实际 schema）
 ```sql
--- works 作品表
-id          TEXT PRIMARY KEY    -- cuid
-title       TEXT NOT NULL
-description TEXT NOT NULL
-tags        TEXT DEFAULT ''     -- 逗号分隔的标签，如 "角色,场景,3D"
-image_url   TEXT NOT NULL       -- R2 原图链接
-thumb_url   TEXT NOT NULL       -- R2 缩略图链接（800px）
-pinned      INTEGER DEFAULT 0  -- 0普通 1置顶，置顶作品排最前
-sort_order  INTEGER DEFAULT 0  -- 手动排序（数字越大越靠前）
-created_at  TEXT DEFAULT (datetime('now'))
-updated_at  TEXT DEFAULT (datetime('now'))
+works (
+  id TEXT PK,           -- @paralleldrive/cuid2 生成
+  title TEXT NOT NULL,
+  description TEXT NOT NULL,
+  tags TEXT DEFAULT '',  -- 逗号分隔, API返回时转数组
+  image_url TEXT,        -- 封面原图(可为NULL, 优先用work_images)
+  thumb_url TEXT,        -- 封面缩略图
+  pinned INTEGER DEFAULT 0,
+  sort_order INTEGER DEFAULT 0,
+  work_date TEXT,        -- 作品日期(ALTER TABLE添加)
+  image_size INTEGER DEFAULT 0,  -- 总字节数(ALTER TABLE添加)
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+)
 
--- intro 个人介绍（单行表）
-id      INTEGER PRIMARY KEY DEFAULT 1 CHECK(id=1)  -- 永远只一行
-content TEXT NOT NULL DEFAULT ''
-updated_at TEXT DEFAULT (datetime('now'))
+work_images (
+  id TEXT PK,
+  work_id TEXT NOT NULL REFERENCES works(id),
+  image_url TEXT NOT NULL,
+  thumb_url TEXT,
+  sort_order INTEGER DEFAULT 0,
+  created_at TEXT DEFAULT (datetime('now'))
+)
+
+intro (
+  id INTEGER PK DEFAULT 1 CHECK(id=1),
+  content TEXT NOT NULL DEFAULT '',
+  updated_at TEXT DEFAULT (datetime('now'))
+)
 ```
+**注意**: `db.ts` 首次访问时自动执行 ALTER TABLE 添加 `work_date`/`image_size` 列，无需手动执行。
+
+## 图片上载流（两段式，绕过 Vercel 4.5MB 限制）
+1. **前端** POST `/api/upload/presigned` `{contentType}` → 获取 `{uploadUrl, originalKey, imageUrl}`
+2. **前端** `fetch(uploadUrl, {method:'PUT', body:file})` 直传原图到 R2
+3. **前端** POST `/api/upload/process` `{originalKey}` → 服务端下载原图→Sharp生成缩略图→上传R2 → 返回 `{imageUrl, thumbUrl}`
+4. 旧版 `/api/upload` (multipart) 仍存在但仅适用于 ≤4.5MB 文件
 
 ## 认证流
-1. 管理员访问 `/admin?key=XXXXXXXX`
-2. 服务端对比 `ADMIN_SECRET_KEY` 环境变量
-3. 匹配则签发 httpOnly secure cookie（jwt 或随机 token）
-4. 后续 `/admin/*` 和 `/api/*` 写操作校验 cookie
-5. cookie 有效期 7 天
-
-## 图片上载流
-1. 前端选图 → POST `/api/upload` (multipart/form-data)
-2. 服务端用 Sharp: 生成 800px webp 缩略图, 原图保留
-3. 两者上传到 R2，获得公开 URL
-4. 返回 `{ imageUrl, thumbUrl }` 给前端保存到作品
+1. 访问 `/admin?key=XXX` → `proxy.ts` 校验 `ADMIN_SECRET_KEY` → 签发 `admin_token` cookie(7天) → 重定向 `/admin`
+2. 或访问 `/admin/login` 输入密钥 → POST `/api/auth/login` → 同上
+3. 所有 `/api/*` 写操作调用 `verifyAuthRequest()` 校验 cookie, 失败返回 401
+4. proxy.ts 放行 `/admin/login` 和 `/api/auth/login`, 其他 `/admin/*` 需 cookie
 
 ## 命令
 ```bash
-npm run dev        # 本地开发
-npm run build      # 生产构建
-npm run lint       # ESLint
-npm run typecheck  # tsc --noEmit
-npm run db:push    # 推送 schema 到 Turso
+npm run dev         # next dev (含 --turbo 默认)
+npm run build       # next build
+npm run lint        # ESLint (eslint.config.mjs, Next.js flat config)
+npm run typecheck   # tsc --noEmit
+npm run db:push     # npx tsx scripts/push-schema.ts (手动执行, db.ts 已 auto migrate)
 ```
 
 ## 环境变量 (.env.local，不入库)
-```
-DATABASE_URL=           # libsql://xxx.turso.io
-DATABASE_AUTH_TOKEN=    # Turso auth token
-R2_ACCOUNT_ID=
-R2_ACCESS_KEY_ID=
-R2_SECRET_ACCESS_KEY=
-R2_BUCKET_NAME=
-R2_PUBLIC_URL=          # https://pub-xxx.r2.dev 或自定义域名
-ADMIN_SECRET_KEY=       # 管理员密钥（足够长随机字符串）
-```
-
-## 安全要点
-- 所有 `/api/*` 写操作必须校验 cookie，否则 401
-- Zod schema 校验所有请求体，拒绝多余字段
-- `next.config.js` 的 `images.remotePatterns` 只允许 R2 域名
-- 上传接口限制文件类型（image/*）和大小（max 50MB）
-- 速率限制：`/api/auth/login` 每分钟最多 5 次
-- CSP 头配置
+见 `.env.example`。必须含: `DATABASE_URL`, `DATABASE_AUTH_TOKEN`, `R2_*`(5个), `ADMIN_SECRET_KEY`
 
 ## 约束 & 易错点
-- **Vercel 无本地文件系统**，绝对不能 `fs.writeFile`，所有文件存 R2
-- **Vercel body 限制 4.5MB**，大图不能走 API route 中转。用 R2 presigned URL 直传或 Uploadthing 方案
-- **Turso 用 HTTP 协议**，不是 WebSocket。用 `@libsql/client` 包，别用 `better-sqlite3`
-- **服务端代码**（db、r2、fs、Sharp）严禁出现在 `'use client'` 组件中
-- **Next.js Image 组件**需要配置 `next.config.js` 的 `images.remotePatterns` 允许 R2 域名
-- 本项目代码水平目标用户为 0，代码中不要过度抽象，保持平铺直叙
+- **Tailwind v4**: 无 `tailwind.config.ts`，颜色/字体在 `globals.css` 的 `@theme inline {}` 中定义
+- **next.config.ts** (不是 .js)，`images.remotePatterns` 已配置 `**.r2.cloudflarestorage.com` + `**.r2.dev`
+- **Vercel 无本地文件系统**: 禁止 `fs.writeFile`, 所有文件存 R2
+- **Vercel body 限制 4.5MB**: 上传必须走 presigned URL 直传 R2, 不走 API route
+- **Turso 用 HTTP 协议**: 用 `@libsql/client`, 别用 `better-sqlite3`
+- **服务端代码隔离**: Sharp/db/r2/fs 代码严禁出现在 `'use client'` 组件中
+- **无 SSR 首页**: `app/page.tsx` → `<HomeClient />` 纯客户端渲染, 数据通过 fetch + 30s 轮询获取
+- **未使用的依赖**: `cuid` v3 (项目用 `@paralleldrive/cuid2`); 组件 `lightbox.tsx`, `work-grid.tsx` 未被引用
+- **强制暗色模式**: `layout.tsx` `<html className="dark">`, 无亮色切换
+- **自定义光标**: `home-client.tsx` 桌面端有跟随光标效果, 触摸设备跳过
 
-## 建议后续完善
-- [ ] 后台拖拽排序（@dnd-kit，替代手动输入排序数字）
-- [ ] 静态生成作品页（`generateStaticParams`）提升首屏速度
-- [ ] 简易访问统计
-- [ ] sitemap.xml + SEO meta
-- [ ] 留言/联系表单（可选）
-
-## Git 注意事项
-当前 git 仓库初始化在 `C:\` 根目录（错误），会追踪整个系统盘。应在项目目录内重新 `git init`。
+## 待办/缺失
+- [ ] 作品详情页 (`app/work/[id]/page.tsx`) — 未实现
+- [ ] 自定义 404 页面
+- [ ] OG 标签 (metadata 仅 `title`/`description`, 无 openGraph)
+- [ ] sitemap.xml + robots.txt
+- [ ] 图片 alt 文本 + 无障碍 (aria, 键盘导航)
+- [ ] 图片懒加载 (首页 grid 无 IntersectionObserver)
+- [ ] 速率限制 (`/api/auth/login` 未实现)
+- [ ] CSP 头 (未配置)
+- [ ] Git 仓库问题：当前初始化在 `C:\` 根目录, 应在项目目录内重新 `git init`
+- [ ] README.md 为 create-next-app 默认模板, 需自定义
+- [ ] 后台拖拽排序 (当前手动输入 sort_order 数字)
