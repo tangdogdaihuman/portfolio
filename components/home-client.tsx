@@ -32,7 +32,8 @@ export default function HomeClient() {
     } catch {} finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { fetchData(); const iv = setInterval(fetchData, 30000); return () => clearInterval(iv); }, [fetchData]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
+  useEffect(() => { fetchData(); const iv = setInterval(fetchData, 30000); return () => clearInterval(iv); }, []);
 
   // Cursor
   useEffect(() => {
@@ -162,7 +163,7 @@ export default function HomeClient() {
                 data-hover
                 whileHover={{ scale: 1.02 }}
               >
-                <img src={work.thumb_url} alt={work.title} className="w-full h-full object-cover" />
+                <img src={work.thumb_url} alt={work.title} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                 <div className="card-overlay">
                   {work.pinned && <span className="text-[10px] tracking-widest uppercase text-accent mb-2">Featured</span>}
                   <h3 className="font-display text-xl md:text-2xl text-text">{work.title}</h3>
@@ -250,7 +251,7 @@ export default function HomeClient() {
               exit={{ opacity: 0, scale: 0.92 }}
               transition={{ type: "spring", damping: 30, stiffness: 350, mass: 0.8 }}
               src={fullImage.image_url}
-              alt=""
+              alt={lightboxWork?.title ?? ""}
               className="max-w-[94vw] max-h-[94vh] object-contain"
               onClick={(e: React.MouseEvent) => e.stopPropagation()}
             />

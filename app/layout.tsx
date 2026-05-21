@@ -13,8 +13,19 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Portfolio",
-  description: "Personal portfolio",
+  title: {
+    default: "Tang Zihang — CG Portfolio",
+    template: "%s — Tang Zihang",
+  },
+  description: "唐子航个人 CG 作品集 · 3D 角色/场景/材质 · Game Art Portfolio",
+  openGraph: {
+    title: "Tang Zihang — CG Portfolio",
+    description: "唐子航个人 CG 作品集 · 3D 角色/场景/材质",
+    siteName: "Tang Zihang Portfolio",
+    type: "website",
+    locale: "zh_CN",
+  },
+  robots: { index: true, follow: true },
 };
 
 export default function RootLayout({
