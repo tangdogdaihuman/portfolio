@@ -304,7 +304,7 @@ export default function HomeClient() {
                 <div className="divider-line" />
                 <span className="text-xs tracking-[0.4em] uppercase text-text-muted">Contact</span>
               </div>
-              <h2 className="font-display text-3xl md:text-5xl text-accent leading-[0.95] mb-10">
+              <h2 className="font-display text-base md:text-xl text-accent leading-[0.95] mb-10">
                 联系方式
               </h2>
               <div className="space-y-3 text-text-muted text-sm">
