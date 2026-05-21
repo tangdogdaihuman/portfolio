@@ -20,7 +20,6 @@ export default function HomeClient() {
   const [hovering, setHovering] = useState(false);
   const cursorRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
-  const rafRef = useRef(0);
 
   const fetchData = useCallback(async () => {
     try {
@@ -32,20 +31,16 @@ export default function HomeClient() {
 
   useEffect(() => { fetchData(); const iv = setInterval(fetchData, 30000); return () => clearInterval(iv); }, [fetchData]);
 
-  // GPU-accelerated cursor via rAF
+  // Cursor via direct transform (GPU pipeline)
   useEffect(() => {
-    let mx = 0, my = 0;
     const cursor = cursorRef.current, ring = ringRef.current;
     if (!cursor || !ring) return;
-    const onMove = (e: MouseEvent) => { mx = e.clientX; my = e.clientY; };
-    const tick = () => {
-      cursor.style.transform = `translate3d(${mx - 4}px,${my - 4}px,0)`;
-      ring.style.transform = `translate3d(${mx - 20}px,${my - 20}px,0)`;
-      rafRef.current = requestAnimationFrame(tick);
+    const onMove = (e: MouseEvent) => {
+      cursor.style.transform = `translate3d(${e.clientX - 3}px,${e.clientY - 3}px,0)`;
+      ring.style.transform = `translate3d(${e.clientX - 20}px,${e.clientY - 20}px,0)`;
     };
     window.addEventListener("mousemove", onMove, { passive: true });
-    rafRef.current = requestAnimationFrame(tick);
-    return () => { window.removeEventListener("mousemove", onMove); cancelAnimationFrame(rafRef.current); };
+    return () => window.removeEventListener("mousemove", onMove);
   }, []);
 
   // Reveal on scroll
@@ -232,12 +227,13 @@ export default function HomeClient() {
             <div className="divider-line" />
             <span className="text-[0.65rem] tracking-[0.35em] uppercase text-text-muted">Contact</span>
           </div>
-          <button
-            onClick={() => { window.location.href = `mailto:${["1193662756", "qq.com"].join("@")}`; }}
+          <a
+            href="#"
+            onClick={(e) => { e.preventDefault(); window.location.href = ["mailto:1193662756", "qq.com"].join("@"); }}
             className="font-display text-2xl md:text-3xl text-text-muted hover:text-accent transition-colors duration-500"
           >
-            邮箱联系
-          </button>
+            联系我
+          </a>
 
           <div className="flex items-center justify-center gap-8 mt-10">
             {/* GitHub */}
