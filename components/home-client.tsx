@@ -67,8 +67,8 @@ export default function HomeClient() {
   return (
     <>
       {/* Cursor - GPU transform based */}
-      <div ref={cursorRef} className={`fixed top-0 left-0 w-1.5 h-1.5 bg-accent rounded-full pointer-events-none z-[9999] will-change-transform hidden md:block ${hovering ? "scale-0" : ""} transition-transform duration-150`} />
-      <div ref={ringRef} className={`fixed top-0 left-0 w-10 h-10 border border-accent rounded-full pointer-events-none z-[9998] will-change-transform hidden md:block transition-all duration-400 ${hovering ? "!w-20 !h-20 !border-text" : ""}`} />
+      <div ref={cursorRef} className={`fixed w-1.5 h-1.5 bg-accent rounded-full pointer-events-none z-[9999] hidden md:block ${hovering ? "scale-0" : ""}`} />
+      <div ref={ringRef} className={`fixed w-10 h-10 border border-accent rounded-full pointer-events-none z-[9998] hidden md:block ${hovering ? "!w-20 !h-20 !border-text" : ""}`} />
 
       {/* Hero */}
       <section className="min-h-screen flex flex-col items-center justify-center relative px-4">
@@ -228,9 +228,8 @@ export default function HomeClient() {
             <span className="text-[0.65rem] tracking-[0.35em] uppercase text-text-muted">Contact</span>
           </div>
           <a
-            href="#"
-            onClick={(e) => { e.preventDefault(); window.location.href = ["mailto:1193662756", "qq.com"].join("@"); }}
-            className="font-display text-2xl md:text-3xl text-text-muted hover:text-accent transition-colors duration-500"
+            onClick={(e) => { e.preventDefault(); window.open("mailto:1193662756@qq.com", "_self"); }}
+            className="font-display text-2xl md:text-3xl text-text-muted hover:text-accent transition-colors duration-500 cursor-pointer"
           >
             联系我
           </a>
