@@ -25,13 +25,18 @@ function verifyToken(token: string, secret: string): boolean {
 }
 
 function proxy(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
+  const { pathname, searchParams } = new URL(req.url);
   const secret = process.env.ADMIN_SECRET_KEY;
 
   if (!secret) return NextResponse.next();
 
-  const key = searchParams.get("key");
+  // Allow login page and auth API without cookie
+  if (pathname === "/admin/login" || pathname === "/api/auth/login") {
+    return NextResponse.next();
+  }
 
+  // Allow ?key= URL login (bookmark), then redirect
+  const key = searchParams.get("key");
   if (key && key === secret) {
     const response = NextResponse.redirect(new URL("/admin", req.url));
     response.cookies.set(COOKIE_NAME, signToken(secret), {
@@ -43,14 +48,16 @@ function proxy(req: NextRequest) {
     });
     return response;
   }
-
   if (key && key !== secret) {
-    return NextResponse.redirect(new URL("/", req.url));
+    return NextResponse.redirect(new URL("/admin/login", req.url));
   }
 
+  // Check cookie
   const token = req.cookies.get(COOKIE_NAME);
   if (!token || !verifyToken(token.value, secret)) {
-    return NextResponse.redirect(new URL("/", req.url));
+    const loginUrl = new URL("/admin/login", req.url);
+    loginUrl.searchParams.set("redirect", pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
   return NextResponse.next();

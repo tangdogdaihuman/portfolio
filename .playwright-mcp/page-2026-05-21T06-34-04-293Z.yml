@@ -1,0 +1,13 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]: 管理后台
+      - link "回前台" [ref=e5] [cursor=pointer]:
+        - /url: /
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - button "作品列表" [ref=e8]
+        - button "新增作品" [ref=e9]
+        - button "个人介绍" [ref=e10]
+      - paragraph [ref=e12]: 暂无作品
+  - alert [ref=e13]

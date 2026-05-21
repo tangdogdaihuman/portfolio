@@ -1,0 +1,11 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e5]: 加载中...
+    - generic [ref=e7]:
+      - heading "Portfolio" [level=1] [ref=e8]
+      - paragraph [ref=e9]: 精选作品展示
+    - main [ref=e10]
+    - contentinfo [ref=e11]:
+      - paragraph [ref=e12]: © 2026
+  - alert [ref=e13]

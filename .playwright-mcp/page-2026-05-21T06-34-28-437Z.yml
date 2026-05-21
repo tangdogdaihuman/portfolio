@@ -1,0 +1,12 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]: 管理后台
+      - link "回前台" [ref=e5] [cursor=pointer]:
+        - /url: /
+    - generic [ref=e7]:
+      - heading "管理后台" [level=1] [ref=e8]
+      - generic [ref=e9]:
+        - textbox "请输入密钥" [active] [ref=e11]
+        - button "登录" [ref=e12]
+  - alert [ref=e13]
