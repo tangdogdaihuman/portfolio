@@ -35,25 +35,27 @@ export default function HomeClient() {
   // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
   useEffect(() => { fetchData(); const iv = setInterval(fetchData, 30000); return () => clearInterval(iv); }, []);
 
-  // Cursor with lerp ring
+  // Cursor — reference-inspired: CSS class toggle + lerp ring
   useEffect(() => {
+    if (typeof window === "undefined") return;
     const cursor = cursorRef.current, ring = ringRef.current;
     if (!cursor || !ring) return;
-    let rx = 0, ry = 0;
+    let mx = 0, my = 0, rx = 0, ry = 0;
     const onMove = (e: MouseEvent) => {
+      mx = e.clientX; my = e.clientY;
+      cursor.style.transform = "none";
+      cursor.style.left = mx + "px";
+      cursor.style.top = my + "px";
       const hovering = (e.target as HTMLElement).closest(".work-card, a, button, [data-hover]");
-      cursor.style.transform = `translate3d(${e.clientX - 3}px,${e.clientY - 3}px,0) scale(${hovering ? 0 : 1})`;
-      ring.style.width = hovering ? "80px" : "40px";
-      ring.style.height = hovering ? "80px" : "40px";
-      ring.style.borderColor = hovering ? "var(--color-text)" : "var(--color-accent)";
-      rx = e.clientX; ry = e.clientY;
+      if (hovering) { cursor.classList.add("hover"); ring.classList.add("hover"); }
+      else { cursor.classList.remove("hover"); ring.classList.remove("hover"); }
     };
     const animate = () => {
-      const cx = parseFloat(ring.style.left || "0");
-      const cy = parseFloat(ring.style.top || "0");
-      ring.style.left = `${cx + (rx - cx) * 0.15}px`;
-      ring.style.top = `${cy + (ry - cy) * 0.15}px`;
-      ring.style.transform = "translate3d(-50%,-50%,0)";
+      rx += (mx - rx) * 0.15;
+      ry += (my - ry) * 0.15;
+      ring.style.left = rx + "px";
+      ring.style.top = ry + "px";
+      ring.style.transform = "translate(-50%, -50%)";
       raf = requestAnimationFrame(animate);
     };
     let raf = requestAnimationFrame(animate);
@@ -100,8 +102,8 @@ export default function HomeClient() {
 
   return (
     <>
-      <div ref={cursorRef} className="fixed w-1.5 h-1.5 bg-accent rounded-full pointer-events-none z-[9999] hidden md:block" />
-      <div ref={ringRef} className="fixed w-10 h-10 border border-accent rounded-full pointer-events-none z-[9998] hidden md:block" />
+      <div ref={cursorRef} className="cursor hidden md:block" />
+      <div ref={ringRef} className="cursor-ring hidden md:block" />
 
       {/* Nav */}
       <nav className="fixed top-0 left-0 right-0 z-40 px-6 md:px-12 py-5 flex justify-between items-center bg-bg/50 backdrop-blur-sm">
@@ -152,10 +154,13 @@ export default function HomeClient() {
 
       {/* Works */}
       <section id="works" className="px-4 md:px-6 pt-16 pb-24 max-w-7xl mx-auto">
-        <div className="flex items-center gap-4 mb-12 reveal">
-          <span className="font-display italic text-accent text-xl">01</span>
-          <div className="divider-line" />
-          <span className="text-[0.65rem] tracking-[0.35em] uppercase text-text-muted">Selected Works</span>
+        <div className="reveal">
+          <div className="flex items-center gap-4 mb-4">
+            <span className="font-display italic text-accent text-2xl">01</span>
+            <div className="divider-line" />
+            <span className="text-xs tracking-[0.4em] uppercase text-text-muted">Selected Works</span>
+          </div>
+          <h2 className="font-display text-4xl md:text-6xl mb-12">精选 <span className="italic text-accent">作品</span></h2>
         </div>
 
         {tags.length > 0 && (
@@ -180,7 +185,7 @@ export default function HomeClient() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: "-40px" }}
                   transition={{ ...springSlow, delay: i * 0.06 }}
-                  className={`work-card reveal cursor-pointer img-frame group ${span}`}
+                  className={`work-card reveal cursor-pointer group ${span}`}
                   onClick={() => openLightbox(work)}
                   data-hover
                   whileHover={{ scale: 1.02 }}
@@ -205,10 +210,13 @@ export default function HomeClient() {
       {/* About */}
       {intro && (
         <section id="about" className="px-4 md:px-6 pb-16 max-w-7xl mx-auto">
-          <div className="flex items-center gap-4 mb-10 reveal">
-            <span className="font-display italic text-accent text-xl">02</span>
-            <div className="divider-line" />
-            <span className="text-[0.65rem] tracking-[0.35em] uppercase text-text-muted">About</span>
+          <div className="reveal">
+            <div className="flex items-center gap-4 mb-4">
+              <span className="font-display italic text-accent text-2xl">02</span>
+              <div className="divider-line" />
+              <span className="text-xs tracking-[0.4em] uppercase text-text-muted">About</span>
+            </div>
+            <h2 className="font-display text-4xl md:text-6xl mb-10">关于 <span className="italic text-accent">我</span></h2>
           </div>
           <div className="max-w-2xl reveal">
             {intro.split("\n").map((p, i) =>
@@ -288,23 +296,30 @@ export default function HomeClient() {
 
       {/* Contact */}
       <section id="contact" className="px-4 md:px-6 py-16 md:py-24 border-t border-border/20">
-        <div className="max-w-2xl mx-auto text-center reveal">
-          <div className="flex items-center justify-center gap-4 mb-10">
-            <span className="font-display italic text-accent text-xl">03</span>
-            <div className="divider-line" />
-            <span className="text-[0.65rem] tracking-[0.35em] uppercase text-text-muted">Contact</span>
-          </div>
-          <a href="mailto:1193662756@qq.com" className="font-display text-2xl md:text-3xl text-text-muted hover:text-accent transition-colors duration-500">联系我</a>
-
-          <div className="flex items-center justify-center gap-8 mt-10">
-            <a href="https://github.com/tangdogdaihuman" target="_blank" rel="noopener noreferrer" className="group flex flex-col items-center gap-2 text-text-muted hover:text-accent transition-colors duration-500">
-              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-              <span className="text-[0.55rem] tracking-[0.25em] uppercase">GitHub</span>
-            </a>
-            <a href="https://www.artstation.com/uuey7" target="_blank" rel="noopener noreferrer" className="group flex flex-col items-center gap-2 text-text-muted hover:text-accent transition-colors duration-500">
-              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M0 16.571h5.143l2.25 3.927L12 12.643 6.857 3.857 0 16.571zm24 0h-5.143l-2.25 3.927L12 12.643 17.143 3.857 24 16.571zM16.571 16.571h3.429l-1.714-3.156-1.715 3.156z"/></svg>
-              <span className="text-[0.55rem] tracking-[0.25em] uppercase">ArtStation</span>
-            </a>
+        <div className="max-w-7xl mx-auto">
+          <div className="grid md:grid-cols-12 gap-12">
+            <div className="md:col-span-7 reveal">
+              <div className="flex items-center gap-4 mb-4">
+                <span className="font-display italic text-accent text-2xl">03</span>
+                <div className="divider-line" />
+                <span className="text-xs tracking-[0.4em] uppercase text-text-muted">Contact</span>
+              </div>
+              <h2 className="font-display text-5xl md:text-7xl leading-[0.95] mb-10">
+                保持 <span className="italic text-accent">联系</span>
+              </h2>
+              <a href="mailto:1193662756@qq.com" className="font-display text-xl md:text-2xl text-text-muted nav-link inline-block">1193662756@qq.com</a>
+            </div>
+            <div className="md:col-span-5 md:pt-24">
+              <div className="space-y-8">
+                <div className="reveal">
+                  <div className="text-xs tracking-[0.3em] uppercase text-text-muted mb-3">Follow</div>
+                  <div className="space-y-3">
+                    <a href="https://github.com/tangdogdaihuman" target="_blank" rel="noopener noreferrer" className="nav-link font-display text-lg text-text-muted hover:text-accent transition-colors block">GitHub ↗</a>
+                    <a href="https://www.artstation.com/uuey7" target="_blank" rel="noopener noreferrer" className="nav-link font-display text-lg text-text-muted hover:text-accent transition-colors block">ArtStation ↗</a>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
