@@ -35,6 +35,12 @@ export default function HomeClient() {
   // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
   useEffect(() => { fetchData(); const iv = setInterval(fetchData, 30000); return () => clearInterval(iv); }, []);
 
+  // Hide native cursor only on this page
+  useEffect(() => {
+    document.body.style.cursor = "none";
+    return () => { document.body.style.cursor = ""; };
+  }, []);
+
   // Cursor — reference-inspired: CSS class toggle + lerp ring
   useEffect(() => {
     if (typeof window === "undefined") return;
