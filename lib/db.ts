@@ -31,7 +31,10 @@ async function runMigrations() {
     try { await client.execute("ALTER TABLE work_images ADD COLUMN image_size INTEGER DEFAULT 0"); } catch {}
     try { await client.execute("ALTER TABLE work_images ADD COLUMN crop_x INTEGER DEFAULT 50"); } catch {}
     try { await client.execute("ALTER TABLE work_images ADD COLUMN crop_y INTEGER DEFAULT 50"); } catch {}
+    try { await client.execute(`CREATE TABLE IF NOT EXISTS intro (id INTEGER PRIMARY KEY DEFAULT 1 CHECK(id=1), content TEXT NOT NULL DEFAULT '', updated_at TEXT DEFAULT (datetime('now')))`); } catch {}
+    try { await client.execute("INSERT OR IGNORE INTO intro (id, content) VALUES (1, '')"); } catch {}
     try { await client.execute(`CREATE TABLE IF NOT EXISTS details (id INTEGER PRIMARY KEY DEFAULT 1 CHECK(id=1), content TEXT NOT NULL DEFAULT '', updated_at TEXT DEFAULT (datetime('now')))`); } catch {}
+    try { await client.execute("INSERT OR IGNORE INTO details (id, content) VALUES (1, '')"); } catch {}
     try { await client.execute(`CREATE TABLE IF NOT EXISTS detail_sections (id TEXT PRIMARY KEY, title TEXT NOT NULL DEFAULT '', content TEXT NOT NULL DEFAULT '', sort_order INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')))`); } catch {}
     _migrated = true;
   })();
@@ -52,12 +55,16 @@ export function initializeDb() {
       sort_order INTEGER DEFAULT 0,
       work_date TEXT DEFAULT '',
       image_size INTEGER DEFAULT 0,
+      crop_x INTEGER DEFAULT 50,
+      crop_y INTEGER DEFAULT 50,
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))
     );
 
     ALTER TABLE works ADD COLUMN work_date TEXT DEFAULT '';
     ALTER TABLE works ADD COLUMN image_size INTEGER DEFAULT 0;
+    ALTER TABLE works ADD COLUMN crop_x INTEGER DEFAULT 50;
+    ALTER TABLE works ADD COLUMN crop_y INTEGER DEFAULT 50;
 
     CREATE TABLE IF NOT EXISTS work_images (
       id TEXT PRIMARY KEY,
@@ -66,10 +73,14 @@ export function initializeDb() {
       thumb_url TEXT NOT NULL,
       sort_order INTEGER DEFAULT 0,
       image_size INTEGER DEFAULT 0,
+      crop_x INTEGER DEFAULT 50,
+      crop_y INTEGER DEFAULT 50,
       created_at TEXT DEFAULT (datetime('now'))
     );
 
     ALTER TABLE work_images ADD COLUMN image_size INTEGER DEFAULT 0;
+    ALTER TABLE work_images ADD COLUMN crop_x INTEGER DEFAULT 50;
+    ALTER TABLE work_images ADD COLUMN crop_y INTEGER DEFAULT 50;
 
     CREATE TABLE IF NOT EXISTS intro (
       id INTEGER PRIMARY KEY DEFAULT 1 CHECK(id=1),
@@ -116,4 +127,13 @@ export default db;
 
 export async function ensureMigrated() {
   await runMigrations().catch(() => {});
+}
+
+export function tagsToArray(s: unknown): string[] {
+  if (typeof s !== "string" || !s) return [];
+  return s.split(",").filter(Boolean);
+}
+
+export function tagsToString(tags: string[]): string {
+  return tags.join(",");
 }

@@ -66,22 +66,32 @@ export default function AdminPage() {
   };
 
   const moveWork = async (work: Work, direction: "up" | "down") => {
-    const idx = works.indexOf(work);
+    const idx = works.findIndex((w) => w.id === work.id);
     const swapIdx = direction === "up" ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= works.length) return;
+    if (idx < 0 || swapIdx < 0 || swapIdx >= works.length) return;
     const other = works[swapIdx];
+
+    const a = work.sort_order ?? 0;
+    const b = other.sort_order ?? 0;
+    const newA = direction === "up" ? b + 1 : b - 1;
+    const newB = a;
+
+    const updated = [...works];
+    const temp = updated[idx];
+    updated[idx] = updated[swapIdx];
+    updated[swapIdx] = temp;
+    setWorks(updated);
 
     await Promise.all([
       fetch(`/api/works/${work.id}`, {
         method: "PUT", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sortOrder: other.sort_order }),
+        body: JSON.stringify({ sortOrder: newA }),
       }),
       fetch(`/api/works/${other.id}`, {
         method: "PUT", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sortOrder: work.sort_order }),
+        body: JSON.stringify({ sortOrder: newB }),
       }),
     ]);
-    refresh();
   };
 
   const deleteWork = async (id: string) => {
