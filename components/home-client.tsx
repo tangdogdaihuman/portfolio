@@ -246,7 +246,7 @@ export default function HomeClient() {
                       alt={work.title}
                       width={800}
                       height={1000}
-                      className="aspect-[4/5] object-cover w-full"
+                      className="max-w-full max-h-[32rem]"
                       loading="lazy"
                       decoding="async"
                     />
@@ -356,7 +356,7 @@ export default function HomeClient() {
                     onClick={(e) => { e.stopPropagation(); setFullImageIdx(i); }}
                     whileHover={{ scale: 1.02 }}
                   >
-                    <img src={img.thumb_url} alt="" width={800} height={1000} className="aspect-[4/5] object-cover w-full transition-transform duration-700 group-hover:scale-105" loading="lazy" />
+                    <img src={img.thumb_url} alt="" width={800} height={1000} className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy" />
                   </motion.div>
                 ))}
               </div>
