@@ -90,17 +90,17 @@ export default function AuroraCanvas() {
       const [r, g, b] = COLORS[colorIdx] ?? COLORS[0];
       const alpha = fadeInOut(life, ttl);
 
-      const gradient = ctxA.createLinearGradient(x, y1, x, y2);
+      const gradient = ctxA!.createLinearGradient(x, y1, x, y2);
       gradient.addColorStop(0, `rgba(${r},${g},${b},0)`);
       gradient.addColorStop(0.5, `rgba(${r},${g},${b},${alpha * 0.62})`);
       gradient.addColorStop(1, `rgba(${r},${g},${b},0)`);
 
-      ctxA.beginPath();
-      ctxA.strokeStyle = gradient;
-      ctxA.lineWidth = width;
-      ctxA.moveTo(x, y1);
-      ctxA.lineTo(x, y2);
-      ctxA.stroke();
+      ctxA!.beginPath();
+      ctxA!.strokeStyle = gradient;
+      ctxA!.lineWidth = width;
+      ctxA!.moveTo(x, y1);
+      ctxA!.lineTo(x, y2);
+      ctxA!.stroke();
     }
 
     function updateRay(i: number) {
