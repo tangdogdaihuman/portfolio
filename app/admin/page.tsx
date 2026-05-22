@@ -534,6 +534,12 @@ function WorkList({
                 ))}
               </div>
             )}
+            <div className="mt-1.5 flex items-center gap-2">
+              <div className="h-1 flex-1 bg-surface overflow-hidden">
+                <div className="h-full bg-accent/50" style={{ width: `${Math.max(((work.size_weight ?? 1) / [...works].reduce((s, w) => s + (w.size_weight ?? 1), 0)) * 100, 1)}%` }} />
+              </div>
+              <span className="text-[10px] text-accent-dim">{(work.size_weight ?? 1).toFixed(1)}</span>
+            </div>
           </div>
           <div className="flex flex-col gap-2 flex-shrink-0">
             <div className="flex gap-1">
