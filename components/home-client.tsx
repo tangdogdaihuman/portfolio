@@ -13,9 +13,12 @@ interface ImageItem { id: string; image_url: string; thumb_url: string; }
 const spring = { type: "spring" as const, damping: 28, stiffness: 200, mass: 0.8 };
 const springSlow = { type: "spring" as const, damping: 32, stiffness: 160, mass: 1 };
 
+interface Section { id: string; title: string; content: string; }
+
 export default function HomeClient() {
   const [intro, setIntro] = useState("");
-  const [details, setDetails] = useState("");
+  const [detailSections, setDetailSections] = useState<Section[]>([]);
+  const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [works, setWorks] = useState<Work[]>([]);
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [lightboxWork, setLightboxWork] = useState<Work | null>(null);
@@ -27,9 +30,9 @@ export default function HomeClient() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [introRes, detailsRes, worksRes] = await Promise.all([fetch("/api/intro"), fetch("/api/details"), fetch("/api/works")]);
+      const [introRes, sectionsRes, worksRes] = await Promise.all([fetch("/api/intro"), fetch("/api/detail-sections"), fetch("/api/works")]);
       if (introRes.ok) setIntro((await introRes.json()).content || "");
-      if (detailsRes.ok) setDetails((await detailsRes.json()).content || "");
+      if (sectionsRes.ok) setDetailSections(await sectionsRes.json());
       if (worksRes.ok) setWorks(await worksRes.json());
     } catch {} finally { setLoading(false); }
   }, []);
@@ -214,7 +217,7 @@ export default function HomeClient() {
       </section>
 
       {/* About */}
-      {details && (
+      {detailSections.length > 0 && (
         <section id="about" className="px-4 md:px-6 pb-16 max-w-7xl mx-auto">
           <div className="reveal">
             <div className="flex items-center gap-4 mb-4">
@@ -224,10 +227,51 @@ export default function HomeClient() {
             </div>
             <h2 className="font-display text-2xl md:text-4xl text-accent mb-10">详细介绍</h2>
           </div>
-          <div className="max-w-2xl reveal">
-            {details.split("\n").map((p, i) =>
-              p.trim() ? <motion.p key={i} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ ...spring, delay: i * 0.08 }} className="font-display text-xl text-text-muted leading-relaxed mb-5">{p}</motion.p> : null
-            )}
+          <div className="max-w-2xl space-y-2">
+            {detailSections.map((s, i) => {
+              const isOpen = expandedSection === s.id;
+              return (
+                <motion.div
+                  key={s.id}
+                  initial={{ opacity: 0, y: 16 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ ...spring, delay: i * 0.06 }}
+                  className="border-b border-border/30 overflow-hidden"
+                  whileHover={{ scale: 1.005 }}
+                >
+                  <button
+                    onClick={() => setExpandedSection(isOpen ? null : s.id)}
+                    className="w-full flex items-center justify-between py-4 text-left group"
+                    data-hover
+                  >
+                    <span className="font-display text-lg text-text-muted group-hover:text-accent transition-colors duration-300">{s.title}</span>
+                    <motion.span
+                      animate={{ rotate: isOpen ? 45 : 0 }}
+                      transition={{ type: "spring", damping: 20, stiffness: 200 }}
+                      className="text-accent-dim text-lg flex-shrink-0 ml-4"
+                    >
+                      +
+                    </motion.span>
+                  </button>
+                  <AnimatePresence initial={false}>
+                    {isOpen && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.4, ease: [0.2, 0.9, 0.3, 1] }}
+                        className="overflow-hidden"
+                      >
+                        <div className="pb-5 text-sm text-text-muted leading-relaxed whitespace-pre-wrap">
+                          {s.content}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              );
+            })}
           </div>
         </section>
       )}

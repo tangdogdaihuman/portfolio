@@ -33,7 +33,6 @@ export default function AdminPage() {
   });
   const [works, setWorks] = useState<Work[]>([]);
   const [intro, setIntro] = useState("");
-  const [details, setDetails] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
 
@@ -47,8 +46,6 @@ export default function AdminPage() {
       .then((r) => { if (r.ok) r.json().then(setWorks); });
     fetch("/api/intro")
       .then((r) => { if (r.ok) r.json().then((d) => setIntro(d.content)); });
-    fetch("/api/details")
-      .then((r) => { if (r.ok) r.json().then((d) => setDetails(d.content)); });
   }, []);
 
   useEffect(() => {
@@ -61,17 +58,6 @@ export default function AdminPage() {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content: intro }),
-    });
-    showMsg(res.ok ? "已保存" : "保存失败", res.ok);
-    setLoading(false);
-  };
-
-  const saveDetails = async () => {
-    setLoading(true);
-    const res = await fetch("/api/details", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: details }),
     });
     showMsg(res.ok ? "已保存" : "保存失败", res.ok);
     setLoading(false);
@@ -126,7 +112,7 @@ export default function AdminPage() {
       </div>
 
       {tab === "intro" && <IntroForm intro={intro} setIntro={setIntro} onSave={saveIntro} loading={loading} />}
-      {tab === "detail" && <IntroForm intro={details} setIntro={setDetails} onSave={saveDetails} loading={loading} label="详细介绍（支持换行，前台按段落显示）" />}
+      {tab === "detail" && <DetailSectionsEditor showMsg={showMsg} />}
       {tab === "add" && <AddWorkForm formState={formState} setFormState={setFormState} onDone={() => { refresh(); setTab("works"); }} showMsg={showMsg} />}
       {tab === "works" && (
         <WorkList
@@ -838,6 +824,125 @@ function EditWorkForm({
         <button onClick={handleSave} disabled={saving} className="px-8 py-2.5 bg-accent text-bg text-sm font-medium hover:bg-accent-dim disabled:opacity-50">{saving ? "保存中..." : "保存修改"}</button>
         <button onClick={onCancel} className="px-6 py-2.5 border border-border text-text-muted text-sm hover:text-text">取消</button>
       </div>
+    </div>
+  );
+}
+
+interface Section {
+  id: string;
+  title: string;
+  content: string;
+  sort_order: number;
+}
+
+function DetailSectionsEditor({ showMsg }: { showMsg: (text: string, ok: boolean) => void }) {
+  const [sections, setSections] = useState<Section[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/detail-sections")
+      .then((r) => r.json())
+      .then((data) => setSections(data))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const addSection = async () => {
+    const res = await fetch("/api/detail-sections", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "新栏目", content: "" }),
+    });
+    if (res.ok) {
+      const { id } = await res.json();
+      setSections((prev) => [...prev, { id, title: "新栏目", content: "", sort_order: prev.length }]);
+    }
+  };
+
+  const updateSection = async (id: string, field: "title" | "content", value: string) => {
+    setSections((prev) => prev.map((s) => (s.id === id ? { ...s, [field]: value } : s)));
+  };
+
+  const saveSection = async (id: string) => {
+    const section = sections.find((s) => s.id === id);
+    if (!section) return;
+    setSaving(id);
+    const res = await fetch(`/api/detail-sections/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: section.title, content: section.content }),
+    });
+    showMsg(res.ok ? "已保存" : "保存失败", res.ok);
+    setSaving(null);
+  };
+
+  const deleteSection = async (id: string) => {
+    if (!confirm("确定删除此栏目？")) return;
+    const res = await fetch(`/api/detail-sections/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setSections((prev) => prev.filter((s) => s.id !== id));
+      showMsg("已删除", true);
+    }
+  };
+
+  const moveSection = async (id: string, direction: "up" | "down") => {
+    const idx = sections.findIndex((s) => s.id === id);
+    if (idx === -1) return;
+    const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= sections.length) return;
+
+    const updated = [...sections];
+    [updated[idx], updated[swapIdx]] = [updated[swapIdx], updated[idx]];
+    setSections(updated);
+
+    await Promise.all([
+      fetch(`/api/detail-sections/${updated[idx].id}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sortOrder: idx }),
+      }),
+      fetch(`/api/detail-sections/${updated[swapIdx].id}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sortOrder: swapIdx }),
+      }),
+    ]);
+  };
+
+  if (loading) return <div className="text-text-muted text-sm">加载中...</div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-sm text-text-muted">共 {sections.length} 个子栏目，前台默认折叠，点击展开</p>
+        <button onClick={addSection} className="px-4 py-1.5 border border-accent-dim text-accent text-xs hover:bg-accent/10 transition-colors">+ 添加子栏目</button>
+      </div>
+      {sections.map((s, i) => (
+        <div key={s.id} className="border border-border bg-surface p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <button onClick={() => moveSection(s.id, "up")} disabled={i === 0} className="text-xs text-text-muted hover:text-text disabled:opacity-30">↑</button>
+            <button onClick={() => moveSection(s.id, "down")} disabled={i === sections.length - 1} className="text-xs text-text-muted hover:text-text disabled:opacity-30">↓</button>
+            <input
+              value={s.title}
+              onChange={(e) => updateSection(s.id, "title", e.target.value)}
+              className="flex-1 bg-bg border border-border text-text px-3 py-1.5 text-sm focus:outline-none focus:border-accent-dim"
+              placeholder="栏目标题"
+            />
+            <button onClick={() => saveSection(s.id)} disabled={saving === s.id} className="px-4 py-1.5 bg-accent text-bg text-xs hover:bg-accent-dim disabled:opacity-50">
+              {saving === s.id ? "保存中..." : "保存"}
+            </button>
+            <button onClick={() => deleteSection(s.id)} className="px-2 py-1.5 text-xs text-red-400/70 hover:text-red-400">删除</button>
+          </div>
+          <textarea
+            value={s.content}
+            onChange={(e) => updateSection(s.id, "content", e.target.value)}
+            rows={4}
+            className="w-full bg-bg border border-border text-text px-3 py-2 text-sm focus:outline-none focus:border-accent-dim resize-y"
+            placeholder="栏目内容"
+          />
+        </div>
+      ))}
+      {sections.length === 0 && (
+        <p className="text-text-muted text-sm text-center py-8">暂无子栏目，点击上方按钮添加</p>
+      )}
     </div>
   );
 }
