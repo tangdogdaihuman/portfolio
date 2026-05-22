@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useScroll, useTransform, type MotionValue } from "framer-motion";
 import type { Work } from "@/lib/types";
 import BgCanvas from "@/components/particle-bg";
+import AuroraCanvas from "@/components/aurora-canvas";
 
 interface ImageItem { id: string; image_url: string; thumb_url: string; }
 
@@ -35,6 +36,7 @@ export default function HomeClient({
   const dragRef = useRef<{ sx: number; sy: number; px: number; py: number } | null>(null);
   const cursorRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLDivElement>(null);
 
   const refreshData = useCallback(async () => {
     try {
@@ -135,6 +137,30 @@ export default function HomeClient({
 
   const resetView = () => { setZoom(1); setPan({ x: 0, y: 0 }); };
 
+  const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
+  const portfolioOpacity = useTransform(scrollYProgress, [0, 0.35], [1, 0]);
+  const portfolioBlur = useTransform(scrollYProgress, [0, 0.35], [0, 12]);
+  const portfolioFilter = useTransform(portfolioBlur, (v: number) => `blur(${v}px)`);
+  const portfolioScale = useTransform(scrollYProgress, [0, 0.35], [1, 0.85]);
+
+  const MAX_INTRO = 10;
+  const lineOps: MotionValue<number>[] = [];
+  const lineBlurs: MotionValue<number>[] = [];
+  const lineScales: MotionValue<number>[] = [];
+  const lineFilters: MotionValue<string>[] = [];
+  /* eslint-disable react-hooks/rules-of-hooks */
+  for (let i = 0; i < MAX_INTRO; i++) {
+    const start = 0.15 + (i / MAX_INTRO) * 0.35;
+    const peak = start + 0.12;
+    const end = 0.65 + (i / MAX_INTRO) * 0.15;
+    lineOps.push(useTransform(scrollYProgress, [start, peak, end], [0, 1, 0]));
+    const b = useTransform(scrollYProgress, [start, peak, end], [10, 0, 10]);
+    lineBlurs.push(b);
+    lineScales.push(useTransform(scrollYProgress, [start, peak, end], [0.9, 1, 0.9]));
+    lineFilters.push(useTransform(b, (v: number) => `blur(${v}px)`));
+  }
+  /* eslint-enable react-hooks/rules-of-hooks */
+
   // Marquee items: repeat tags 6x to ensure infinite scroll
   const marqueeItems = tags.length > 0 ? tags : ["Digital Art", "Character Design", "3D", "Illustration"];
 
@@ -157,28 +183,52 @@ export default function HomeClient({
 
       <div className="relative z-10">
         {/* Hero */}
-        <section className="min-h-screen flex flex-col items-center justify-center relative px-4">
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8 }} className="text-center">
-          {intro ? (
-            <div className="max-w-2xl mx-auto reveal">
-              <div className="divider-line mx-auto mb-8" />
-              <p className="text-[0.6rem] tracking-[0.35em] uppercase text-accent-dim mb-6 font-display">About</p>
-              {intro.split("\n").map((p, i) => p.trim() ? <p key={i} className="font-display text-xl md:text-2xl text-text-muted leading-relaxed mb-5">{p}</p> : null)}
-            </div>
-          ) : (
-            <div>
-              <h1 className="font-display text-[clamp(3.5rem,14vw,12rem)] leading-[0.9] tracking-[-0.04em] text-text">
-                <span className="block overflow-hidden"><motion.span initial={{ y: "110%" }} animate={{ y: 0 }} transition={{ duration: 1, ease: [0.2,0.9,0.3,1] }} className="inline-block">P</motion.span></span>
-                <span className="block overflow-hidden"><motion.span initial={{ y: "110%" }} animate={{ y: 0 }} transition={{ duration: 1, ease: [0.2,0.9,0.3,1], delay: 0.12 }} className="inline-block">ortfolio</motion.span></span>
-              </h1>
+        <section ref={heroRef} className="min-h-screen relative flex flex-col items-center justify-center px-4 overflow-hidden">
+          <AuroraCanvas />
+
+          {/* Portfolio title — fades out on scroll */}
+          <motion.div
+            style={{ opacity: portfolioOpacity, scale: portfolioScale, filter: portfolioFilter }}
+            className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none"
+          >
+            <h1 className="font-display text-[clamp(3.5rem,14vw,12rem)] leading-[0.9] tracking-[-0.04em] text-text">
+              <span className="block overflow-hidden"><motion.span initial={{ y: "110%" }} animate={{ y: 0 }} transition={{ duration: 1, ease: [0.2,0.9,0.3,1] }} className="inline-block">P</motion.span></span>
+              <span className="block overflow-hidden"><motion.span initial={{ y: "110%" }} animate={{ y: 0 }} transition={{ duration: 1, ease: [0.2,0.9,0.3,1], delay: 0.12 }} className="inline-block">ortfolio</motion.span></span>
+            </h1>
+          </motion.div>
+
+          {/* Intro — reveals line by line on scroll, blurs away on exit */}
+          {intro && (
+            <div className="relative z-10 max-w-2xl mx-auto text-center">
+              {intro.split("\n").map((line, i) => {
+                if (!line.trim()) return null;
+                if (i >= MAX_INTRO) return null;
+                return (
+                  <motion.p
+                    key={i}
+                    style={{
+                      opacity: lineOps[i],
+                      scale: lineScales[i],
+                      filter: lineFilters[i],
+                    }}
+                    className="font-display text-xl md:text-2xl text-text-muted leading-relaxed mb-5"
+                  >
+                    {line.trim()}
+                  </motion.p>
+                );
+              })}
             </div>
           )}
-        </motion.div>
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2 }} className="absolute bottom-12 text-center">
-          <p className="text-[0.6rem] tracking-[0.35em] uppercase text-text-muted mb-4">Scroll</p>
-          <span className="scroll-line" />
-        </motion.div>
-      </section>
+
+          {/* Scroll indicator — fades with Portfolio */}
+          <motion.div
+            style={{ opacity: portfolioOpacity }}
+            className="absolute bottom-12 text-center"
+          >
+            <p className="text-[0.6rem] tracking-[0.35em] uppercase text-text-muted mb-4">Scroll</p>
+            <span className="scroll-line" />
+          </motion.div>
+        </section>
 
       {/* Marquee */}
       <section className="py-12 md:py-16 border-y border-border/20 overflow-hidden">
