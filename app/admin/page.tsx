@@ -63,6 +63,25 @@ export default function AdminPage() {
     setLoading(false);
   };
 
+  const moveWork = async (work: Work, direction: "up" | "down") => {
+    const idx = works.indexOf(work);
+    const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= works.length) return;
+    const other = works[swapIdx];
+
+    await Promise.all([
+      fetch(`/api/works/${work.id}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sortOrder: other.sort_order }),
+      }),
+      fetch(`/api/works/${other.id}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sortOrder: work.sort_order }),
+      }),
+    ]);
+    refresh();
+  };
+
   const deleteWork = async (id: string) => {
     if (!confirm("确定删除？")) return;
     const res = await fetch(`/api/works/${id}`, { method: "DELETE" });
@@ -120,6 +139,7 @@ export default function AdminPage() {
           onDelete={deleteWork}
           onTogglePin={togglePin}
           onEdit={(id) => { setEditingId(id); setTab("edit"); }}
+          onReorder={moveWork}
         />
       )}
       {tab === "edit" && editingId && (
@@ -487,18 +507,20 @@ function WorkList({
   onDelete,
   onTogglePin,
   onEdit,
+  onReorder,
 }: {
   works: Work[];
   onDelete: (id: string) => void;
   onTogglePin: (work: Work) => void;
   onEdit: (id: string) => void;
+  onReorder: (work: Work, direction: "up" | "down") => void;
 }) {
   return (
     <div className="space-y-3">
       {works.length === 0 && (
         <p className="text-text-muted text-sm">暂无作品</p>
       )}
-      {works.map((work) => (
+      {works.map((work, i) => (
         <div
           key={work.id}
           className="flex items-start gap-4 bg-bg border border-border p-4"
@@ -537,6 +559,10 @@ function WorkList({
             )}
           </div>
           <div className="flex flex-col gap-2 flex-shrink-0">
+            <div className="flex gap-1">
+              <button onClick={() => onReorder(work, "up")} disabled={i === 0} className="text-xs text-text-muted hover:text-accent disabled:opacity-30">↑</button>
+              <button onClick={() => onReorder(work, "down")} disabled={i === works.length - 1} className="text-xs text-text-muted hover:text-accent disabled:opacity-30">↓</button>
+            </div>
             <button
               onClick={() => onTogglePin(work)}
               className="text-xs text-text-muted hover:text-accent transition-colors"

@@ -21,6 +21,7 @@ export default function HomeClient() {
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [works, setWorks] = useState<Work[]>([]);
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [sortNewest, setSortNewest] = useState(true);
   const [lightboxWork, setLightboxWork] = useState<Work | null>(null);
   const [lightboxImages, setLightboxImages] = useState<ImageItem[]>([]);
   const [fullImageIdx, setFullImageIdx] = useState<number | null>(null);
@@ -93,6 +94,7 @@ export default function HomeClient() {
 
   const tags = [...new Set(works.flatMap((w) => w.tags))];
   const filtered = activeTag ? works.filter((w) => w.tags.includes(activeTag)) : works;
+  const sorted = sortNewest ? filtered : [...filtered].reverse();
   const fullImage = fullImageIdx !== null ? lightboxImages[fullImageIdx] : null;
 
   const openLightbox = async (work: Work) => {
@@ -173,20 +175,23 @@ export default function HomeClient() {
         </div>
 
         {tags.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-12 reveal">
+          <div className="flex flex-wrap items-center gap-2 mb-12 reveal">
             <button onClick={() => setActiveTag(null)} className={`px-4 py-1.5 text-[0.65rem] tracking-wider uppercase transition-colors ${activeTag === null ? "text-accent border-b border-accent" : "text-text-muted hover:text-text"}`}>All</button>
             {tags.map((t) => (
               <button key={t} onClick={() => setActiveTag(t)} className={`px-4 py-1.5 text-[0.65rem] tracking-wider uppercase transition-colors ${activeTag === t ? "text-accent border-b border-accent" : "text-text-muted hover:text-text"}`}>{t}</button>
             ))}
+            <span className="flex-1" />
+            <button onClick={() => setSortNewest(!sortNewest)} className="px-3 py-1.5 text-[0.6rem] tracking-wider uppercase text-text-muted hover:text-accent transition-colors border border-border">
+              {sortNewest ? "最新优先 ↑" : "最早优先 ↓"}
+            </button>
           </div>
         )}
 
         {filtered.length === 0 ? (
           <div className="text-center py-20 text-text-muted reveal">还没有作品</div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6">
-            {filtered.map((work, i) => {
-              const span = i % 3 === 0 ? "md:col-span-7" : "md:col-span-5";
+          <div className="columns-1 md:columns-2 lg:columns-3 gap-4 md:gap-6 space-y-4 md:space-y-6">
+            {sorted.map((work, i) => {
               return (
                 <motion.div
                   key={work.id}
@@ -194,7 +199,7 @@ export default function HomeClient() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: "-40px" }}
                   transition={{ ...springSlow, delay: i * 0.06 }}
-                  className={`work-card reveal cursor-pointer group ${span}`}
+                  className="work-card reveal cursor-pointer group break-inside-avoid"
                   onClick={() => openLightbox(work)}
                   data-hover
                   whileHover={{ scale: 1.02 }}
