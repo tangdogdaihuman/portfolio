@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef } from "react";
 
-const N = 50;
+const N = 80;
 const MAX_DIST = 150;
 const MOUSE_RADIUS = 120;
 const ACCENT = "201, 169, 97";
@@ -33,7 +33,7 @@ export default function ParticleBg() {
         vx: (Math.random() - 0.5) * 0.25,
         vy: (Math.random() - 0.5) * 0.25,
         ox: x, oy: y,
-        r: Math.random() * 1.5 + 0.5,
+        r: Math.random() * 2 + 0.8,
         a: Math.random() * 0.3 + 0.08,
       });
     }
