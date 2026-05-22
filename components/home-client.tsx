@@ -150,7 +150,14 @@ export default function HomeClient() {
       <section className="min-h-screen flex flex-col items-center justify-center relative px-4">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8 }} className="text-center">
           {loading ? (
-            <div className="text-text-muted/20 text-lg">...</div>
+            <div className="max-w-2xl mx-auto animate-pulse">
+              <div className="divider-line mx-auto mb-8 opacity-20" />
+              <div className="h-3 bg-text-muted/10 rounded mb-6 w-24 mx-auto" />
+              <div className="space-y-4">
+                <div className="h-6 bg-text-muted/10 rounded w-3/4 mx-auto" />
+                <div className="h-6 bg-text-muted/10 rounded w-1/2 mx-auto" />
+              </div>
+            </div>
           ) : intro ? (
             <div className="max-w-2xl mx-auto reveal">
               <div className="divider-line mx-auto mb-8" />
@@ -207,7 +214,15 @@ export default function HomeClient() {
           </div>
         )}
 
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-8">
+            {["md:col-span-8", "md:col-span-5", "md:col-span-4", "md:col-span-7"].map((span, i) => (
+              <div key={i} className={`${span} animate-pulse`}>
+                <div className="aspect-[4/5] bg-text-muted/10" />
+              </div>
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="text-center py-20 text-text-muted reveal">还没有作品</div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-8">
@@ -229,7 +244,9 @@ export default function HomeClient() {
                     <img
                       src={work.thumb_url}
                       alt={work.title}
-                      className="max-w-full max-h-[32rem]"
+                      width={800}
+                      height={1000}
+                      className="aspect-[4/5] object-cover w-full"
                       loading="lazy"
                       decoding="async"
                     />
@@ -339,7 +356,7 @@ export default function HomeClient() {
                     onClick={(e) => { e.stopPropagation(); setFullImageIdx(i); }}
                     whileHover={{ scale: 1.02 }}
                   >
-                    <img src={img.thumb_url} alt="" className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy" />
+                    <img src={img.thumb_url} alt="" width={800} height={1000} className="aspect-[4/5] object-cover w-full transition-transform duration-700 group-hover:scale-105" loading="lazy" />
                   </motion.div>
                 ))}
               </div>
