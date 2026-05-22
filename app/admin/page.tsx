@@ -17,7 +17,7 @@ interface Work {
 }
 
 export default function AdminPage() {
-  const [tab, setTab] = useState<"works" | "intro" | "add" | "storage" | "edit">("works");
+  const [tab, setTab] = useState<"works" | "intro" | "add" | "storage" | "edit" | "detail">("works");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formState, setFormState] = useState<FormState>({
     title: "",
@@ -33,6 +33,7 @@ export default function AdminPage() {
   });
   const [works, setWorks] = useState<Work[]>([]);
   const [intro, setIntro] = useState("");
+  const [details, setDetails] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
 
@@ -46,6 +47,8 @@ export default function AdminPage() {
       .then((r) => { if (r.ok) r.json().then(setWorks); });
     fetch("/api/intro")
       .then((r) => { if (r.ok) r.json().then((d) => setIntro(d.content)); });
+    fetch("/api/details")
+      .then((r) => { if (r.ok) r.json().then((d) => setDetails(d.content)); });
   }, []);
 
   useEffect(() => {
@@ -58,6 +61,17 @@ export default function AdminPage() {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content: intro }),
+    });
+    showMsg(res.ok ? "已保存" : "保存失败", res.ok);
+    setLoading(false);
+  };
+
+  const saveDetails = async () => {
+    setLoading(true);
+    const res = await fetch("/api/details", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: details }),
     });
     showMsg(res.ok ? "已保存" : "保存失败", res.ok);
     setLoading(false);
@@ -96,7 +110,7 @@ export default function AdminPage() {
       )}
 
       <div className="flex gap-1 mb-8 border-b border-border">
-        {(["works", "add", "intro", "storage"] as const).map((t) => (
+        {(["works", "add", "intro", "detail", "storage"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -106,12 +120,13 @@ export default function AdminPage() {
                 : "text-text-muted hover:text-text"
             }`}
           >
-            {t === "works" ? "作品列表" : t === "add" ? "新增作品" : t === "intro" ? "个人介绍" : "容量"}
+            {t === "works" ? "作品列表" : t === "add" ? "新增作品" : t === "intro" ? "个人介绍" : t === "detail" ? "详细介绍" : "容量"}
           </button>
         ))}
       </div>
 
       {tab === "intro" && <IntroForm intro={intro} setIntro={setIntro} onSave={saveIntro} loading={loading} />}
+      {tab === "detail" && <IntroForm intro={details} setIntro={setDetails} onSave={saveDetails} loading={loading} label="详细介绍（支持换行，前台按段落显示）" />}
       {tab === "add" && <AddWorkForm formState={formState} setFormState={setFormState} onDone={() => { refresh(); setTab("works"); }} showMsg={showMsg} />}
       {tab === "works" && (
         <WorkList
@@ -139,16 +154,18 @@ function IntroForm({
   setIntro,
   onSave,
   loading,
+  label,
 }: {
   intro: string;
   setIntro: (v: string) => void;
   onSave: () => void;
   loading: boolean;
+  label?: string;
 }) {
   return (
     <div>
       <label className="block text-sm text-text-muted mb-2">
-        个人介绍（支持换行，前台按段落显示）
+        {label || "个人介绍（支持换行，前台按段落显示）"}
       </label>
       <textarea
         value={intro}

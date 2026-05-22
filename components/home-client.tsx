@@ -15,6 +15,7 @@ const springSlow = { type: "spring" as const, damping: 32, stiffness: 160, mass:
 
 export default function HomeClient() {
   const [intro, setIntro] = useState("");
+  const [details, setDetails] = useState("");
   const [works, setWorks] = useState<Work[]>([]);
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [lightboxWork, setLightboxWork] = useState<Work | null>(null);
@@ -26,8 +27,9 @@ export default function HomeClient() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [introRes, worksRes] = await Promise.all([fetch("/api/intro"), fetch("/api/works")]);
+      const [introRes, detailsRes, worksRes] = await Promise.all([fetch("/api/intro"), fetch("/api/details"), fetch("/api/works")]);
       if (introRes.ok) setIntro((await introRes.json()).content || "");
+      if (detailsRes.ok) setDetails((await detailsRes.json()).content || "");
       if (worksRes.ok) setWorks(await worksRes.json());
     } catch {} finally { setLoading(false); }
   }, []);
@@ -212,7 +214,7 @@ export default function HomeClient() {
       </section>
 
       {/* About */}
-      {intro && (
+      {details && (
         <section id="about" className="px-4 md:px-6 pb-16 max-w-7xl mx-auto">
           <div className="reveal">
             <div className="flex items-center gap-4 mb-4">
@@ -220,10 +222,10 @@ export default function HomeClient() {
               <div className="divider-line" />
               <span className="text-xs tracking-[0.4em] uppercase text-text-muted">About</span>
             </div>
-            <h2 className="font-display text-2xl md:text-4xl text-accent mb-10">关于我</h2>
+            <h2 className="font-display text-2xl md:text-4xl text-accent mb-10">详细介绍</h2>
           </div>
           <div className="max-w-2xl reveal">
-            {intro.split("\n").map((p, i) =>
+            {details.split("\n").map((p, i) =>
               p.trim() ? <motion.p key={i} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ ...spring, delay: i * 0.08 }} className="font-display text-xl text-text-muted leading-relaxed mb-5">{p}</motion.p> : null
             )}
           </div>
