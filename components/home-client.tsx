@@ -138,10 +138,10 @@ export default function HomeClient({
   const resetView = () => { setZoom(1); setPan({ x: 0, y: 0 }); };
 
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
-  const portfolioOpacity = useTransform(scrollYProgress, [0, 0.35], [1, 0]);
-  const portfolioBlur = useTransform(scrollYProgress, [0, 0.35], [0, 12]);
+  const portfolioOpacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
+  const portfolioBlur = useTransform(scrollYProgress, [0, 0.5], [0, 12]);
   const portfolioFilter = useTransform(portfolioBlur, (v: number) => `blur(${v}px)`);
-  const portfolioScale = useTransform(scrollYProgress, [0, 0.35], [1, 0.85]);
+  const portfolioScale = useTransform(scrollYProgress, [0, 0.5], [1, 0.85]);
 
   const MAX_INTRO = 10;
   const lineOps: MotionValue<number>[] = [];
@@ -150,13 +150,14 @@ export default function HomeClient({
   const lineFilters: MotionValue<string>[] = [];
   /* eslint-disable react-hooks/rules-of-hooks */
   for (let i = 0; i < MAX_INTRO; i++) {
-    const start = 0.15 + (i / MAX_INTRO) * 0.35;
-    const peak = start + 0.12;
-    const end = 0.65 + (i / MAX_INTRO) * 0.15;
-    lineOps.push(useTransform(scrollYProgress, [start, peak, end], [0, 1, 0]));
-    const b = useTransform(scrollYProgress, [start, peak, end], [10, 0, 10]);
+    const start = 0.1 + (i / MAX_INTRO) * 0.25;
+    const fadeInEnd = start + 0.12;
+    const fadeOutStart = 0.8;
+    const fadeOutEnd = 0.95;
+    lineOps.push(useTransform(scrollYProgress, [start, fadeInEnd, fadeOutStart, fadeOutEnd], [0, 1, 1, 0]));
+    const b = useTransform(scrollYProgress, [start, fadeInEnd, fadeOutStart, fadeOutEnd], [10, 0, 0, 10]);
     lineBlurs.push(b);
-    lineScales.push(useTransform(scrollYProgress, [start, peak, end], [0.9, 1, 0.9]));
+    lineScales.push(useTransform(scrollYProgress, [start, fadeInEnd, fadeOutStart, fadeOutEnd], [0.9, 1, 1, 0.9]));
     lineFilters.push(useTransform(b, (v: number) => `blur(${v}px)`));
   }
   /* eslint-enable react-hooks/rules-of-hooks */
@@ -197,36 +198,42 @@ export default function HomeClient({
             </h1>
           </motion.div>
 
-          {/* Intro — reveals line by line on scroll, blurs away on exit */}
+          {/* Intro — reveals line by line on scroll, stays visible, fades on exit */}
           {intro && (
             <div className="relative z-10 max-w-2xl mx-auto text-center">
-              {intro.split("\n").map((line, i) => {
-                if (!line.trim()) return null;
-                if (i >= MAX_INTRO) return null;
-                return (
-                  <motion.p
-                    key={i}
-                    style={{
-                      opacity: lineOps[i],
-                      scale: lineScales[i],
-                      filter: lineFilters[i],
-                    }}
-                    className="font-display text-xl md:text-2xl text-text-muted leading-relaxed mb-5"
-                  >
-                    {line.trim()}
-                  </motion.p>
-                );
-              })}
+              {(() => {
+                let idx = 0;
+                return intro.split("\n").map((line, i) => {
+                  if (!line.trim()) return <br key={i} />;
+                  if (idx >= MAX_INTRO) return null;
+                  const animIdx = idx++;
+                  return (
+                    <motion.p
+                      key={i}
+                      style={{
+                        opacity: lineOps[animIdx],
+                        scale: lineScales[animIdx],
+                        filter: lineFilters[animIdx],
+                      }}
+                      className="font-display text-xl md:text-2xl text-text-muted leading-relaxed mb-5"
+                    >
+                      {line.trim()}
+                    </motion.p>
+                  );
+                });
+              })()}
             </div>
           )}
 
           {/* Scroll indicator — fades with Portfolio */}
-          <motion.div
-            style={{ opacity: portfolioOpacity }}
-            className="absolute bottom-12 text-center"
-          >
-            <p className="text-[0.6rem] tracking-[0.35em] uppercase text-text-muted mb-4">Scroll</p>
-            <span className="scroll-line" />
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2 }}>
+            <motion.div
+              style={{ opacity: portfolioOpacity }}
+              className="absolute bottom-12 text-center"
+            >
+              <p className="text-[0.6rem] tracking-[0.35em] uppercase text-text-muted mb-4">Scroll</p>
+              <span className="scroll-line" />
+            </motion.div>
           </motion.div>
         </section>
 
