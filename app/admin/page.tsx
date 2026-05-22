@@ -838,7 +838,7 @@ interface Section {
 function DetailSectionsEditor({ showMsg }: { showMsg: (text: string, ok: boolean) => void }) {
   const [sections, setSections] = useState<Section[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetch("/api/detail-sections")
@@ -859,21 +859,24 @@ function DetailSectionsEditor({ showMsg }: { showMsg: (text: string, ok: boolean
     }
   };
 
-  const updateSection = async (id: string, field: "title" | "content", value: string) => {
+  const updateSection = (id: string, field: "title" | "content", value: string) => {
     setSections((prev) => prev.map((s) => (s.id === id ? { ...s, [field]: value } : s)));
   };
 
-  const saveSection = async (id: string) => {
-    const section = sections.find((s) => s.id === id);
-    if (!section) return;
-    setSaving(id);
-    const res = await fetch(`/api/detail-sections/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: section.title, content: section.content }),
-    });
-    showMsg(res.ok ? "已保存" : "保存失败", res.ok);
-    setSaving(null);
+  const saveAll = async () => {
+    setSaving(true);
+    const results = await Promise.all(
+      sections.map((s) =>
+        fetch(`/api/detail-sections/${s.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: s.title, content: s.content, sortOrder: s.sort_order }),
+        })
+      )
+    );
+    const ok = results.every((r) => r.ok);
+    showMsg(ok ? "已保存" : "部分保存失败", ok);
+    setSaving(false);
   };
 
   const deleteSection = async (id: string) => {
@@ -913,7 +916,10 @@ function DetailSectionsEditor({ showMsg }: { showMsg: (text: string, ok: boolean
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm text-text-muted">共 {sections.length} 个子栏目，前台默认折叠，点击展开</p>
-        <button onClick={addSection} className="px-4 py-1.5 border border-accent-dim text-accent text-xs hover:bg-accent/10 transition-colors">+ 添加子栏目</button>
+        <div className="flex gap-2">
+          <button onClick={addSection} className="px-4 py-1.5 border border-accent-dim text-accent text-xs hover:bg-accent/10 transition-colors">+ 添加子栏目</button>
+          <button onClick={saveAll} disabled={saving} className="px-5 py-1.5 bg-accent text-bg text-xs font-medium hover:bg-accent-dim disabled:opacity-50">{saving ? "保存中..." : "保存全部"}</button>
+        </div>
       </div>
       {sections.map((s, i) => (
         <div key={s.id} className="border border-border bg-surface p-4 space-y-3">
@@ -926,9 +932,6 @@ function DetailSectionsEditor({ showMsg }: { showMsg: (text: string, ok: boolean
               className="flex-1 bg-bg border border-border text-text px-3 py-1.5 text-sm focus:outline-none focus:border-accent-dim"
               placeholder="栏目标题"
             />
-            <button onClick={() => saveSection(s.id)} disabled={saving === s.id} className="px-4 py-1.5 bg-accent text-bg text-xs hover:bg-accent-dim disabled:opacity-50">
-              {saving === s.id ? "保存中..." : "保存"}
-            </button>
             <button onClick={() => deleteSection(s.id)} className="px-2 py-1.5 text-xs text-red-400/70 hover:text-red-400">删除</button>
           </div>
           <textarea
