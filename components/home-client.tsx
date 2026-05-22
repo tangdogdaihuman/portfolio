@@ -59,7 +59,11 @@ export default function HomeClient({
   // Hide native cursor only on this page
   useEffect(() => {
     document.body.style.cursor = "none";
-    return () => { document.body.style.cursor = ""; };
+    document.body.classList.add("home-vignette");
+    return () => {
+      document.body.style.cursor = "";
+      document.body.classList.remove("home-vignette");
+    };
   }, []);
 
   // Cursor — reference-inspired: CSS class toggle + lerp ring
@@ -173,8 +177,8 @@ export default function HomeClient({
       <div ref={ringRef} className="cursor-ring hidden md:block" />
 
       {/* Nav */}
-      <nav className="fixed top-0 left-0 right-0 z-40 px-6 md:px-12 py-5 flex justify-between items-center bg-bg/50 backdrop-blur-sm">
-        <a href="#" className="font-display text-lg tracking-wider text-text">Portfolio</a>
+      <nav className="fixed top-0 left-0 right-0 z-[70] px-6 md:px-12 py-5 flex justify-between items-center bg-bg/50 backdrop-blur-sm">
+        <a href="#" onClick={closeAll} className="font-display text-lg tracking-wider text-text">Portfolio</a>
         <div className="flex gap-8 text-xs tracking-[0.25em] uppercase text-text-muted">
           <a href="#works" className="nav-link">作品</a>
           <a href="#about" className="nav-link">关于</a>
@@ -245,7 +249,7 @@ export default function HomeClient({
       <section className="py-12 md:py-16 border-y border-border/20 overflow-hidden">
         <div className="overflow-hidden">
           <div className="flex animate-[marquee_10s_linear_infinite] md:animate-[marquee_14s_linear_infinite]" style={{ width: "max-content" }}>
-            {[0, 1].map((n) => (
+            {[0, 1, 2].map((n) => (
               <div key={n} className="flex flex-shrink-0">
                 {[0, 1, 2, 3, 4].map((m) => (
                   <span key={`${n}-${m}`} className="font-display italic text-2xl md:text-3xl text-text-muted/25 tracking-wider mx-6 whitespace-nowrap flex-shrink-0">

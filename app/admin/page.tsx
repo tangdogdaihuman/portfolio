@@ -580,7 +580,7 @@ function WorkList({
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-sm text-text truncate mr-4">{work.title}</span>
                     <span className="text-xs text-accent-dim whitespace-nowrap">
-                      {wgt.toFixed(1)} ({wpct.toFixed(1)}%)
+                      {wpct.toFixed(1)}%
                     </span>
                   </div>
                   <div className="h-1.5 bg-surface overflow-hidden">
