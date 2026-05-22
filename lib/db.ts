@@ -87,14 +87,11 @@ export function initializeDb() {
 const db = new Proxy({} as Client, {
   get(_target, prop) {
     const client = getClient();
+    if (!_migrated) {
+      runMigrations().catch(() => {});
+    }
     const value = (client as unknown as Record<string | symbol, unknown>)[prop];
     if (typeof value === "function") {
-      if (!_migrated) {
-        return async (...args: unknown[]) => {
-          await runMigrations().catch(() => {});
-          return (value as (...args: unknown[]) => unknown).apply(client, args);
-        };
-      }
       return value.bind(client);
     }
     return value;
@@ -102,3 +99,7 @@ const db = new Proxy({} as Client, {
 });
 
 export default db;
+
+export async function ensureMigrated() {
+  await runMigrations().catch(() => {});
+}

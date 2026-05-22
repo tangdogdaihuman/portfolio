@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import db from "@/lib/db";
+import db, { ensureMigrated } from "@/lib/db";
 import { verifyAuthRequest } from "@/lib/auth";
 
 const detailsSchema = z.object({
@@ -8,6 +8,7 @@ const detailsSchema = z.object({
 });
 
 async function ensureTable() {
+  await ensureMigrated();
   await db.execute(`CREATE TABLE IF NOT EXISTS details (id INTEGER PRIMARY KEY DEFAULT 1 CHECK(id=1), content TEXT NOT NULL DEFAULT '', updated_at TEXT DEFAULT (datetime('now')))`).catch(() => {});
   await db.execute("INSERT OR IGNORE INTO details (id, content) VALUES (1, '')").catch(() => {});
 }
