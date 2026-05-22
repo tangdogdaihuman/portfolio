@@ -187,49 +187,51 @@ export default function HomeClient({
         <section ref={heroRef} className="min-h-screen relative flex flex-col items-center justify-center px-4 overflow-hidden">
           <AuroraCanvas />
 
-          {/* Portfolio title — fades out on scroll */}
-          <motion.div
-            style={{ opacity: portfolioOpacity, scale: portfolioScale, filter: portfolioFilter }}
-            className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none"
-          >
-            <h1 className="font-display text-[clamp(3.5rem,14vw,12rem)] leading-[0.9] tracking-[-0.04em] text-text">
-              <span className="block overflow-hidden"><motion.span initial={{ y: "110%" }} animate={{ y: 0 }} transition={{ duration: 1, ease: [0.2,0.9,0.3,1] }} className="inline-block">P</motion.span></span>
-              <span className="block overflow-hidden"><motion.span initial={{ y: "110%" }} animate={{ y: 0 }} transition={{ duration: 1, ease: [0.2,0.9,0.3,1], delay: 0.12 }} className="inline-block">ortfolio</motion.span></span>
-            </h1>
-          </motion.div>
+          <div className="relative z-10 flex flex-col items-center justify-center w-full">
+            {/* Portfolio title — fades out on scroll */}
+            <motion.div
+              style={{ opacity: portfolioOpacity, scale: portfolioScale, filter: portfolioFilter }}
+              className="text-center pointer-events-none"
+            >
+              <h1 className="font-display text-[clamp(3.5rem,14vw,12rem)] leading-[0.9] tracking-[-0.04em] text-text whitespace-nowrap">
+                <span className="inline-block overflow-hidden"><motion.span initial={{ y: "110%" }} animate={{ y: 0 }} transition={{ duration: 1, ease: [0.2,0.9,0.3,1] }} className="inline-block">P</motion.span></span>
+                <span className="inline-block overflow-hidden"><motion.span initial={{ y: "110%" }} animate={{ y: 0 }} transition={{ duration: 1, ease: [0.2,0.9,0.3,1], delay: 0.12 }} className="inline-block">ortfolio</motion.span></span>
+              </h1>
+            </motion.div>
 
-          {/* Intro — reveals line by line on scroll, stays visible, fades on exit */}
-          {intro && (
-            <div className="relative z-10 max-w-2xl mx-auto text-center">
-              {(() => {
-                let idx = 0;
-                return intro.split("\n").map((line, i) => {
-                  if (!line.trim()) return <br key={i} />;
-                  if (idx >= MAX_INTRO) return null;
-                  const animIdx = idx++;
-                  return (
-                    <motion.p
-                      key={i}
-                      style={{
-                        opacity: lineOps[animIdx],
-                        scale: lineScales[animIdx],
-                        filter: lineFilters[animIdx],
-                      }}
-                      className="font-display text-xl md:text-2xl text-text-muted leading-relaxed mb-5"
-                    >
-                      {line.trim()}
-                    </motion.p>
-                  );
-                });
-              })()}
-            </div>
-          )}
+            {/* Intro — reveals line by line on scroll, stays visible, fades on exit */}
+            {intro && (
+              <div className="mt-12 md:mt-16 max-w-2xl mx-auto text-center">
+                {(() => {
+                  let idx = 0;
+                  return intro.split("\n").map((line, i) => {
+                    if (!line.trim()) return <br key={i} />;
+                    if (idx >= MAX_INTRO) return null;
+                    const animIdx = idx++;
+                    return (
+                      <motion.p
+                        key={i}
+                        style={{
+                          opacity: lineOps[animIdx],
+                          scale: lineScales[animIdx],
+                          filter: lineFilters[animIdx],
+                        }}
+                        className="font-display text-xl md:text-2xl text-text-muted leading-relaxed mb-5"
+                      >
+                        {line.trim()}
+                      </motion.p>
+                    );
+                  });
+                })()}
+              </div>
+            )}
+          </div>
 
           {/* Scroll indicator — fades with Portfolio */}
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2 }}>
             <motion.div
               style={{ opacity: portfolioOpacity }}
-              className="absolute bottom-12 text-center"
+              className="absolute bottom-12 left-1/2 -translate-x-1/2 text-center"
             >
               <p className="text-[0.6rem] tracking-[0.35em] uppercase text-text-muted mb-4">Scroll</p>
               <span className="scroll-line" />
