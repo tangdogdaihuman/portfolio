@@ -34,6 +34,7 @@ export default function HomeClient({
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const dragRef = useRef<{ sx: number; sy: number; px: number; py: number } | null>(null);
+  const touchRef = useRef<{ x: number; y: number } | null>(null);
   const cursorRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
@@ -134,14 +135,15 @@ export default function HomeClient({
   };
 
   const closeAll = () => { setLightboxWork(null); setFullImageIdx(null); setLightboxImages([]); setZoom(1); setPan({ x: 0, y: 0 }); };
+  const closeFullscreen = () => { setFullImageIdx(null); setZoom(1); setPan({ x: 0, y: 0 }); };
 
   const resetView = () => { setZoom(1); setPan({ x: 0, y: 0 }); };
 
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
-  const portfolioOpacity = useTransform(scrollYProgress, [0, 0.6], [1, 0]);
-  const portfolioBlur = useTransform(scrollYProgress, [0, 0.6], [0, 12]);
+  const portfolioOpacity = useTransform(scrollYProgress, [0, 0.45], [1, 0]);
+  const portfolioBlur = useTransform(scrollYProgress, [0, 0.45], [0, 12]);
   const portfolioFilter = useTransform(portfolioBlur, (v: number) => `blur(${v}px)`);
-  const portfolioScale = useTransform(scrollYProgress, [0, 0.6], [1, 0.85]);
+  const portfolioScale = useTransform(scrollYProgress, [0, 0.45], [1, 0.88]);
 
   const MAX_INTRO = 10;
   const lineOps: MotionValue<number>[] = [];
@@ -150,14 +152,14 @@ export default function HomeClient({
   const lineFilters: MotionValue<string>[] = [];
   /* eslint-disable react-hooks/rules-of-hooks */
   for (let i = 0; i < MAX_INTRO; i++) {
-    const start = 0.05 + (i / MAX_INTRO) * 0.2;
-    const fadeInEnd = start + 0.1;
-    const fadeOutStart = 0.22;
-    const fadeOutEnd = 0.38;
-    lineOps.push(useTransform(scrollYProgress, [start, fadeInEnd, fadeOutStart, fadeOutEnd], [0, 1, 1, 0]));
-    const b = useTransform(scrollYProgress, [start, fadeInEnd, fadeOutStart, fadeOutEnd], [10, 0, 0, 10]);
+    const enterStart = 0.04 + i * 0.045;
+    const enterEnd = enterStart + 0.08;
+    const exitStart = 0.26 + i * 0.045;
+    const exitEnd = exitStart + 0.08;
+    lineOps.push(useTransform(scrollYProgress, [enterStart, enterEnd, exitStart, exitEnd], [0, 1, 1, 0]));
+    const b = useTransform(scrollYProgress, [enterStart, enterEnd, exitStart, exitEnd], [12, 0, 0, 12]);
     lineBlurs.push(b);
-    lineScales.push(useTransform(scrollYProgress, [start, fadeInEnd, fadeOutStart, fadeOutEnd], [0.88, 1, 1, 0.88]));
+    lineScales.push(useTransform(scrollYProgress, [enterStart, enterEnd, exitStart, exitEnd], [0.86, 1, 1, 0.86]));
     lineFilters.push(useTransform(b, (v: number) => `blur(${v}px)`));
   }
   /* eslint-enable react-hooks/rules-of-hooks */
@@ -241,16 +243,18 @@ export default function HomeClient({
 
       {/* Marquee */}
       <section className="py-12 md:py-16 border-y border-border/20 overflow-hidden">
-        <div className="flex animate-[marquee_12s_linear_infinite] md:animate-[marquee_18s_linear_infinite]" style={{ width: "max-content" }}>
-          {[0, 1].map((n) => (
-            <div key={n} className="flex flex-shrink-0">
-              {[0, 1, 2].map((m) => (
-                <span key={`${n}-${m}`} className="font-display italic text-2xl md:text-3xl text-text-muted/25 tracking-wider mx-6 whitespace-nowrap flex-shrink-0">
-                  {marqueeItems.map((t, j) => `${t}${j < marqueeItems.length - 1 ? " · " : ""}`)}
-                </span>
-              ))}
-            </div>
-          ))}
+        <div className="overflow-hidden">
+          <div className="flex animate-[marquee_10s_linear_infinite] md:animate-[marquee_14s_linear_infinite]" style={{ width: "max-content" }}>
+            {[0, 1].map((n) => (
+              <div key={n} className="flex flex-shrink-0">
+                {[0, 1, 2, 3, 4].map((m) => (
+                  <span key={`${n}-${m}`} className="font-display italic text-2xl md:text-3xl text-text-muted/25 tracking-wider mx-6 whitespace-nowrap flex-shrink-0">
+                    {marqueeItems.map((t, j) => `${t}${j < marqueeItems.length - 1 ? " · " : ""}`)}
+                  </span>
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -422,8 +426,9 @@ export default function HomeClient({
       {/* Fullscreen with nav */}
       <AnimatePresence>
         {fullImage && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-bg/98 flex items-center justify-center" onClick={() => { setFullImageIdx(null); resetView(); }}>
-            <button onClick={() => { setFullImageIdx(null); resetView(); }} className="absolute top-6 right-6 text-text-muted hover:text-text z-20 p-2"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-bg/96 flex items-center justify-center" style={{ touchAction: "none" }} onClick={closeFullscreen}>
+            <button onClick={(e) => { e.stopPropagation(); closeAll(); }} className="absolute top-6 left-6 text-text-muted hover:text-text z-20 p-2 text-xs tracking-[0.3em] uppercase">Back</button>
+            <button onClick={(e) => { e.stopPropagation(); closeFullscreen(); }} className="absolute top-6 right-6 text-text-muted hover:text-text z-20 p-2"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
 
              {fullImageIdx !== null && fullImageIdx > 0 && (
               <button onClick={(e) => { e.stopPropagation(); setFullImageIdx((i) => (i ?? 0) - 1); resetView(); }} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted/60 hover:text-text z-20 p-4"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><polyline points="15 18 9 12 15 6" /></svg></button>
@@ -442,6 +447,21 @@ export default function HomeClient({
               alt={lightboxWork?.title ?? ""}
               className="max-w-[94vw] max-h-[94vh] object-contain select-none"
               style={{ transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`, cursor: zoom > 1 ? "grab" : "zoom-in" }}
+              onTouchStart={(e) => {
+                const t = e.touches[0];
+                touchRef.current = { x: t.clientX, y: t.clientY };
+              }}
+              onTouchEnd={(e) => {
+                if (!touchRef.current || zoom > 1) return;
+                const t = e.changedTouches[0];
+                const dx = t.clientX - touchRef.current.x;
+                const dy = t.clientY - touchRef.current.y;
+                touchRef.current = null;
+                if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
+                e.stopPropagation();
+                if (dx < 0 && fullImageIdx !== null && fullImageIdx < lightboxImages.length - 1) { setFullImageIdx((i) => (i ?? 0) + 1); resetView(); }
+                if (dx > 0 && fullImageIdx !== null && fullImageIdx > 0) { setFullImageIdx((i) => (i ?? 0) - 1); resetView(); }
+              }}
               onWheel={(e) => { e.stopPropagation(); setZoom((z) => Math.min(5, Math.max(1, z - e.deltaY * 0.001))); }}
               onDoubleClick={(e) => { e.stopPropagation(); setZoom((z) => z > 1 ? 1 : 2); setPan({ x: 0, y: 0 }); }}
               onMouseDown={(e) => {
