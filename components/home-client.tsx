@@ -180,14 +180,15 @@ export default function HomeClient({
         </motion.div>
       </section>
 
-      {/* Marquee - infinite loop via CSS animation */}
+      {/* Marquee */}
       <section className="py-12 md:py-16 border-y border-border/20 overflow-hidden">
-        <div className="flex whitespace-nowrap animate-[scroll_60s_linear_infinite]">
-          {[...Array(8)].map((_, i) => (
-            <span key={i} className="font-display italic text-2xl md:text-3xl text-text-muted/25 tracking-wider mx-6 flex-shrink-0">
-              {marqueeItems.map((t, j) => `${t}${j < marqueeItems.length - 1 || i < 7 ? " · " : ""}`)}
-            </span>
-          ))}
+        <div className="flex w-max animate-[scroll_40s_linear_infinite] md:animate-[scroll_60s_linear_infinite]">
+          <span className="font-display italic text-2xl md:text-3xl text-text-muted/25 tracking-wider mx-6 whitespace-nowrap">
+            {marqueeItems.map((t, j) => `${t}${j < marqueeItems.length - 1 ? " · " : ""}`)}
+          </span>
+          <span className="font-display italic text-2xl md:text-3xl text-text-muted/25 tracking-wider mx-6 whitespace-nowrap">
+            {marqueeItems.map((t, j) => `${t}${j < marqueeItems.length - 1 ? " · " : ""}`)}
+          </span>
         </div>
       </section>
 
@@ -197,9 +198,9 @@ export default function HomeClient({
           <div className="flex items-center gap-4 mb-4">
             <span className="font-display italic text-accent text-2xl">01</span>
             <div className="divider-line" />
-            <span className="text-xs tracking-[0.4em] uppercase text-text-muted">Selected Works</span>
+            <span className="text-xs tracking-[0.4em] uppercase text-text-muted">Portfolio</span>
           </div>
-          <h2 className="font-display text-2xl md:text-4xl text-accent mb-12">精选作品</h2>
+          <h2 className="font-display text-2xl md:text-4xl text-accent mb-12">作品集</h2>
         </div>
 
         {tags.length > 0 && (
