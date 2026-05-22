@@ -152,8 +152,8 @@ export default function HomeClient({
   for (let i = 0; i < MAX_INTRO; i++) {
     const start = 0.05 + (i / MAX_INTRO) * 0.2;
     const fadeInEnd = start + 0.1;
-    const fadeOutStart = 0.55;
-    const fadeOutEnd = 0.8;
+    const fadeOutStart = 0.45;
+    const fadeOutEnd = 0.7;
     lineOps.push(useTransform(scrollYProgress, [start, fadeInEnd, fadeOutStart, fadeOutEnd], [0, 1, 1, 0]));
     const b = useTransform(scrollYProgress, [start, fadeInEnd, fadeOutStart, fadeOutEnd], [10, 0, 0, 10]);
     lineBlurs.push(b);
@@ -184,7 +184,7 @@ export default function HomeClient({
 
       <div className="relative z-10">
         {/* Hero */}
-        <section ref={heroRef} className="min-h-screen relative flex flex-col items-center justify-center px-4 overflow-hidden">
+        <section ref={heroRef} className="hero-noise min-h-screen relative flex flex-col items-center justify-center px-4 overflow-hidden">
           <AuroraCanvas />
 
           <div className="relative z-10 flex flex-col items-center justify-center w-full">
@@ -241,13 +241,12 @@ export default function HomeClient({
 
       {/* Marquee */}
       <section className="py-12 md:py-16 border-y border-border/20 overflow-hidden">
-        <div className="flex w-max animate-[scroll_40s_linear_infinite] md:animate-[scroll_60s_linear_infinite]">
-          <span className="font-display italic text-2xl md:text-3xl text-text-muted/25 tracking-wider mx-6 whitespace-nowrap">
-            {marqueeItems.map((t, j) => `${t}${j < marqueeItems.length - 1 ? " · " : ""}`)}
-          </span>
-          <span className="font-display italic text-2xl md:text-3xl text-text-muted/25 tracking-wider mx-6 whitespace-nowrap">
-            {marqueeItems.map((t, j) => `${t}${j < marqueeItems.length - 1 ? " · " : ""}`)}
-          </span>
+        <div className="flex w-max animate-[marquee_18s_linear_infinite] md:animate-[marquee_28s_linear_infinite]">
+          {[0, 1, 2, 3].map((n) => (
+            <span key={n} className="font-display italic text-2xl md:text-3xl text-text-muted/25 tracking-wider mx-6 whitespace-nowrap">
+              {marqueeItems.map((t, j) => `${t}${j < marqueeItems.length - 1 ? " · " : ""}`)}
+            </span>
+          ))}
         </div>
       </section>
 
