@@ -138,10 +138,10 @@ export default function HomeClient({
   const resetView = () => { setZoom(1); setPan({ x: 0, y: 0 }); };
 
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
-  const portfolioOpacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
-  const portfolioBlur = useTransform(scrollYProgress, [0, 0.5], [0, 12]);
+  const portfolioOpacity = useTransform(scrollYProgress, [0, 0.6], [1, 0]);
+  const portfolioBlur = useTransform(scrollYProgress, [0, 0.6], [0, 12]);
   const portfolioFilter = useTransform(portfolioBlur, (v: number) => `blur(${v}px)`);
-  const portfolioScale = useTransform(scrollYProgress, [0, 0.5], [1, 0.85]);
+  const portfolioScale = useTransform(scrollYProgress, [0, 0.6], [1, 0.85]);
 
   const MAX_INTRO = 10;
   const lineOps: MotionValue<number>[] = [];
@@ -150,14 +150,14 @@ export default function HomeClient({
   const lineFilters: MotionValue<string>[] = [];
   /* eslint-disable react-hooks/rules-of-hooks */
   for (let i = 0; i < MAX_INTRO; i++) {
-    const start = 0.1 + (i / MAX_INTRO) * 0.25;
-    const fadeInEnd = start + 0.12;
-    const fadeOutStart = 0.8;
-    const fadeOutEnd = 0.95;
+    const start = 0.05 + (i / MAX_INTRO) * 0.2;
+    const fadeInEnd = start + 0.1;
+    const fadeOutStart = 0.55;
+    const fadeOutEnd = 0.8;
     lineOps.push(useTransform(scrollYProgress, [start, fadeInEnd, fadeOutStart, fadeOutEnd], [0, 1, 1, 0]));
     const b = useTransform(scrollYProgress, [start, fadeInEnd, fadeOutStart, fadeOutEnd], [10, 0, 0, 10]);
     lineBlurs.push(b);
-    lineScales.push(useTransform(scrollYProgress, [start, fadeInEnd, fadeOutStart, fadeOutEnd], [0.9, 1, 1, 0.9]));
+    lineScales.push(useTransform(scrollYProgress, [start, fadeInEnd, fadeOutStart, fadeOutEnd], [0.88, 1, 1, 0.88]));
     lineFilters.push(useTransform(b, (v: number) => `blur(${v}px)`));
   }
   /* eslint-enable react-hooks/rules-of-hooks */
@@ -193,7 +193,7 @@ export default function HomeClient({
               style={{ opacity: portfolioOpacity, scale: portfolioScale, filter: portfolioFilter }}
               className="text-center pointer-events-none"
             >
-              <h1 className="font-display text-[clamp(3.5rem,14vw,12rem)] leading-[0.9] tracking-[-0.04em] text-text whitespace-nowrap">
+              <h1 className="font-display text-[clamp(4rem,15vw,12rem)] leading-[0.9] tracking-[-0.04em] text-text whitespace-nowrap">
                 <span className="inline-block overflow-hidden"><motion.span initial={{ y: "110%" }} animate={{ y: 0 }} transition={{ duration: 1, ease: [0.2,0.9,0.3,1] }} className="inline-block">P</motion.span></span>
                 <span className="inline-block overflow-hidden"><motion.span initial={{ y: "110%" }} animate={{ y: 0 }} transition={{ duration: 1, ease: [0.2,0.9,0.3,1], delay: 0.12 }} className="inline-block">ortfolio</motion.span></span>
               </h1>
