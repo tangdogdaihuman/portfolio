@@ -14,6 +14,8 @@ const workSchema = z.object({
   sortOrder: z.number().int().default(0),
   workDate: z.string().default(""),
   imageSize: z.number().int().default(0),
+  cropX: z.number().int().min(0).max(100).default(50),
+  cropY: z.number().int().min(0).max(100).default(50),
 });
 
 export async function GET() {
@@ -45,15 +47,15 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { title, description, tags, imageUrl, thumbUrl, pinned, sortOrder, workDate, imageSize } =
+  const { title, description, tags, imageUrl, thumbUrl, pinned, sortOrder, workDate, imageSize, cropX, cropY } =
     parsed.data;
   const id = createId();
   const tagString = tags.join(",");
 
   await db.execute({
-    sql: `INSERT INTO works (id, title, description, tags, image_url, thumb_url, pinned, sort_order, work_date, image_size)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    args: [id, title, description, tagString, imageUrl, thumbUrl, pinned ? 1 : 0, sortOrder, workDate, imageSize],
+    sql: `INSERT INTO works (id, title, description, tags, image_url, thumb_url, pinned, sort_order, work_date, image_size, crop_x, crop_y)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [id, title, description, tagString, imageUrl, thumbUrl, pinned ? 1 : 0, sortOrder, workDate, imageSize, cropX, cropY],
   });
 
   return NextResponse.json({ id }, { status: 201 });

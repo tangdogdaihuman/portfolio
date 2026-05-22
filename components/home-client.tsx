@@ -7,6 +7,7 @@ interface Work {
   id: string; title: string; description: string;
   image_url: string; thumb_url: string; tags: string[];
   work_date: string; image_count: number; pinned: boolean;
+  crop_x: number; crop_y: number;
 }
 interface ImageItem { id: string; image_url: string; thumb_url: string; }
 
@@ -212,12 +213,12 @@ export default function HomeClient() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: "-40px" }}
                   transition={{ ...springSlow, delay: i * 0.06 }}
-                  className="work-card reveal cursor-pointer group break-inside-avoid"
+                  className="work-card reveal cursor-pointer group break-inside-avoid aspect-[4/5]"
                   onClick={() => openLightbox(work)}
                   data-hover
                   whileHover={{ scale: 1.02 }}
                 >
-                  <img src={work.thumb_url} alt={work.title} className="w-full h-auto md:max-h-[600px] md:object-cover md:object-top" loading="lazy" decoding="async" />
+                  <img src={work.thumb_url} alt={work.title} className="w-full h-full object-cover" loading="lazy" decoding="async" style={{ objectPosition: `${work.crop_x || 50}% ${work.crop_y || 50}%` }} />
                   <div className="card-overlay">
                     {work.pinned && <span className="text-[10px] tracking-widest uppercase text-accent mb-2">Featured</span>}
                     <h3 className="font-display text-xl md:text-2xl text-text">{work.title}</h3>

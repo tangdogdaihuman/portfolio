@@ -26,6 +26,8 @@ export default function AdminPage() {
     workDate: "",
     uploadedFiles: [],
     coverIndex: 0,
+    cropX: 50,
+    cropY: 50,
     uploading: false,
     uploadProgress: "",
     uploadTotal: 0,
@@ -204,6 +206,8 @@ interface FormState {
   workDate: string;
   uploadedFiles: UploadedFile[];
   coverIndex: number;
+  cropX: number;
+  cropY: number;
   uploading: boolean;
   uploadProgress: string;
   uploadTotal: number;
@@ -224,7 +228,7 @@ function AddWorkForm({
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const { title, description, tags, workDate, uploadedFiles, coverIndex, uploading, uploadProgress, uploadTotal, uploadDone } = formState;
+  const { title, description, tags, workDate, uploadedFiles, coverIndex, cropX, cropY, uploading, uploadProgress, uploadTotal, uploadDone } = formState;
   const setTitle = (v: string) => setFormState({ ...formState, title: v });
   const setDescription = (v: string) => setFormState({ ...formState, description: v });
   const setTags = (v: string) => setFormState({ ...formState, tags: v });
@@ -324,6 +328,8 @@ function AddWorkForm({
         sortOrder: 0,
         workDate,
         imageSize: cover.size,
+        cropX,
+        cropY,
       }),
     });
     if (!res.ok) {
@@ -353,7 +359,7 @@ function AddWorkForm({
     showMsg("作品已发布", true);
     setFormState({
       title: "", description: "", tags: "", workDate: "",
-      uploadedFiles: [], coverIndex: 0,
+      uploadedFiles: [], coverIndex: 0, cropX: 50, cropY: 50,
       uploading: false, uploadProgress: "", uploadTotal: 0, uploadDone: 0,
     });
     onDone();
@@ -440,6 +446,32 @@ function AddWorkForm({
           </div>
         )}
       </div>
+
+      {uploadedFiles.length > 0 && !uploading && uploadedFiles[coverIndex] && (
+        <div>
+          <label className="block text-sm text-text-muted mb-1">封面裁剪（点击图片定位焦点）</label>
+          <div
+            className="relative w-full max-w-[240px] aspect-[4/5] bg-surface border border-border overflow-hidden cursor-crosshair"
+            onClick={(e) => {
+              const rect = (e.target as HTMLElement).closest("div")?.getBoundingClientRect();
+              if (!rect) return;
+              const x = Math.round(((e.clientX - rect.left) / rect.width) * 100);
+              const y = Math.round(((e.clientY - rect.top) / rect.height) * 100);
+              setFormState({ ...formState, cropX: x, cropY: y });
+            }}
+          >
+            <img
+              src={uploadedFiles[coverIndex].thumbUrl}
+              alt=""
+              className="w-full h-full object-cover"
+              style={{ objectPosition: `${cropX}% ${cropY}%` }}
+            />
+            <div className="absolute inset-0 border-2 border-accent/50 pointer-events-none" />
+            <span className="absolute top-1 right-1 text-[9px] bg-accent/80 text-bg px-1 pointer-events-none">封面预览</span>
+          </div>
+          <p className="text-[10px] text-text-muted mt-1">X:{cropX} Y:{cropY}</p>
+        </div>
+      )}
 
       <div>
         <label className="block text-sm text-text-muted mb-1">标题（批量上传时自动编号）</label>
@@ -676,6 +708,8 @@ function EditWorkForm({
   const [workDate, setWorkDate] = useState("");
   const [allImages, setAllImages] = useState<{ id: string; image_url: string; thumb_url: string; source: "existing" | "new"; size: number }[]>([]);
   const [coverIndex, setCoverIndex] = useState(0);
+  const [cropX, setCropX] = useState(50);
+  const [cropY, setCropY] = useState(50);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [uploadTotal, setUploadTotal] = useState(0);
@@ -695,6 +729,8 @@ function EditWorkForm({
         setDescription(w.description || "");
         setTags((w.tags || []).join(","));
         setWorkDate(w.work_date || "");
+        setCropX(w.crop_x ?? 50);
+        setCropY(w.crop_y ?? 50);
       }
       if (imagesRes.ok) {
         const imgs = await imagesRes.json();
@@ -758,7 +794,7 @@ function EditWorkForm({
     const tagArray = tags.split(",").map((t) => t.trim()).filter(Boolean);
     await fetch(`/api/works/${workId}`, {
       method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, description, tags: tagArray, workDate, imageUrl: cover?.image_url, thumbUrl: cover?.thumb_url }),
+      body: JSON.stringify({ title, description, tags: tagArray, workDate, imageUrl: cover?.image_url, thumbUrl: cover?.thumb_url, cropX, cropY }),
     });
     await fetch(`/api/works/${workId}/images`, { method: "DELETE" });
     const toInsert = allImages.filter((img) => img.image_url);
@@ -828,6 +864,31 @@ function EditWorkForm({
           {allImages.length === 0 && <p className="text-text-muted text-xs">暂无图片</p>}
         </div>
       </div>
+      {allImages.length > 0 && allImages[coverIndex] && (
+        <div>
+          <label className="block text-sm text-text-muted mb-1">封面裁剪（点击图片定位焦点）</label>
+          <div
+            className="relative w-full max-w-[240px] aspect-[4/5] bg-surface border border-border overflow-hidden cursor-crosshair"
+            onClick={(e) => {
+              const rect = (e.target as HTMLElement).closest("div")?.getBoundingClientRect();
+              if (!rect) return;
+              const x = Math.round(((e.clientX - rect.left) / rect.width) * 100);
+              const y = Math.round(((e.clientY - rect.top) / rect.height) * 100);
+              setCropX(x); setCropY(y);
+            }}
+          >
+            <img
+              src={allImages[coverIndex].thumb_url}
+              alt=""
+              className="w-full h-full object-cover"
+              style={{ objectPosition: `${cropX}% ${cropY}%` }}
+            />
+            <div className="absolute inset-0 border-2 border-accent/50 pointer-events-none" />
+            <span className="absolute top-1 right-1 text-[9px] bg-accent/80 text-bg px-1 pointer-events-none">封面预览</span>
+          </div>
+          <p className="text-[10px] text-text-muted mt-1">X:{cropX} Y:{cropY}</p>
+        </div>
+      )}
       <div>
         <label className="block text-sm text-text-muted mb-1">添加新图片</label>
         {uploading ? (
