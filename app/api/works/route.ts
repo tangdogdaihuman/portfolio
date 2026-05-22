@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createId } from "@paralleldrive/cuid2";
 import { z } from "zod";
-import db from "@/lib/db";
-import { verifyAuthRequest } from "@/lib/auth";
+import db, { tagsToArray, tagsToString } from "@/lib/db";
+import { requireAuth } from "@/lib/auth";
 
 const workSchema = z.object({
   title: z.string().min(1),
@@ -14,8 +14,8 @@ const workSchema = z.object({
   sortOrder: z.number().int().default(0),
   workDate: z.string().default(""),
   imageSize: z.number().int().default(0),
-  cropX: z.number().int().min(0).max(100).default(50),
-  cropY: z.number().int().min(0).max(100).default(50),
+  cropX: z.number().int().default(50),
+  cropY: z.number().int().default(50),
 });
 
 export async function GET() {
@@ -26,7 +26,7 @@ export async function GET() {
   );
   const works = result.rows.map((row) => ({
     ...row,
-    tags: row.tags ? (row.tags as string).split(",").filter(Boolean) : [],
+    tags: tagsToArray(row.tags),
     pinned: Boolean(row.pinned),
     image_count: (row.image_count as number) ?? 0,
   }));
@@ -34,28 +34,22 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  if (!(await verifyAuthRequest(req))) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const unauth = await requireAuth(req);
+  if (unauth) return unauth;
 
   const body = await req.json();
   const parsed = workSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.flatten() },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
-  const { title, description, tags, imageUrl, thumbUrl, pinned, sortOrder, workDate, imageSize, cropX, cropY } =
-    parsed.data;
+  const { title, description, tags, imageUrl, thumbUrl, pinned, sortOrder, workDate, imageSize, cropX, cropY } = parsed.data;
   const id = createId();
-  const tagString = tags.join(",");
 
   await db.execute({
     sql: `INSERT INTO works (id, title, description, tags, image_url, thumb_url, pinned, sort_order, work_date, image_size, crop_x, crop_y)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    args: [id, title, description, tagString, imageUrl, thumbUrl, pinned ? 1 : 0, sortOrder, workDate, imageSize, cropX, cropY],
+    args: [id, title, description, tagsToString(tags), imageUrl, thumbUrl, pinned ? 1 : 0, sortOrder, workDate, imageSize, cropX, cropY],
   });
 
   return NextResponse.json({ id }, { status: 201 });

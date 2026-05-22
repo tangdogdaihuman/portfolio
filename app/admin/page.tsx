@@ -1,20 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-
-interface Work {
-  id: string;
-  title: string;
-  description: string;
-  image_url: string;
-  thumb_url: string;
-  tags: string[];
-  work_date: string;
-  image_size: number;
-  pinned: boolean;
-  sort_order: number;
-  created_at: string;
-}
+import type { Work } from "@/lib/types";
+import { uploadImageToR2, type UploadedFile } from "@/lib/upload-client";
 
 export default function AdminPage() {
   const [tab, setTab] = useState<"works" | "intro" | "add" | "storage" | "edit" | "detail">("works");
@@ -202,13 +190,6 @@ function IntroForm({
   );
 }
 
-interface UploadedFile {
-  imageUrl: string;
-  thumbUrl: string;
-  size: number;
-  fileName: string;
-}
-
 interface FormState {
   title: string;
   description: string;
@@ -247,38 +228,6 @@ function AddWorkForm({
   const setCoverIndex = (v: number) => setFormState({ ...formState, coverIndex: v });
   const setUp = (p: Partial<FormState>) => setFormState({ ...formState, ...p });
 
-  const uploadOneFile = async (file: File): Promise<UploadedFile> => {
-    const presignedRes = await fetch("/api/upload/presigned", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contentType: file.type }),
-    });
-    if (!presignedRes.ok) throw new Error("presigned");
-    const { uploadUrl, originalKey } = await presignedRes.json();
-
-    const uploadRes = await fetch(uploadUrl, {
-      method: "PUT",
-      body: file,
-      headers: { "Content-Type": file.type },
-    });
-    if (!uploadRes.ok) throw new Error("upload");
-
-    const processRes = await fetch("/api/upload/process", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ originalKey }),
-    });
-    if (!processRes.ok) throw new Error("process");
-    const data = await processRes.json();
-
-    return {
-      imageUrl: data.imageUrl,
-      thumbUrl: data.thumbUrl,
-      size: file.size,
-      fileName: file.name.replace(/\.[^.]+$/, ""),
-    };
-  };
-
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -292,7 +241,7 @@ function AddWorkForm({
     await Promise.all(
       fileArray.map(async (file) => {
         try {
-          const result = await uploadOneFile(file);
+          const result = await uploadImageToR2(file);
           results.push(result);
         } catch {}
         completed++;
@@ -767,21 +716,8 @@ function EditWorkForm({
     await Promise.all(
       Array.from(files).map(async (file) => {
         try {
-          const presignedRes = await fetch("/api/upload/presigned", {
-            method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ contentType: file.type }),
-          });
-          if (!presignedRes.ok) { done++; setUploadDone(done); return; }
-          const { uploadUrl, originalKey } = await presignedRes.json();
-          await fetch(uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
-          const processRes = await fetch("/api/upload/process", {
-            method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ originalKey }),
-          });
-          if (processRes.ok) {
-            const data = await processRes.json();
-            results.push({ imageUrl: data.imageUrl, thumbUrl: data.thumbUrl, size: file.size });
-          }
+          const result = await uploadImageToR2(file);
+          results.push({ imageUrl: result.imageUrl, thumbUrl: result.thumbUrl, size: result.size });
         } catch {}
         done++; setUploadDone(done);
       })

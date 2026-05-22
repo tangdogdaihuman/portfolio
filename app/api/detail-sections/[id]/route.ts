@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import db from "@/lib/db";
-import { verifyAuthRequest } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth";
 
 const updateSchema = z.object({
   title: z.string().optional(),
@@ -10,9 +10,8 @@ const updateSchema = z.object({
 });
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!(await verifyAuthRequest(req))) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const unauth = await requireAuth(req);
+  if (unauth) return unauth;
 
   const { id } = await params;
   const body = await req.json();
@@ -35,10 +34,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   return NextResponse.json({ ok: true });
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!(await verifyAuthRequest(_req))) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const unauth = await requireAuth(req);
+  if (unauth) return unauth;
 
   const { id } = await params;
   await db.execute({ sql: "DELETE FROM detail_sections WHERE id = ?", args: [id] });

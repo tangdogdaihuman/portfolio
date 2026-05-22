@@ -97,18 +97,9 @@ body::before {
 .work-card:hover img {
   transform: scale(1.06);
 }
-.work-card .card-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  padding: 1.5rem;
-  background: linear-gradient(to top, rgba(10,9,8,0.95) 0%, rgba(10,9,8,0.2) 50%, transparent 100%);
-  opacity: 0.85;
-  transition: opacity 0.5s;
+.work-card .card-meta {
+  padding-top: 1rem;
 }
-.work-card:hover .card-overlay { opacity: 1; }
 
 .scroll-line {
   display: block;

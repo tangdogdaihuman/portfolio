@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createId } from "@paralleldrive/cuid2";
 import { z } from "zod";
 import db from "@/lib/db";
-import { verifyAuthRequest } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth";
+import { deleteFromR2 } from "@/lib/r2";
 
 const addImageSchema = z.object({
   imageUrl: z.string().url(),
@@ -21,7 +22,6 @@ export async function GET(
   });
   if (result.rows.length > 0) return NextResponse.json(result.rows);
 
-  // Fallback: return cover image if no sub-images exist
   const work = await db.execute({
     sql: "SELECT image_url, thumb_url FROM works WHERE id = ?",
     args: [id],
@@ -44,60 +44,68 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!(await verifyAuthRequest(req))) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const unauth = await requireAuth(req);
+  if (unauth) return unauth;
 
   const { id: workId } = await params;
   const body = await req.json();
 
-  // Support single or batch
   const items = Array.isArray(body) ? body : [body];
-  const ids: string[] = [];
-
+  const valid: { id: string; imageUrl: string; thumbUrl: string; imageSize: number }[] = [];
   for (const item of items) {
     const parsed = addImageSchema.safeParse(item);
     if (!parsed.success) continue;
-    const imageId = createId();
-    await db.execute({
-      sql: `INSERT INTO work_images (id, work_id, image_url, thumb_url, sort_order, image_size)
-            VALUES (?, ?, ?, ?, ?, ?)`,
-      args: [imageId, workId, parsed.data.imageUrl, parsed.data.thumbUrl, ids.length, parsed.data.imageSize],
+    valid.push({
+      id: createId(),
+      imageUrl: parsed.data.imageUrl,
+      thumbUrl: parsed.data.thumbUrl,
+      imageSize: parsed.data.imageSize,
     });
-    ids.push(imageId);
   }
 
-  // Update work's cover image if not set
-  if (ids.length > 0) {
+  if (valid.length > 0) {
+    await db.batch(
+      valid.map((it, i) => ({
+        sql: `INSERT INTO work_images (id, work_id, image_url, thumb_url, sort_order, image_size)
+              VALUES (?, ?, ?, ?, ?, ?)`,
+        args: [it.id, workId, it.imageUrl, it.thumbUrl, i, it.imageSize],
+      }))
+    );
+
     const work = await db.execute({
       sql: "SELECT image_url FROM works WHERE id = ?",
       args: [workId],
     });
     if (work.rows.length > 0 && !work.rows[0].image_url) {
-      const first = await db.execute({
-        sql: "SELECT image_url, thumb_url FROM work_images WHERE work_id = ? ORDER BY sort_order LIMIT 1",
-        args: [workId],
+      const first = valid[0];
+      await db.execute({
+        sql: "UPDATE works SET image_url = ?, thumb_url = ? WHERE id = ?",
+        args: [first.imageUrl, first.thumbUrl, workId],
       });
-      if (first.rows.length > 0) {
-        await db.execute({
-          sql: "UPDATE works SET image_url = ?, thumb_url = ? WHERE id = ?",
-          args: [first.rows[0].image_url, first.rows[0].thumb_url, workId],
-        });
-      }
     }
   }
 
-  return NextResponse.json({ ids }, { status: 201 });
+  return NextResponse.json({ ids: valid.map((v) => v.id) }, { status: 201 });
 }
 
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!(await verifyAuthRequest(req))) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const unauth = await requireAuth(req);
+  if (unauth) return unauth;
+
   const { id: workId } = await params;
+  const images = await db.execute({
+    sql: "SELECT image_url, thumb_url FROM work_images WHERE work_id = ?",
+    args: [workId],
+  });
+  const urls: string[] = [];
+  for (const row of images.rows) {
+    if (row.image_url) urls.push(row.image_url as string);
+    if (row.thumb_url) urls.push(row.thumb_url as string);
+  }
   await db.execute({ sql: "DELETE FROM work_images WHERE work_id = ?", args: [workId] });
+  deleteFromR2(urls).catch(() => {});
   return NextResponse.json({ ok: true });
 }

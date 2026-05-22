@@ -1,22 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createId } from "@paralleldrive/cuid2";
 import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
-import { verifyAuthRequest } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth";
 import { generateThumbnail } from "@/lib/image";
 import { r2, R2_BUCKET, publicUrl } from "@/lib/r2";
 
 export async function POST(req: NextRequest) {
-  if (!(await verifyAuthRequest(req))) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const unauth = await requireAuth(req);
+  if (unauth) return unauth;
 
   const body = await req.json();
   const { originalKey } = body;
-  if (!originalKey) {
-    return NextResponse.json({ error: "originalKey is required" }, { status: 400 });
+  if (typeof originalKey !== "string" || !originalKey.startsWith("originals/")) {
+    return NextResponse.json({ error: "Invalid originalKey" }, { status: 400 });
   }
 
-  // Download original from R2
   const getResponse = await r2.send(
     new GetObjectCommand({ Bucket: R2_BUCKET, Key: originalKey })
   );
@@ -28,7 +26,6 @@ export async function POST(req: NextRequest) {
   }
   const originalBuffer = Buffer.concat(chunks);
 
-  // Generate thumbnail
   const thumbnail = await generateThumbnail(originalBuffer);
   const thumbId = createId();
   const thumbKey = `thumbnails/${thumbId}.webp`;

@@ -40,7 +40,13 @@ export default function HomeClient() {
   }, []);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
-  useEffect(() => { fetchData(); const iv = setInterval(fetchData, 30000); return () => clearInterval(iv); }, []);
+  useEffect(() => { fetchData(); const iv = setInterval(fetchData, 300000); return () => clearInterval(iv); }, []);
+
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === "visible") fetchData(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [fetchData]);
 
   // Hide native cursor only on this page
   useEffect(() => {
@@ -204,28 +210,33 @@ export default function HomeClient() {
         {filtered.length === 0 ? (
           <div className="text-center py-20 text-text-muted reveal">还没有作品</div>
         ) : (
-          <div className="columns-1 md:columns-2 lg:columns-3 gap-4 md:gap-6 space-y-4 md:space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-8">
             {sorted.map((work, i) => {
+              const spans = ["md:col-span-8", "md:col-span-5", "md:col-span-4", "md:col-span-7"];
+              const span = spans[i % 4];
               return (
                 <motion.div
                   key={work.id}
                   initial={{ opacity: 0, y: 40 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: "-40px" }}
-                  transition={{ ...springSlow, delay: i * 0.06 }}
-                  className="work-card reveal cursor-pointer group break-inside-avoid aspect-[4/5]"
+                  transition={{ ...springSlow, delay: (i % 4) * 0.08 }}
+                  className={`work-card reveal cursor-pointer group ${span}`}
                   onClick={() => openLightbox(work)}
                   data-hover
-                  whileHover={{ scale: 1.02 }}
                 >
-                  <img src={work.thumb_url} alt={work.title} className="w-full h-full object-cover" loading="lazy" decoding="async" style={{ objectPosition: `${work.crop_x || 50}% ${work.crop_y || 50}%` }} />
-                  <div className="card-overlay">
-                    {work.pinned && <span className="text-[10px] tracking-widest uppercase text-accent mb-2">Featured</span>}
-                    <h3 className="font-display text-xl md:text-2xl text-text">{work.title}</h3>
-                    <div className="flex items-center gap-3 mt-2 flex-wrap">
-                      {work.work_date && <span className="text-xs text-text-muted">{work.work_date}</span>}
-                      {work.tags.slice(0, 2).map((t) => <span key={t} className="text-xs text-accent-dim tracking-wider">{t}</span>)}
-                      {(work.image_count || 1) > 1 && <span className="text-xs text-text-muted/50">{work.image_count} 张</span>}
+                  <div className="overflow-hidden">
+                    <img src={work.thumb_url} alt={work.title} className="w-full h-auto object-cover" loading="lazy" decoding="async" style={{ objectPosition: `${work.crop_x || 50}% ${work.crop_y || 50}%` }} />
+                  </div>
+                  <div className="card-meta">
+                    <div className="flex items-center gap-3 text-[0.6rem] tracking-[0.3em] uppercase text-accent-dim">
+                      {work.pinned && <span>Featured</span>}
+                      {work.work_date && <span>{work.work_date}</span>}
+                    </div>
+                    <h3 className="font-display text-lg md:text-xl text-text mt-1 leading-tight group-hover:text-accent transition-colors">{work.title}</h3>
+                    <div className="flex items-center gap-3 flex-wrap text-xs text-text-muted tracking-[0.15em]">
+                      {work.tags.slice(0, 3).map((t) => <span key={t} className="text-accent-dim">{t}</span>)}
+                      {(work.image_count || 1) > 1 && <span className="text-text-muted/50">{work.image_count} 张</span>}
                     </div>
                   </div>
                 </motion.div>

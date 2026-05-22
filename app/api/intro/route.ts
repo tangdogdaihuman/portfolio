@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import db from "@/lib/db";
-import { verifyAuthRequest } from "@/lib/auth";
+import { requireAuth } from "@/lib/auth";
 
 const introSchema = z.object({
   content: z.string(),
@@ -17,17 +17,13 @@ export async function GET() {
 }
 
 export async function PUT(req: NextRequest) {
-  if (!(await verifyAuthRequest(req))) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const unauth = await requireAuth(req);
+  if (unauth) return unauth;
 
   const body = await req.json();
   const parsed = introSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.flatten() },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
   await db.execute({

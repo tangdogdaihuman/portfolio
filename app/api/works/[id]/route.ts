@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import db from "@/lib/db";
-import { verifyAuthRequest } from "@/lib/auth";
+import db, { tagsToArray, tagsToString } from "@/lib/db";
+import { requireAuth } from "@/lib/auth";
+import { deleteFromR2 } from "@/lib/r2";
 
 const updateSchema = z.object({
   title: z.string().min(1).optional(),
@@ -12,6 +13,8 @@ const updateSchema = z.object({
   pinned: z.boolean().optional(),
   sortOrder: z.number().int().optional(),
   workDate: z.string().optional(),
+  cropX: z.number().int().optional(),
+  cropY: z.number().int().optional(),
 });
 
 export async function GET(
@@ -31,7 +34,7 @@ export async function GET(
   const row = result.rows[0];
   const work = {
     ...row,
-    tags: row.tags ? (row.tags as string).split(",").filter(Boolean) : [],
+    tags: tagsToArray(row.tags),
     pinned: Boolean(row.pinned),
   };
   return NextResponse.json(work);
@@ -41,41 +44,31 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!(await verifyAuthRequest(req))) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const unauth = await requireAuth(req);
+  if (unauth) return unauth;
 
   const { id } = await params;
   const body = await req.json();
   const parsed = updateSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.flatten() },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
   const updates: string[] = [];
   const args: (string | number)[] = [];
 
   for (const [key, value] of Object.entries(parsed.data)) {
-    if (value !== undefined) {
-      const col = key
-        .replace(/([A-Z])/g, "_$1")
-        .toLowerCase()
-        .replace(/image_url/, "image_url")
-        .replace(/thumb_url/, "thumb_url")
-        .replace(/sort_order/, "sort_order");
-      if (key === "tags") {
-        updates.push("tags = ?");
-        args.push((value as string[]).join(","));
-      } else if (key === "pinned") {
-        updates.push("pinned = ?");
-        args.push(value ? 1 : 0);
-      } else {
-        updates.push(`${col} = ?`);
-        args.push(value as string | number);
-      }
+    if (value === undefined) continue;
+    if (key === "tags") {
+      updates.push("tags = ?");
+      args.push(tagsToString(value as string[]));
+    } else if (key === "pinned") {
+      updates.push("pinned = ?");
+      args.push(value ? 1 : 0);
+    } else {
+      const col = key.replace(/([A-Z])/g, "_$1").toLowerCase();
+      updates.push(`${col} = ?`);
+      args.push(value as string | number);
     }
   }
 
@@ -94,12 +87,33 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  if (!(await verifyAuthRequest(req))) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const unauth = await requireAuth(req);
+  if (unauth) return unauth;
 
   const { id } = await params;
+
+  const urls: string[] = [];
+  const work = await db.execute({
+    sql: "SELECT image_url, thumb_url FROM works WHERE id = ?",
+    args: [id],
+  });
+  if (work.rows.length > 0) {
+    if (work.rows[0].image_url) urls.push(work.rows[0].image_url as string);
+    if (work.rows[0].thumb_url) urls.push(work.rows[0].thumb_url as string);
+  }
+  const images = await db.execute({
+    sql: "SELECT image_url, thumb_url FROM work_images WHERE work_id = ?",
+    args: [id],
+  });
+  for (const row of images.rows) {
+    if (row.image_url) urls.push(row.image_url as string);
+    if (row.thumb_url) urls.push(row.thumb_url as string);
+  }
+
   await db.execute({ sql: "DELETE FROM work_images WHERE work_id = ?", args: [id] });
   await db.execute({ sql: "DELETE FROM works WHERE id = ?", args: [id] });
+
+  deleteFromR2(urls).catch(() => {});
+
   return NextResponse.json({ ok: true });
 }
