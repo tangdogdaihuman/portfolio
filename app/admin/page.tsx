@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { Work } from "@/lib/types";
 import { uploadImageToR2, type UploadedFile } from "@/lib/upload-client";
 
@@ -675,6 +675,7 @@ function EditWorkForm({
   const [uploadDone, setUploadDone] = useState(0);
   const [saving, setSaving] = useState(false);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const originalIds = useRef<string[]>([]);
 
   useEffect(() => {
     async function load() {
@@ -693,6 +694,7 @@ function EditWorkForm({
       }
       if (imagesRes.ok) {
         const imgs = await imagesRes.json();
+        originalIds.current = imgs.map((img: Record<string, unknown>) => img.id as string).filter(Boolean);
         setAllImages(imgs.map((img: Record<string, unknown>) => ({
           id: (img.id as string) || "",
           image_url: img.image_url as string,
@@ -738,11 +740,23 @@ function EditWorkForm({
     setSaving(true);
     const cover = allImages[coverIndex] || allImages[0];
     const tagArray = tags.split(",").map((t) => t.trim()).filter(Boolean);
+
     await fetch(`/api/works/${workId}`, {
       method: "PUT", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title, description, tags: tagArray, workDate, imageUrl: cover?.image_url, thumbUrl: cover?.thumb_url, cropX, cropY }),
     });
-    await fetch(`/api/works/${workId}/images`, { method: "DELETE" });
+
+    // Delete removed images (DB + R2)
+    const keptIds = allImages.filter((img) => img.source === "existing" && img.id).map((img) => img.id);
+    const removedIds = originalIds.current.filter((id) => !keptIds.includes(id));
+    if (removedIds.length > 0) {
+      await Promise.all(
+        removedIds.map((id) => fetch(`/api/works/images/${id}`, { method: "DELETE" }))
+      );
+    }
+
+    // Wipe remaining DB rows (keep R2), then re-insert with correct sort_order
+    await fetch(`/api/works/${workId}/images?keepFiles=true`, { method: "DELETE" });
     const toInsert = allImages.filter((img) => img.image_url);
     if (toInsert.length > 0) {
       await fetch(`/api/works/${workId}/images`, {
@@ -750,6 +764,7 @@ function EditWorkForm({
         body: JSON.stringify(toInsert.map((img) => ({ imageUrl: img.image_url, thumbUrl: img.thumb_url, imageSize: img.size }))),
       });
     }
+
     showMsg("已保存", true);
     setSaving(false);
     onDone();

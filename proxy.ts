@@ -1,28 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
+import { signToken, verifyToken } from "@/lib/auth";
 
 const COOKIE_NAME = "admin_token";
 const MAX_AGE = 60 * 60 * 24 * 7;
-
-function signToken(secret: string): string {
-  const ts = Date.now().toString();
-  const hmac = crypto.createHmac("sha256", secret).update(ts).digest("hex");
-  return `${ts}.${hmac}`;
-}
-
-function verifyToken(token: string, secret: string): boolean {
-  const [ts, hmac] = token.split(".");
-  if (!ts || !hmac) return false;
-  const expected = crypto.createHmac("sha256", secret).update(ts).digest("hex");
-  try {
-    const a = Buffer.from(hmac, "hex");
-    const b = Buffer.from(expected, "hex");
-    if (a.length !== b.length) return false;
-    return crypto.timingSafeEqual(a, b);
-  } catch {
-    return false;
-  }
-}
 
 function proxy(req: NextRequest) {
   const url = new URL(req.url);

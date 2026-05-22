@@ -12,7 +12,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
 
-  const secret = process.env.ADMIN_SECRET_KEY!;
+  const secret = process.env.ADMIN_SECRET_KEY;
+  if (!secret) {
+    return NextResponse.json({ error: "Server not configured" }, { status: 500 });
+  }
   if (!key || typeof key !== "string") {
     return NextResponse.json({ error: "Invalid key" }, { status: 401 });
   }

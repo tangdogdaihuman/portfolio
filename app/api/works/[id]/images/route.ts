@@ -96,6 +96,7 @@ export async function DELETE(
   if (unauth) return unauth;
 
   const { id: workId } = await params;
+  const keepFiles = new URL(req.url).searchParams.get("keepFiles") === "true";
   const images = await db.execute({
     sql: "SELECT image_url, thumb_url FROM work_images WHERE work_id = ?",
     args: [workId],
@@ -106,6 +107,8 @@ export async function DELETE(
     if (row.thumb_url) urls.push(row.thumb_url as string);
   }
   await db.execute({ sql: "DELETE FROM work_images WHERE work_id = ?", args: [workId] });
-  deleteFromR2(urls).catch(() => {});
+  if (!keepFiles) {
+    deleteFromR2(urls).catch(() => {});
+  }
   return NextResponse.json({ ok: true });
 }

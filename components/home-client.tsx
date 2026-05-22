@@ -2,13 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import type { Work } from "@/lib/types";
 
-interface Work {
-  id: string; title: string; description: string;
-  image_url: string; thumb_url: string; tags: string[];
-  work_date: string; image_count: number; pinned: boolean;
-  crop_x: number; crop_y: number;
-}
 interface ImageItem { id: string; image_url: string; thumb_url: string; }
 
 const spring = { type: "spring" as const, damping: 28, stiffness: 200, mass: 0.8 };
