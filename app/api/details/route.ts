@@ -7,7 +7,13 @@ const detailsSchema = z.object({
   content: z.string(),
 });
 
+async function ensureTable() {
+  await db.execute(`CREATE TABLE IF NOT EXISTS details (id INTEGER PRIMARY KEY DEFAULT 1 CHECK(id=1), content TEXT NOT NULL DEFAULT '', updated_at TEXT DEFAULT (datetime('now')))`).catch(() => {});
+  await db.execute("INSERT OR IGNORE INTO details (id, content) VALUES (1, '')").catch(() => {});
+}
+
 export async function GET() {
+  await ensureTable();
   const result = await db.execute("SELECT content, updated_at FROM details WHERE id = 1");
   const row = result.rows[0];
   return NextResponse.json({
@@ -30,6 +36,7 @@ export async function PUT(req: NextRequest) {
     );
   }
 
+  await ensureTable();
   await db.execute({
     sql: "UPDATE details SET content = ?, updated_at = datetime('now') WHERE id = 1",
     args: [parsed.data.content],
