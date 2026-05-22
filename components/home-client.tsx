@@ -28,7 +28,7 @@ export default function HomeClient() {
   const [fullImageIdx, setFullImageIdx] = useState<number | null>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
-  const dragRef = useRef<{ x: number; y: number } | null>(null);
+  const dragRef = useRef<{ sx: number; sy: number; px: number; py: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const cursorRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
@@ -378,8 +378,8 @@ export default function HomeClient() {
               style={{ transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`, cursor: zoom > 1 ? "grab" : "zoom-in" }}
               onWheel={(e) => { e.stopPropagation(); setZoom((z) => Math.min(5, Math.max(1, z - e.deltaY * 0.001))); }}
               onDoubleClick={(e) => { e.stopPropagation(); setZoom((z) => z > 1 ? 1 : 2); setPan({ x: 0, y: 0 }); }}
-              onMouseDown={(e) => { if (zoom <= 1) return; e.stopPropagation(); dragRef.current = { x: e.clientX - pan.x, y: e.clientY - pan.y }; (e.target as HTMLElement).style.cursor = "grabbing"; }}
-              onMouseMove={(e) => { if (!dragRef.current) return; setPan({ x: (e.clientX - dragRef.current.x) / zoom, y: (e.clientY - dragRef.current.y) / zoom }); }}
+              onMouseDown={(e) => { if (zoom <= 1) return; e.stopPropagation(); dragRef.current = { sx: e.clientX, sy: e.clientY, px: pan.x, py: pan.y }; (e.target as HTMLElement).style.cursor = "grabbing"; }}
+              onMouseMove={(e) => { if (!dragRef.current) return; setPan({ x: dragRef.current.px + (e.clientX - dragRef.current.sx) / zoom, y: dragRef.current.py + (e.clientY - dragRef.current.sy) / zoom }); }}
               onMouseUp={() => { dragRef.current = null; }}
               onMouseLeave={() => { dragRef.current = null; }}
               onClick={(e: React.MouseEvent) => e.stopPropagation()}
