@@ -92,12 +92,10 @@ body::before {
   overflow: hidden;
 }
 .work-card img {
-  transition: transform 1.2s cubic-bezier(.2,.9,.3,1), filter 0.8s;
-  filter: grayscale(40%) brightness(0.85);
+  transition: transform 1.2s cubic-bezier(.2,.9,.3,1);
 }
 .work-card:hover img {
   transform: scale(1.06);
-  filter: grayscale(0%) brightness(1);
 }
 .work-card .card-overlay {
   position: absolute;

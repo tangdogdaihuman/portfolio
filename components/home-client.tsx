@@ -199,7 +199,7 @@ export default function HomeClient() {
                   data-hover
                   whileHover={{ scale: 1.02 }}
                 >
-                  <img src={work.thumb_url} alt={work.title} className="w-full h-full object-cover" loading="lazy" decoding="async" />
+                  <img src={work.thumb_url} alt={work.title} className="w-full h-auto" loading="lazy" decoding="async" />
                   <div className="card-overlay">
                     {work.pinned && <span className="text-[10px] tracking-widest uppercase text-accent mb-2">Featured</span>}
                     <h3 className="font-display text-xl md:text-2xl text-text">{work.title}</h3>

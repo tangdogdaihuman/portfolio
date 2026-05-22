@@ -728,7 +728,7 @@ function EditWorkForm({
 
   const handleSave = async () => {
     setSaving(true);
-    const cover = allImages[coverIndex];
+    const cover = allImages[coverIndex] || allImages[0];
     const tagArray = tags.split(",").map((t) => t.trim()).filter(Boolean);
     await fetch(`/api/works/${workId}`, {
       method: "PUT", headers: { "Content-Type": "application/json" },
