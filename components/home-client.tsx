@@ -21,7 +21,7 @@ export default function HomeClient() {
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [works, setWorks] = useState<Work[]>([]);
   const [activeTag, setActiveTag] = useState<string | null>(null);
-  const [sortNewest, setSortNewest] = useState(true);
+  const [sortMode, setSortMode] = useState<"default" | "newest" | "oldest">("default");
   const [lightboxWork, setLightboxWork] = useState<Work | null>(null);
   const [lightboxImages, setLightboxImages] = useState<ImageItem[]>([]);
   const [fullImageIdx, setFullImageIdx] = useState<number | null>(null);
@@ -94,7 +94,20 @@ export default function HomeClient() {
 
   const tags = [...new Set(works.flatMap((w) => w.tags))];
   const filtered = activeTag ? works.filter((w) => w.tags.includes(activeTag)) : works;
-  const sorted = sortNewest ? filtered : [...filtered].reverse();
+  const sorted = (() => {
+    if (sortMode === "default") return filtered;
+    const byDate = [...filtered].sort((a, b) => {
+      const da = a.work_date || "";
+      const db = b.work_date || "";
+      return sortMode === "newest" ? db.localeCompare(da) : da.localeCompare(db);
+    });
+    return byDate;
+  })();
+
+  const sortLabels: Record<typeof sortMode, string> = { default: "默认排序", newest: "最新优先", oldest: "最早优先" };
+  const nextSort = () => {
+    setSortMode(sortMode === "default" ? "newest" : sortMode === "newest" ? "oldest" : "default");
+  };
   const fullImage = fullImageIdx !== null ? lightboxImages[fullImageIdx] : null;
 
   const openLightbox = async (work: Work) => {
@@ -181,8 +194,8 @@ export default function HomeClient() {
               <button key={t} onClick={() => setActiveTag(t)} className={`px-4 py-1.5 text-[0.65rem] tracking-wider uppercase transition-colors ${activeTag === t ? "text-accent border-b border-accent" : "text-text-muted hover:text-text"}`}>{t}</button>
             ))}
             <span className="flex-1" />
-            <button onClick={() => setSortNewest(!sortNewest)} className="px-3 py-1.5 text-[0.6rem] tracking-wider uppercase text-text-muted hover:text-accent transition-colors border border-border">
-              {sortNewest ? "最新优先 ↑" : "最早优先 ↓"}
+            <button onClick={nextSort} className="px-3 py-1.5 text-[0.6rem] tracking-wider uppercase text-text-muted hover:text-accent transition-colors border border-border">
+              {sortLabels[sortMode]}
             </button>
           </div>
         )}
@@ -204,7 +217,7 @@ export default function HomeClient() {
                   data-hover
                   whileHover={{ scale: 1.02 }}
                 >
-                  <img src={work.thumb_url} alt={work.title} className="w-full h-auto" loading="lazy" decoding="async" />
+                  <img src={work.thumb_url} alt={work.title} className="w-full h-auto md:max-h-[600px] md:object-cover md:object-top" loading="lazy" decoding="async" />
                   <div className="card-overlay">
                     {work.pinned && <span className="text-[10px] tracking-widest uppercase text-accent mb-2">Featured</span>}
                     <h3 className="font-display text-xl md:text-2xl text-text">{work.title}</h3>
