@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Work } from "@/lib/types";
+import ParticleBg from "@/components/particle-bg";
 
 interface ImageItem { id: string; image_url: string; thumb_url: string; }
 
@@ -146,8 +147,11 @@ export default function HomeClient() {
         </div>
       </nav>
 
-      {/* Hero */}
-      <section className="min-h-screen flex flex-col items-center justify-center relative px-4">
+      <ParticleBg />
+
+      <div className="relative z-10">
+        {/* Hero */}
+        <section className="min-h-screen flex flex-col items-center justify-center relative px-4">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8 }} className="text-center">
           {loading ? (
             <div className="max-w-2xl mx-auto animate-pulse">
@@ -449,6 +453,7 @@ export default function HomeClient() {
         <div className="divider-line mx-auto mb-6" />
         <p className="text-[0.6rem] tracking-[0.3em] uppercase text-text-muted/30">&copy; {new Date().getFullYear()} · All Rights Reserved</p>
       </footer>
+      </div>
     </>
   );
 }
