@@ -110,8 +110,8 @@ export default function AuroraCanvas() {
       ctxB.globalCompositeOperation = "source-over";
       const bgGradient = ctxB.createLinearGradient(0, 0, 0, h);
       bgGradient.addColorStop(0, "#0a0908");
-      bgGradient.addColorStop(0.55, "#0a0908");
-      bgGradient.addColorStop(0.75, "rgba(10,9,8,0.8)");
+      bgGradient.addColorStop(0.85, "#0a0908");
+      bgGradient.addColorStop(0.93, "rgba(10,9,8,0.3)");
       bgGradient.addColorStop(1, "rgba(10,9,8,0)");
       ctxB.fillStyle = bgGradient;
       ctxB.fillRect(0, 0, w, h);
