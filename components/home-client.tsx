@@ -229,8 +229,7 @@ export default function HomeClient() {
                     <img
                       src={work.thumb_url}
                       alt={work.title}
-                      className="w-full h-auto object-cover"
-                      style={{ objectPosition: `${work.crop_x || 50}% ${work.crop_y || 50}%` }}
+                      className="max-w-full max-h-[32rem]"
                       loading="lazy"
                       decoding="async"
                     />

@@ -14,8 +14,8 @@ const workSchema = z.object({
   sortOrder: z.number().int().default(0),
   workDate: z.string().default(""),
   imageSize: z.number().int().default(0),
-  cropX: z.number().int().default(50),
-  cropY: z.number().int().default(50),
+  cropX: z.number().int().min(0).max(100).default(50),
+  cropY: z.number().int().min(0).max(100).default(50),
 });
 
 export async function GET() {

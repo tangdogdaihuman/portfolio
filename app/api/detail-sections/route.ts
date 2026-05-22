@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createId } from "@paralleldrive/cuid2";
-import db from "@/lib/db";
+import db, { ensureMigrated } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 
 const sectionSchema = z.object({
@@ -11,6 +11,8 @@ const sectionSchema = z.object({
 });
 
 export async function GET() {
+  await ensureMigrated();
+  await db.execute(`CREATE TABLE IF NOT EXISTS detail_sections (id TEXT PRIMARY KEY, title TEXT NOT NULL DEFAULT '', content TEXT NOT NULL DEFAULT '', sort_order INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')))`).catch(() => {});
   const result = await db.execute(
     "SELECT id, title, content, sort_order, updated_at FROM detail_sections ORDER BY sort_order ASC, created_at ASC"
   );
