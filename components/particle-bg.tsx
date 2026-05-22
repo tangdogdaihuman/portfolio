@@ -3,7 +3,7 @@ import { useEffect, useRef } from "react";
 
 const N = 50;
 const MAX_DIST = 150;
-const MOUSE_RADIUS = 150;
+const MOUSE_RADIUS = 120;
 const ACCENT = "201, 169, 97";
 
 interface P { x: number; y: number; vx: number; vy: number; ox: number; oy: number; r: number; a: number }
@@ -44,8 +44,8 @@ export default function ParticleBg() {
 
       // Mouse glow
       const glow = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, 280);
-      glow.addColorStop(0, `rgba(${ACCENT},0.12)`);
-      glow.addColorStop(0.4, `rgba(${ACCENT},0.04)`);
+      glow.addColorStop(0, `rgba(${ACCENT},0.06)`);
+      glow.addColorStop(0.4, `rgba(${ACCENT},0.02)`);
       glow.addColorStop(1, "transparent");
       ctx.fillStyle = glow;
       ctx.fillRect(0, 0, w, h);
@@ -59,8 +59,8 @@ export default function ParticleBg() {
         const md = Math.sqrt(mdx * mdx + mdy * mdy);
         if (md < MOUSE_RADIUS && md > 0) {
           const force = (MOUSE_RADIUS - md) / MOUSE_RADIUS;
-          p.x += (mdx / md) * force * 1.5;
-          p.y += (mdy / md) * force * 1.5;
+          p.x += (mdx / md) * force * 0.8;
+          p.y += (mdy / md) * force * 0.8;
         }
 
         p.x += p.vx;
