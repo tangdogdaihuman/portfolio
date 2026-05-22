@@ -26,6 +26,7 @@ export default function HomeClient() {
   const [lightboxWork, setLightboxWork] = useState<Work | null>(null);
   const [lightboxImages, setLightboxImages] = useState<ImageItem[]>([]);
   const [fullImageIdx, setFullImageIdx] = useState<number | null>(null);
+  const [zoom, setZoom] = useState(1);
   const [loading, setLoading] = useState(true);
   const cursorRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
@@ -126,7 +127,7 @@ export default function HomeClient() {
     }
   };
 
-  const closeAll = () => { setLightboxWork(null); setFullImageIdx(null); setLightboxImages([]); };
+  const closeAll = () => { setLightboxWork(null); setFullImageIdx(null); setLightboxImages([]); setZoom(1); };
 
   // Marquee items: repeat tags 6x to ensure infinite scroll
   const marqueeItems = tags.length > 0 ? tags : ["Digital Art", "Character Design", "3D", "Illustration"];
@@ -351,25 +352,28 @@ export default function HomeClient() {
       {/* Fullscreen with nav */}
       <AnimatePresence>
         {fullImage && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-bg/98 flex items-center justify-center" onClick={() => setFullImageIdx(null)}>
-            <button onClick={() => setFullImageIdx(null)} className="absolute top-6 right-6 text-text-muted hover:text-text z-20 p-2"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-bg/98 flex items-center justify-center" onClick={() => { setFullImageIdx(null); setZoom(1); }}>
+            <button onClick={() => { setFullImageIdx(null); setZoom(1); }} className="absolute top-6 right-6 text-text-muted hover:text-text z-20 p-2"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
 
-            {fullImageIdx !== null && fullImageIdx > 0 && (
-              <button onClick={(e) => { e.stopPropagation(); setFullImageIdx((i) => (i ?? 0) - 1); }} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted/60 hover:text-text z-20 p-4"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><polyline points="15 18 9 12 15 6" /></svg></button>
+             {fullImageIdx !== null && fullImageIdx > 0 && (
+              <button onClick={(e) => { e.stopPropagation(); setFullImageIdx((i) => (i ?? 0) - 1); setZoom(1); }} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted/60 hover:text-text z-20 p-4"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><polyline points="15 18 9 12 15 6" /></svg></button>
             )}
             {fullImageIdx !== null && fullImageIdx < lightboxImages.length - 1 && (
-              <button onClick={(e) => { e.stopPropagation(); setFullImageIdx((i) => (i ?? 0) + 1); }} className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted/60 hover:text-text z-20 p-4"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><polyline points="9 18 15 12 9 6" /></svg></button>
+              <button onClick={(e) => { e.stopPropagation(); setFullImageIdx((i) => (i ?? 0) + 1); setZoom(1); }} className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted/60 hover:text-text z-20 p-4"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><polyline points="9 18 15 12 9 6" /></svg></button>
             )}
 
             <motion.img
               key={fullImageIdx}
               initial={{ opacity: 0, scale: 0.92 }}
-              animate={{ opacity: 1, scale: 1 }}
+              animate={{ opacity: 1, scale: zoom }}
               exit={{ opacity: 0, scale: 0.92 }}
               transition={{ type: "spring", damping: 30, stiffness: 350, mass: 0.8 }}
               src={fullImage.image_url}
               alt={lightboxWork?.title ?? ""}
-              className="max-w-[94vw] max-h-[94vh] object-contain"
+              className="max-w-[94vw] max-h-[94vh] object-contain cursor-zoom-in"
+              style={zoom > 1 ? { cursor: "zoom-out" } : undefined}
+              onWheel={(e) => { e.stopPropagation(); setZoom((z) => Math.min(5, Math.max(1, z - e.deltaY * 0.001))); }}
+              onDoubleClick={(e) => { e.stopPropagation(); setZoom((z) => z > 1 ? 1 : 2); }}
               onClick={(e: React.MouseEvent) => e.stopPropagation()}
             />
 
