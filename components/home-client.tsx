@@ -390,10 +390,19 @@ export default function HomeClient() {
               style={{ transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`, cursor: zoom > 1 ? "grab" : "zoom-in" }}
               onWheel={(e) => { e.stopPropagation(); setZoom((z) => Math.min(5, Math.max(1, z - e.deltaY * 0.001))); }}
               onDoubleClick={(e) => { e.stopPropagation(); setZoom((z) => z > 1 ? 1 : 2); setPan({ x: 0, y: 0 }); }}
-              onMouseDown={(e) => { if (zoom <= 1) return; e.stopPropagation(); dragRef.current = { sx: e.clientX, sy: e.clientY, px: pan.x, py: pan.y }; (e.target as HTMLElement).style.cursor = "grabbing"; }}
-              onMouseMove={(e) => { if (!dragRef.current) return; setPan({ x: dragRef.current.px + (e.clientX - dragRef.current.sx) / zoom, y: dragRef.current.py + (e.clientY - dragRef.current.sy) / zoom }); }}
-              onMouseUp={() => { dragRef.current = null; }}
-              onMouseLeave={() => { dragRef.current = null; }}
+              onMouseDown={(e) => {
+                if (zoom <= 1) return;
+                e.stopPropagation(); e.preventDefault();
+                dragRef.current = { sx: e.clientX, sy: e.clientY, px: pan.x, py: pan.y };
+                (e.target as HTMLElement).style.cursor = "grabbing";
+                const onMove = (ev: MouseEvent) => {
+                  if (!dragRef.current) return;
+                  setPan({ x: dragRef.current.px + (ev.clientX - dragRef.current.sx) / zoom, y: dragRef.current.py + (ev.clientY - dragRef.current.sy) / zoom });
+                };
+                const onUp = () => { dragRef.current = null; window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
+                window.addEventListener("mousemove", onMove);
+                window.addEventListener("mouseup", onUp);
+              }}
               onClick={(e: React.MouseEvent) => e.stopPropagation()}
             />
 
