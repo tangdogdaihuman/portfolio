@@ -1,90 +1,53 @@
 # AGENTS.md
 
-## 项目
-唐子航个人 CG 作品集网站。Next.js 16 (App Router) · React 19 · Tailwind v4 · Turso (libsql) · Cloudflare R2 (S3) · Sharp · Zod · Framer Motion · TypeScript strict
+## 项目定位
+- 唐子航个人 CG 作品集网站；单应用 Next.js 16 App Router 项目，不是 monorepo。
+- 运行栈：React 19、TypeScript strict、Tailwind v4、Framer Motion、Turso(libsql)、Cloudflare R2、Sharp、Zod。
 
-## 命令
+## 先看哪里
+- 前台入口只有 `app/page.tsx` -> `components/home-client.tsx`。
+- 后台入口是 `app/admin/page.tsx`；作品管理、介绍编辑、详情分段编辑、存储统计都堆在这一个大客户端组件里。
+- API 主要在 `app/api/**/route.ts`；数据库和鉴权封装分别在 `lib/db.ts`、`lib/auth.ts`、`proxy.ts`。
+
+## 开发命令
 ```bash
-npm run dev         # next dev
-npm run build       # next build
-npm run lint        # ESLint
-npm run typecheck   # tsc --noEmit
+npm run dev
+npm run build
+npm run lint
+npm run typecheck
+npm run db:push
 ```
+- 没有 test 脚本；常用验证顺序是 `npm run lint` -> `npm run typecheck` -> `npm run build`。
+- `db:push` 运行 `scripts/push-schema.ts`，它会用 `.env.local` 直连 Turso。
 
-## 目录结构
-```
-app/
-  layout.tsx                         # Playfair+Inter 字体, 暗色, metadata+OG tags
-  page.tsx                           # 服务端组件: 个人介绍 + Portfolio标题 + HomeClient
-  globals.css                        # Tailwind v4 @theme (暗色+金色), 噪点纹理, 动画
-  admin/
-    layout.tsx                       # 后台顶栏
-    page.tsx                         # Tab: 作品列表/新增/编辑/介绍/详情/容量
-    login/page.tsx                   # 密钥输入 → POST /api/auth/login
-  api/
-    auth/login/route.ts              # POST {key} → HMAC setCookie → {ok:true}
-    intro/route.ts                   # GET / PUT (requireAuth)
-    details/route.ts                 # GET / PUT (requireAuth)
-    detail-sections/route.ts         # GET / POST (requireAuth)
-    detail-sections/[id]/route.ts    # PUT / DELETE (requireAuth)
-    works/route.ts                   # GET 列表 / POST 新增 (requireAuth)
-    works/[id]/route.ts              # GET/PUT/DELETE (requireAuth + 删R2残图)
-    works/[id]/images/route.ts       # GET / POST批量 / DELETE清空 (requireAuth + 删R2)
-    works/images/[imageId]/route.ts  # DELETE单张 (requireAuth + 删R2)
-    upload/presigned/route.ts        # POST 生成R2 presigned PUT URL (contentType白名单)
-    upload/process/route.ts          # POST 拉原图→Sharp800px webp→上传R2 (originalKey前缀校验)
-components/
-  home-client.tsx                    # 首页 (介绍/Hero/标签筛选/作品网格/灯箱/About/Contact)
-lib/
-  db.ts                              # Turso Proxy单例 + auto migrate + tagsToArray/tagsToString
-  r2.ts                              # S3Client + publicUrl() + deleteFromR2()
-  auth.ts                            # HMAC-SHA256 token签发/验证 + requireAuth()
-  image.ts                           # Sharp 800px webp quality 85
-  types.ts                           # 共享类型: Work, WorkImage, Section
-  upload-client.ts                   # 前端上传: uploadImageToR2()
-proxy.ts                             # Next.js 16 proxy, HMAC验证 /admin, 支持 ?key= 书签登录
-```
+## 数据与迁移
+- `lib/db.ts` 里的 `db` 是 `Proxy`；首次访问时会后台触发 `runMigrations()`，所以很多 schema 变更是“代码内自迁移”，不是独立 migration 文件。
+- `initializeDb()` 和 `scripts/push-schema.ts` 不是当前 schema 的完整真相：例如代码里已有 `details`、`detail_sections`、`crop_x/crop_y`，但 `db:push` 还没完全覆盖这些列/表。改 schema 时要同时检查 `lib/db.ts` 和 `scripts/push-schema.ts`，别只改一处。
+- `tags` 在库里是逗号字符串；API 层统一用 `tagsToArray()` / `tagsToString()` 转换。
 
-## 数据模型
-```sql
-works (id TEXT PK, title, description, tags TEXT, image_url, thumb_url, pinned, sort_order, work_date, image_size, crop_x, crop_y, created_at, updated_at)
-work_images (id TEXT PK, work_id TEXT, image_url, thumb_url, sort_order, image_size, crop_x, crop_y, created_at)
-intro (id INTEGER PK DEFAULT 1, content TEXT, updated_at)
-details (id INTEGER PK DEFAULT 1, content TEXT, updated_at)
-detail_sections (id TEXT PK, title, content, sort_order, created_at, updated_at)
-```
-- `tags`: 逗号分隔，API用 `tagsToArray()`/`tagsToString()` 转换
-- `crop_x/crop_y`: 缩略图裁切锚点，默认50（居中）
-- 删除作品时级联删 work_images + 清理R2对应文件
+## 上传与存储约束
+- 图片上传固定走 `lib/upload-client.ts` 里的 `uploadImageToR2()`：先请求 `/api/upload/presigned`，再 PUT 原图到 R2，最后 POST `/api/upload/process` 生成 webp 缩略图。
+- `/api/upload/process` 要求 `originalKey` 必须以 `originals/` 开头。
+- 这是面向 Vercel/R2 的实现；不要引入本地持久化文件流程，服务端也不要依赖可写磁盘。
+- `Sharp`、`@libsql/client`、R2/S3、`crypto` 只能留在服务端文件，不能混进 `'use client'` 组件。
 
-## 认证流（HMAC-SHA256）
-1. `/admin/login` → POST `/api/auth/login` `{key}` → `timingSafeEqual` 比较 → HMAC setCookie → redirect `/admin`
-2. 或 `/admin?key=xxx` → proxy.ts 拦截验证 → 签发HMAC cookie → redirect `/admin`
-3. proxy.ts 放行 `/admin/login` `/api/auth/login`，其他 `/admin/*` 校验 cookie
-4. API 写操作统一用 `requireAuth(req)` 返回 `NextResponse|null`
+## 鉴权与后台
+- `/admin` 保护依赖 `proxy.ts`，不是 `middleware.ts`。Next 16 下别改回 middleware。
+- 支持 `/admin?key=...` 一次性书签登录；`proxy.ts` 验证 `ADMIN_SECRET_KEY` 后签发 `admin_token` cookie。
+- API 写操作约定先 `await requireAuth(req)`；返回值非空时直接返回该 `NextResponse`。
 
-## 图片上传（预签名直传，绕过 Vercel 4.5MB）
-1. 前端 POST `/api/upload/presigned` `{contentType}` (仅 jpeg/png/webp/avif)
-2. 前端 `fetch(uploadUrl, {method:'PUT', body:file})` 直传原图到 R2
-3. 前端 POST `/api/upload/process` `{originalKey}` (必须 `originals/` 前缀)
-4. 前端统一用 `uploadImageToR2(file)` 一个函数完成三步
+## 前端约定
+- 首页几乎所有展示逻辑都在 `components/home-client.tsx`：数据抓取、5 分钟轮询、`visibilitychange` 刷新、自定义光标、灯箱、筛选、排序都在那里，改首页先看这个文件。
+- 动画参数已形成风格基线：`spring` 常用 `damping: 28`、`stiffness: 200`，慢一点的变体在同文件里。
+- Tailwind v4 没有 `tailwind.config.*`；主题变量在 `app/globals.css`，PostCSS 只配了 `@tailwindcss/postcss`。
+- 这个仓库倾向少注释；新增代码保持英文命名、少解释性注释。
+- `app/admin/page.tsx` 中表单状态用对象整体替换，别改成函数式 `setState` 模式去和现有写法混用。
 
-## 环境变量 (.env.local，不入库)
-DATABASE_URL / DATABASE_AUTH_TOKEN / R2_ACCOUNT_ID / R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY / R2_BUCKET_NAME / R2_PUBLIC_URL / ADMIN_SECRET_KEY
+## 环境
+- 需要的关键变量见 `.env.example`：`DATABASE_URL`、`DATABASE_AUTH_TOKEN`、R2 一组、`ADMIN_SECRET_KEY`，以及可选的 `NEXT_PUBLIC_BASE_URL`。
+- `ADMIN_SECRET_KEY` 缺失时，`proxy.ts` 会直接放过管理路由；排查“本地后台没鉴权”先看这个。
 
-## 约束 & 易错点
-- **Vercel 无本地文件系统**: 禁止 `fs.writeFile`，所有文件存 R2
-- **服务端代码隔离**: Sharp/db/r2/crypto 代码严禁出现在 `'use client'` 组件
-- **Turso 用 HTTP**: 用 `@libsql/client`，别用 `better-sqlite3`
-- **Tailwind v4**: 无 `tailwind.config.ts`，颜色/字体在 `globals.css` `@theme inline`
-- **Next.js 16**: 用 `proxy.ts` 而非 `middleware.ts`
-- **首页纯客户端**: `HomeClient` fetch + 5min轮询 + visibility检测
-- **自定义光标**: 纯 DOM 操作，不触发 React 渲染
-- **Framer Motion**: 动画用 spring `damping:28 stiffness:200`
-- **FormState**: 用对象替换 setFormState，别用函数式 updater (React 19 类型限制)
-- **代码不加注释，变量名英文**
-
-## 部署
-- Vercel + GitHub 联动: `git push` → 自动构建部署
-- CLI 部署: `vercel --prod --yes`
-- 域名: `tangzihang.top` 经 Cloudflare CDN (GFW)
+## 修改时最容易漏的点
+- 作品删除/图片删除不仅删数据库，还会清理 R2；改相关接口时检查 `app/api/works/[id]/route.ts` 和图片删除路由，别留下残图。
+- 首页 `Work` 类型在 `components/home-client.tsx` 本地又定义了一份，和 `lib/types.ts` 不是同一个来源；改作品返回字段时要同步看两边。
+- 仓库里有 `.next/`、`tsconfig.tsbuildinfo`、`.playwright-mcp/` 等产物；搜索和编辑时避开这些生成文件。

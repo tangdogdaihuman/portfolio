@@ -226,7 +226,14 @@ export default function HomeClient() {
                   data-hover
                 >
                   <div className="overflow-hidden">
-                    <img src={work.thumb_url} alt={work.title} className="w-full h-auto object-cover" loading="lazy" decoding="async" style={{ objectPosition: `${work.crop_x || 50}% ${work.crop_y || 50}%` }} />
+                    <img
+                      src={work.thumb_url}
+                      alt={work.title}
+                      className="w-full h-auto object-cover"
+                      style={{ objectPosition: `${work.crop_x || 50}% ${work.crop_y || 50}%` }}
+                      loading="lazy"
+                      decoding="async"
+                    />
                   </div>
                   <div className="card-meta">
                     <div className="flex items-center gap-3 text-[0.6rem] tracking-[0.3em] uppercase text-accent-dim">
