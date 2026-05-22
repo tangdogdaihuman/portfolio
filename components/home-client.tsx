@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Work } from "@/lib/types";
-import ParticleBg from "@/components/particle-bg";
+import BgCanvas from "@/components/particle-bg";
 
 interface ImageItem { id: string; image_url: string; thumb_url: string; }
 
@@ -153,7 +153,7 @@ export default function HomeClient({
         </div>
       </nav>
 
-      <ParticleBg />
+      <BgCanvas />
 
       <div className="relative z-10">
         {/* Hero */}

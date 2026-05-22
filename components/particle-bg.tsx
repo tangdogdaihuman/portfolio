@@ -1,14 +1,10 @@
 "use client";
 import { useEffect, useRef } from "react";
 
-const N = 80;
-const MAX_DIST = 150;
-const MOUSE_RADIUS = 120;
 const ACCENT = "201, 169, 97";
+const VP_Y_RATIO = 0.38;
 
-interface P { x: number; y: number; vx: number; vy: number; ox: number; oy: number; r: number; a: number }
-
-export default function ParticleBg() {
+export default function BgCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -22,76 +18,60 @@ export default function ParticleBg() {
     canvas.width = w;
     canvas.height = h;
 
-    const mouse = { x: -1000, y: -1000 };
+    const mouse = { x: w / 2, y: h / 2 };
 
-    const particles: P[] = [];
-    for (let i = 0; i < N; i++) {
-      const x = Math.random() * w;
-      const y = Math.random() * h;
-      particles.push({
-        x, y,
-        vx: (Math.random() - 0.5) * 0.25,
-        vy: (Math.random() - 0.5) * 0.25,
-        ox: x, oy: y,
-        r: Math.random() * 2 + 0.8,
-        a: Math.random() * 0.3 + 0.08,
-      });
-    }
-
-    let raf = 0;
     const draw = () => {
       ctx.clearRect(0, 0, w, h);
+      const vpX = w / 2;
+      const vpY = h * VP_Y_RATIO;
 
-      // Mouse glow
-      const glow = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, 280);
-      glow.addColorStop(0, `rgba(${ACCENT},0.06)`);
-      glow.addColorStop(0.4, `rgba(${ACCENT},0.02)`);
-      glow.addColorStop(1, "transparent");
-      ctx.fillStyle = glow;
-      ctx.fillRect(0, 0, w, h);
-
-      for (let i = 0; i < N; i++) {
-        const p = particles[i];
-
-        // Mouse repulsion
-        const mdx = p.x - mouse.x;
-        const mdy = p.y - mouse.y;
-        const md = Math.sqrt(mdx * mdx + mdy * mdy);
-        if (md < MOUSE_RADIUS && md > 0) {
-          const force = (MOUSE_RADIUS - md) / MOUSE_RADIUS;
-          p.x += (mdx / md) * force * 0.8;
-          p.y += (mdy / md) * force * 0.8;
-        }
-
-        p.x += p.vx;
-        p.y += p.vy;
-        if (p.x < -10) p.x = w + 10;
-        if (p.x > w + 10) p.x = -10;
-        if (p.y < -10) p.y = h + 10;
-        if (p.y > h + 10) p.y = -10;
-
+      // Perspective grid
+      const vLines = 24;
+      for (let i = 0; i <= vLines; i++) {
+        const t = i / vLines;
+        const x0 = w * t;
+        const x1 = vpX + (x0 - vpX) * 3;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${ACCENT},${p.a})`;
-        ctx.fill();
-
-        for (let j = i + 1; j < N; j++) {
-          const q = particles[j];
-          const dx = p.x - q.x;
-          const dy = p.y - q.y;
-          const d = Math.sqrt(dx * dx + dy * dy);
-          if (d < MAX_DIST) {
-            ctx.beginPath();
-            ctx.moveTo(p.x, p.y);
-            ctx.lineTo(q.x, q.y);
-            ctx.strokeStyle = `rgba(${ACCENT},${0.05 * (1 - d / MAX_DIST)})`;
-            ctx.stroke();
-          }
-        }
+        ctx.moveTo(x0, h);
+        ctx.lineTo(x1, vpY);
+        ctx.strokeStyle = `rgba(${ACCENT},${0.03 + 0.02 * Math.abs(t - 0.5) * 2})`;
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
       }
+
+      const hLines = 16;
+      for (let i = 0; i <= hLines; i++) {
+        const t = i / hLines;
+        const y = h - (h - vpY) * Math.pow(t, 1.6);
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.strokeStyle = `rgba(${ACCENT},${0.015 + 0.02 * t * t})`;
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+      }
+
+      // Chromatic glow — 3 offset radial gradients
+      const offset = 4;
+      const radius = 300;
+      const colors = [
+        { x: mouse.x - offset, y: mouse.y, channel: "255, 169, 97" },
+        { x: mouse.x, y: mouse.y, channel: "201, 255, 97" },
+        { x: mouse.x + offset, y: mouse.y, channel: "201, 169, 255" },
+      ];
+      for (const c of colors) {
+        const g = ctx.createRadialGradient(c.x, c.y, 0, c.x, c.y, radius);
+        g.addColorStop(0, `rgba(${c.channel},0.03)`);
+        g.addColorStop(0.5, `rgba(${c.channel},0.008)`);
+        g.addColorStop(1, "transparent");
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, w, h);
+      }
+
       raf = requestAnimationFrame(draw);
     };
-    raf = requestAnimationFrame(draw);
+
+    let raf = requestAnimationFrame(draw);
 
     const onMove = (e: MouseEvent) => { mouse.x = e.clientX; mouse.y = e.clientY; };
     const onResize = () => {
