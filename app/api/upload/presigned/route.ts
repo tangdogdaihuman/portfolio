@@ -11,7 +11,10 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { contentType = "image/png" } = body;
+  const contentType = (body.contentType as string)?.startsWith("image/") ? body.contentType : null;
+  if (!contentType) {
+    return NextResponse.json({ error: "Only image files allowed" }, { status: 400 });
+  }
   const ext = contentType.split("/")[1] || "png";
   const id = createId();
   const originalKey = `originals/${id}.${ext}`;

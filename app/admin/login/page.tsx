@@ -20,7 +20,8 @@ function LoginForm() {
     });
 
     if (res.ok) {
-      const redirect = searchParams.get("redirect") || "/admin";
+      const raw = searchParams.get("redirect");
+      const redirect = raw && raw.startsWith("/") ? raw : "/admin";
       router.push(redirect);
     } else {
       setError(true);

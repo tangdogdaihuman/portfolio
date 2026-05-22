@@ -266,7 +266,7 @@ function AddWorkForm({
     setUp({ uploading: true, uploadProgress: "上传中", uploadTotal: total, uploadDone: 0 });
 
     const fileArray = Array.from(files);
-    let succeeded = 0;
+    let completed = 0;
     const results: UploadedFile[] = [];
 
     await Promise.all(
@@ -274,12 +274,9 @@ function AddWorkForm({
         try {
           const result = await uploadOneFile(file);
           results.push(result);
-          succeeded++;
-          setUp({ uploading: true, uploadProgress: "上传中", uploadTotal: total, uploadDone: succeeded });
-        } catch {
-          succeeded++;
-          setUp({ uploading: true, uploadProgress: "上传中", uploadTotal: total, uploadDone: succeeded });
-        }
+        } catch {}
+        completed++;
+        setUp({ uploading: true, uploadProgress: "上传中", uploadTotal: total, uploadDone: completed });
       })
     );
 
