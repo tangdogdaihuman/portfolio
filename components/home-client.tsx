@@ -152,8 +152,8 @@ export default function HomeClient({
   for (let i = 0; i < MAX_INTRO; i++) {
     const start = 0.05 + (i / MAX_INTRO) * 0.2;
     const fadeInEnd = start + 0.1;
-    const fadeOutStart = 0.35;
-    const fadeOutEnd = 0.55;
+    const fadeOutStart = 0.22;
+    const fadeOutEnd = 0.38;
     lineOps.push(useTransform(scrollYProgress, [start, fadeInEnd, fadeOutStart, fadeOutEnd], [0, 1, 1, 0]));
     const b = useTransform(scrollYProgress, [start, fadeInEnd, fadeOutStart, fadeOutEnd], [10, 0, 0, 10]);
     lineBlurs.push(b);
@@ -241,11 +241,15 @@ export default function HomeClient({
 
       {/* Marquee */}
       <section className="py-12 md:py-16 border-y border-border/20 overflow-hidden">
-        <div className="inline-flex animate-[marquee_18s_linear_infinite] md:animate-[marquee_28s_linear_infinite]">
-          {[0, 1, 2, 3, 4, 5].map((n) => (
-            <span key={n} className="font-display italic text-2xl md:text-3xl text-text-muted/25 tracking-wider mx-6 whitespace-nowrap flex-shrink-0">
-              {marqueeItems.map((t, j) => `${t}${j < marqueeItems.length - 1 ? " · " : ""}`)}
-            </span>
+        <div className="flex animate-[marquee_12s_linear_infinite] md:animate-[marquee_18s_linear_infinite]" style={{ width: "max-content" }}>
+          {[0, 1].map((n) => (
+            <div key={n} className="flex flex-shrink-0">
+              {[0, 1, 2].map((m) => (
+                <span key={`${n}-${m}`} className="font-display italic text-2xl md:text-3xl text-text-muted/25 tracking-wider mx-6 whitespace-nowrap flex-shrink-0">
+                  {marqueeItems.map((t, j) => `${t}${j < marqueeItems.length - 1 ? " · " : ""}`)}
+                </span>
+              ))}
+            </div>
           ))}
         </div>
       </section>
