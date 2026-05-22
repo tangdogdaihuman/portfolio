@@ -12,11 +12,19 @@ const springSlow = { type: "spring" as const, damping: 32, stiffness: 160, mass:
 
 interface Section { id: string; title: string; content: string; }
 
-export default function HomeClient() {
-  const [intro, setIntro] = useState("");
-  const [detailSections, setDetailSections] = useState<Section[]>([]);
+export default function HomeClient({
+  initialIntro,
+  initialWorks,
+  initialSections,
+}: {
+  initialIntro: string;
+  initialWorks: Work[];
+  initialSections: Section[];
+}) {
+  const [intro, setIntro] = useState(initialIntro);
+  const [detailSections, setDetailSections] = useState<Section[]>(initialSections);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
-  const [works, setWorks] = useState<Work[]>([]);
+  const [works, setWorks] = useState<Work[]>(initialWorks);
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<"default" | "newest" | "oldest">("default");
   const [lightboxWork, setLightboxWork] = useState<Work | null>(null);
@@ -25,27 +33,25 @@ export default function HomeClient() {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const dragRef = useRef<{ sx: number; sy: number; px: number; py: number } | null>(null);
-  const [loading, setLoading] = useState(true);
   const cursorRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
 
-  const fetchData = useCallback(async () => {
+  const refreshData = useCallback(async () => {
     try {
       const [introRes, sectionsRes, worksRes] = await Promise.all([fetch("/api/intro"), fetch("/api/detail-sections"), fetch("/api/works")]);
       if (introRes.ok) setIntro((await introRes.json()).content || "");
       if (sectionsRes.ok) setDetailSections(await sectionsRes.json());
       if (worksRes.ok) setWorks(await worksRes.json());
-    } catch {} finally { setLoading(false); }
+    } catch {}
   }, []);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
-  useEffect(() => { fetchData(); const iv = setInterval(fetchData, 300000); return () => clearInterval(iv); }, []);
+  useEffect(() => { const iv = setInterval(refreshData, 300000); return () => clearInterval(iv); }, [refreshData]);
 
   useEffect(() => {
-    const onVisible = () => { if (document.visibilityState === "visible") fetchData(); };
+    const onVisible = () => { if (document.visibilityState === "visible") refreshData(); };
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
-  }, [fetchData]);
+  }, [refreshData]);
 
   // Hide native cursor only on this page
   useEffect(() => {
@@ -153,16 +159,7 @@ export default function HomeClient() {
         {/* Hero */}
         <section className="min-h-screen flex flex-col items-center justify-center relative px-4">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.8 }} className="text-center">
-          {loading ? (
-            <div className="max-w-2xl mx-auto animate-pulse">
-              <div className="divider-line mx-auto mb-8 opacity-20" />
-              <div className="h-3 bg-text-muted/10 rounded mb-6 w-24 mx-auto" />
-              <div className="space-y-4">
-                <div className="h-6 bg-text-muted/10 rounded w-3/4 mx-auto" />
-                <div className="h-6 bg-text-muted/10 rounded w-1/2 mx-auto" />
-              </div>
-            </div>
-          ) : intro ? (
+          {intro ? (
             <div className="max-w-2xl mx-auto reveal">
               <div className="divider-line mx-auto mb-8" />
               <p className="text-[0.6rem] tracking-[0.35em] uppercase text-accent-dim mb-6 font-display">About</p>
@@ -218,15 +215,7 @@ export default function HomeClient() {
           </div>
         )}
 
-        {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-8">
-            {["md:col-span-8", "md:col-span-5", "md:col-span-4", "md:col-span-7"].map((span, i) => (
-              <div key={i} className={`${span} animate-pulse`}>
-                <div className="aspect-[4/5] bg-text-muted/10" />
-              </div>
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
+        {filtered.length === 0 ? (
           <div className="text-center py-20 text-text-muted reveal">还没有作品</div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10">
