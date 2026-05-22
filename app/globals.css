@@ -98,7 +98,7 @@ body::before {
   transform: scale(1.06);
 }
 .work-card .card-meta {
-  padding-top: 1rem;
+  padding-top: 0.75rem;
 }
 
 .scroll-line {

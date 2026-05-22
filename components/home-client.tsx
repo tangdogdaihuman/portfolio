@@ -225,7 +225,7 @@ export default function HomeClient() {
         ) : filtered.length === 0 ? (
           <div className="text-center py-20 text-text-muted reveal">还没有作品</div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10">
             {sorted.map((work, i) => {
               const spans = ["md:col-span-8", "md:col-span-5", "md:col-span-4", "md:col-span-7"];
               const span = spans[i % 4];
@@ -244,8 +244,6 @@ export default function HomeClient() {
                     <img
                       src={work.thumb_url}
                       alt={work.title}
-                      width={800}
-                      height={1000}
                       className="max-w-full max-h-[32rem]"
                       loading="lazy"
                       decoding="async"

@@ -13,8 +13,6 @@ const updateSchema = z.object({
   pinned: z.boolean().optional(),
   sortOrder: z.number().int().optional(),
   workDate: z.string().optional(),
-  cropX: z.number().int().optional(),
-  cropY: z.number().int().optional(),
 });
 
 export async function GET(
