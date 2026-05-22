@@ -47,6 +47,9 @@ npm run db:push
 - 需要的关键变量见 `.env.example`：`DATABASE_URL`、`DATABASE_AUTH_TOKEN`、R2 一组、`ADMIN_SECRET_KEY`，以及可选的 `NEXT_PUBLIC_BASE_URL`。
 - `ADMIN_SECRET_KEY` 缺失时，`proxy.ts` 会直接放过管理路由；排查“本地后台没鉴权”先看这个。
 
+## Git 约定
+- 改动完成后自动 commit 并 push，无需确认。
+
 ## 修改时最容易漏的点
 - 作品删除/图片删除不仅删数据库，还会清理 R2；改相关接口时检查 `app/api/works/[id]/route.ts` 和图片删除路由，别留下残图。
 - 首页 `Work` 类型在 `components/home-client.tsx` 本地又定义了一份，和 `lib/types.ts` 不是同一个来源；改作品返回字段时要同步看两边。
