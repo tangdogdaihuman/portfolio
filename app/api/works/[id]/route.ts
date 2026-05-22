@@ -13,6 +13,7 @@ const updateSchema = z.object({
   pinned: z.boolean().optional(),
   sortOrder: z.number().int().optional(),
   workDate: z.string().optional(),
+  sizeWeight: z.number().min(0.5).max(2.0).optional(),
 });
 
 export async function GET(

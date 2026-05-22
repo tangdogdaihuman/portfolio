@@ -9,6 +9,7 @@ export interface Work {
   pinned: boolean;
   image_size: number;
   sort_order: number;
+  size_weight: number;
   created_at: string;
   image_count?: number;
 }

@@ -227,8 +227,8 @@ export default function HomeClient() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10">
             {sorted.map((work, i) => {
-              const spans = ["md:col-span-8", "md:col-span-5", "md:col-span-4", "md:col-span-7"];
-              const span = spans[i % 4];
+              const w = work.size_weight ?? 1;
+              const colSpan = w >= 1.5 ? "md:col-span-8" : w >= 1.0 ? (i % 2 === 0 ? "md:col-span-7" : "md:col-span-5") : "md:col-span-4";
               return (
                 <motion.div
                   key={work.id}
@@ -236,7 +236,7 @@ export default function HomeClient() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: "-40px" }}
                   transition={{ ...springSlow, delay: (i % 4) * 0.08 }}
-                  className={`work-card reveal cursor-pointer group ${span}`}
+                  className={`work-card reveal cursor-pointer group ${colSpan}`}
                   onClick={() => openLightbox(work)}
                   data-hover
                 >

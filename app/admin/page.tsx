@@ -14,6 +14,7 @@ export default function AdminPage() {
     workDate: "",
     uploadedFiles: [],
     coverIndex: 0,
+    sizeWeight: 1,
     uploading: false,
     uploadProgress: "",
     uploadTotal: 0,
@@ -193,6 +194,7 @@ interface FormState {
   description: string;
   tags: string;
   workDate: string;
+  sizeWeight: number;
   uploadedFiles: UploadedFile[];
   coverIndex: number;
   uploading: boolean;
@@ -215,7 +217,7 @@ function AddWorkForm({
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const { title, description, tags, workDate, uploadedFiles, coverIndex, uploading, uploadProgress, uploadTotal, uploadDone } = formState;
+  const { title, description, tags, workDate, sizeWeight, uploadedFiles, coverIndex, uploading, uploadProgress, uploadTotal, uploadDone } = formState;
   const setTitle = (v: string) => setFormState({ ...formState, title: v });
   const setDescription = (v: string) => setFormState({ ...formState, description: v });
   const setTags = (v: string) => setFormState({ ...formState, tags: v });
@@ -283,6 +285,7 @@ function AddWorkForm({
         sortOrder: 0,
         workDate,
         imageSize: cover.size,
+        sizeWeight,
       }),
     });
     if (!res.ok) {
@@ -312,7 +315,7 @@ function AddWorkForm({
     showMsg("作品已发布", true);
     setFormState({
       title: "", description: "", tags: "", workDate: "",
-      uploadedFiles: [], coverIndex: 0,
+      uploadedFiles: [], coverIndex: 0, sizeWeight: 1,
       uploading: false, uploadProgress: "", uploadTotal: 0, uploadDone: 0,
     });
     onDone();
@@ -335,8 +338,23 @@ function AddWorkForm({
               <div
                 className="h-full bg-accent transition-all duration-300 ease-out"
                 style={{ width: `${uploadTotal > 0 ? (uploadDone / uploadTotal) * 100 : 0}%` }}
-              />
-            </div>
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm text-text-muted mb-1">
+          展示权重 {sizeWeight.toFixed(1)}（0.5=紧凑 1.0=默认 2.0=大）
+        </label>
+        <input
+          type="range"
+          min="0.5"
+          max="2.0"
+          step="0.1"
+          value={sizeWeight}
+          onChange={(e) => setFormState({ ...formState, sizeWeight: parseFloat(e.target.value) })}
+          className="w-full accent-accent"
+        />
+      </div>
           </div>
         ) : (
           <label className="inline-block px-6 py-10 border-2 border-dashed border-border text-text-muted text-sm cursor-pointer hover:border-accent-dim transition-colors">
@@ -635,6 +653,7 @@ function EditWorkForm({
   const [workDate, setWorkDate] = useState("");
   const [allImages, setAllImages] = useState<{ id: string; image_url: string; thumb_url: string; source: "existing" | "new"; size: number }[]>([]);
   const [coverIndex, setCoverIndex] = useState(0);
+  const [sizeWeight, setSizeWeight] = useState(1);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [uploadTotal, setUploadTotal] = useState(0);
@@ -655,6 +674,7 @@ function EditWorkForm({
         setDescription(w.description || "");
         setTags((w.tags || []).join(","));
         setWorkDate(w.work_date || "");
+        setSizeWeight(w.size_weight ?? 1);
       }
       if (imagesRes.ok) {
         const imgs = await imagesRes.json();
@@ -707,7 +727,7 @@ function EditWorkForm({
 
     await fetch(`/api/works/${workId}`, {
       method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, description, tags: tagArray, workDate, imageUrl: cover?.image_url, thumbUrl: cover?.thumb_url }),
+      body: JSON.stringify({ title, description, tags: tagArray, workDate, imageUrl: cover?.image_url, thumbUrl: cover?.thumb_url, sizeWeight }),
     });
 
     // Delete removed images (DB + R2)
@@ -757,6 +777,20 @@ function EditWorkForm({
       <div>
         <label className="block text-sm text-text-muted mb-1">时间</label>
         <input value={workDate} onChange={(e) => setWorkDate(e.target.value)} className="w-full bg-bg border border-border text-text px-4 py-2 text-sm focus:outline-none focus:border-accent-dim" />
+      </div>
+      <div>
+        <label className="block text-sm text-text-muted mb-1">
+          展示权重 {sizeWeight.toFixed(1)}（0.5=紧凑 1.0=默认 2.0=大）
+        </label>
+        <input
+          type="range"
+          min="0.5"
+          max="2.0"
+          step="0.1"
+          value={sizeWeight}
+          onChange={(e) => setSizeWeight(parseFloat(e.target.value))}
+          className="w-full accent-accent"
+        />
       </div>
       <div>
         <label className="block text-sm text-text-muted mb-1">所有图片 · 拖拽排序 · 点击设封面（{allImages.length} 张）</label>

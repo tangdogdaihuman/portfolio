@@ -25,6 +25,7 @@ async function runMigrations() {
     const client = getClient();
     try { await client.execute("ALTER TABLE works ADD COLUMN work_date TEXT DEFAULT ''"); } catch {}
     try { await client.execute("ALTER TABLE works ADD COLUMN image_size INTEGER DEFAULT 0"); } catch {}
+    try { await client.execute("ALTER TABLE works ADD COLUMN size_weight REAL DEFAULT 1.0"); } catch {}
     try { await client.execute(`CREATE TABLE IF NOT EXISTS work_images (id TEXT PRIMARY KEY, work_id TEXT NOT NULL, image_url TEXT NOT NULL, thumb_url TEXT NOT NULL, sort_order INTEGER DEFAULT 0, image_size INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')))`); } catch {}
     try { await client.execute("ALTER TABLE work_images ADD COLUMN image_size INTEGER DEFAULT 0"); } catch {}
     try { await client.execute(`CREATE TABLE IF NOT EXISTS intro (id INTEGER PRIMARY KEY DEFAULT 1 CHECK(id=1), content TEXT NOT NULL DEFAULT '', updated_at TEXT DEFAULT (datetime('now')))`); } catch {}
@@ -51,12 +52,14 @@ export function initializeDb() {
       sort_order INTEGER DEFAULT 0,
       work_date TEXT DEFAULT '',
       image_size INTEGER DEFAULT 0,
+      size_weight REAL DEFAULT 1.0,
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))
     );
 
     ALTER TABLE works ADD COLUMN work_date TEXT DEFAULT '';
     ALTER TABLE works ADD COLUMN image_size INTEGER DEFAULT 0;
+    ALTER TABLE works ADD COLUMN size_weight REAL DEFAULT 1.0;
 
     CREATE TABLE IF NOT EXISTS work_images (
       id TEXT PRIMARY KEY,
