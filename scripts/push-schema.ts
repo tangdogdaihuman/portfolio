@@ -26,8 +26,6 @@ async function main() {
     );
     ALTER TABLE works ADD COLUMN work_date TEXT DEFAULT '';
     ALTER TABLE works ADD COLUMN image_size INTEGER DEFAULT 0;
-    ALTER TABLE works ADD COLUMN crop_x INTEGER DEFAULT 50;
-    ALTER TABLE works ADD COLUMN crop_y INTEGER DEFAULT 50;
 
     CREATE TABLE IF NOT EXISTS work_images (
       id TEXT PRIMARY KEY,
@@ -36,13 +34,9 @@ async function main() {
       thumb_url TEXT NOT NULL,
       sort_order INTEGER DEFAULT 0,
       image_size INTEGER DEFAULT 0,
-      crop_x INTEGER DEFAULT 50,
-      crop_y INTEGER DEFAULT 50,
       created_at TEXT DEFAULT (datetime('now'))
     );
     ALTER TABLE work_images ADD COLUMN image_size INTEGER DEFAULT 0;
-    ALTER TABLE work_images ADD COLUMN crop_x INTEGER DEFAULT 50;
-    ALTER TABLE work_images ADD COLUMN crop_y INTEGER DEFAULT 50;
 
     CREATE TABLE IF NOT EXISTS intro (
       id INTEGER PRIMARY KEY DEFAULT 1 CHECK(id=1),
