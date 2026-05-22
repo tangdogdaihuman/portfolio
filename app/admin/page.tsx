@@ -558,8 +558,37 @@ function WorkList({
             >
               删除
             </button>
-          </div>
-        </div>
+      </div>
+
+      <div className="space-y-2 mt-8">
+        <p className="text-sm text-text-muted mb-4">展示权重分布</p>
+        {(() => {
+          const totalWeight = works.reduce((s, w) => s + (w.size_weight ?? 1), 0);
+          return [...works]
+            .sort((a, b) => (b.size_weight ?? 1) - (a.size_weight ?? 1))
+            .map((work) => {
+              const wgt = work.size_weight ?? 1;
+              const wpct = totalWeight > 0 ? (wgt / totalWeight) * 100 : 0;
+              return (
+                <div key={work.id} className="bg-bg border border-border p-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm text-text truncate mr-4">{work.title}</span>
+                    <span className="text-xs text-accent-dim whitespace-nowrap">
+                      {wgt.toFixed(1)} ({wpct.toFixed(1)}%)
+                    </span>
+                  </div>
+                  <div className="h-1.5 bg-surface overflow-hidden">
+                    <div
+                      className="h-full bg-accent/40"
+                      style={{ width: `${Math.max(wpct, 1)}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            });
+        })()}
+      </div>
+    </div>
       ))}
     </div>
   );
