@@ -5,6 +5,13 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import type { Work } from "@/lib/types";
 import { cleanupUploadedFiles, uploadImageToR2, type UploadedFile } from "@/lib/upload-client";
 
+function formatUploadResult(successCount: number, total: number, failures: string[], unit: string) {
+  if (failures.length === 0) return `${successCount}/${total} ${unit}上传成功`;
+  const shown = failures.slice(0, 3).join("；");
+  const more = failures.length > 3 ? `；另有 ${failures.length - 3} 个失败` : "";
+  return `${successCount}/${total} ${unit}上传成功，${failures.length} 个失败：${shown}${more}`;
+}
+
 export default function AdminPageClient() {
   const [tab, setTab] = useState<"works" | "intro" | "add" | "storage" | "edit" | "detail">("works");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -25,6 +32,7 @@ export default function AdminPageClient() {
   const [intro, setIntro] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Work | null>(null);
 
   const showMsg = (text: string, ok: boolean) => {
     setMessage({ text, ok });
@@ -81,13 +89,15 @@ export default function AdminPageClient() {
     ]);
   };
 
-  const deleteWork = async (id: string) => {
-    if (!confirm("确定删除？")) return;
-    const res = await fetch(`/api/works/${id}`, { method: "DELETE" });
+  const deleteWork = async (work: Work) => {
+    const res = await fetch(`/api/works/${work.id}`, { method: "DELETE" });
     if (res.ok) {
       refresh();
       showMsg("已删除", true);
+    } else {
+      showMsg("删除失败", false);
     }
+    setPendingDelete(null);
   };
 
   const togglePin = async (work: Work) => {
@@ -113,7 +123,8 @@ export default function AdminPageClient() {
         </div>
       )}
 
-      <div className="flex gap-1 mb-8 border-b border-border">
+      <div className="mb-8 overflow-x-auto border-b border-border">
+        <div className="flex min-w-max gap-1">
         {(["works", "add", "intro", "detail", "storage"] as const).map((t) => (
           <button
             key={t}
@@ -127,6 +138,7 @@ export default function AdminPageClient() {
             {t === "works" ? "作品列表" : t === "add" ? "新增作品" : t === "intro" ? "个人介绍" : t === "detail" ? "详细介绍" : "容量"}
           </button>
         ))}
+        </div>
       </div>
 
       {tab === "intro" && <IntroForm intro={intro} setIntro={setIntro} onSave={saveIntro} loading={loading} />}
@@ -135,7 +147,7 @@ export default function AdminPageClient() {
       {tab === "works" && (
         <WorkList
           works={works}
-          onDelete={deleteWork}
+          onDelete={setPendingDelete}
           onTogglePin={togglePin}
           onEdit={(id) => { setEditingId(id); setTab("edit"); }}
           onReorder={moveWork}
@@ -150,6 +162,49 @@ export default function AdminPageClient() {
         />
       )}
       {tab === "storage" && <StoragePanel works={works} />}
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title="删除作品"
+        body={pendingDelete ? `将删除《${pendingDelete.title}》以及关联的 R2 图片，此操作无法在后台撤销。` : ""}
+        confirmText="删除"
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => pendingDelete && deleteWork(pendingDelete)}
+      />
+    </div>
+  );
+}
+
+function ConfirmDialog({
+  open,
+  title,
+  body,
+  confirmText,
+  onCancel,
+  onConfirm,
+}: {
+  open: boolean;
+  title: string;
+  body: string;
+  confirmText: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg/80 px-4 backdrop-blur-sm">
+      <div className="w-full max-w-sm border border-border bg-surface p-5 shadow-2xl">
+        <h2 className="font-display text-xl text-text">{title}</h2>
+        <p className="mt-3 text-sm leading-relaxed text-text-muted">{body}</p>
+        <div className="mt-6 flex justify-end gap-3">
+          <button onClick={onCancel} className="border border-border px-4 py-2 text-sm text-text-muted hover:text-text">
+            取消
+          </button>
+          <button onClick={onConfirm} className="bg-red-400 px-4 py-2 text-sm font-medium text-bg hover:bg-red-300">
+            {confirmText}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -260,9 +315,7 @@ function AddWorkForm({
       uploadDone: 0,
     });
     showMsg(
-      failures.length > 0
-        ? `${ordered.length}/${total} 个文件上传成功；失败：${failures.join("；")}`
-        : `${ordered.length}/${total} 个文件上传成功`,
+      formatUploadResult(ordered.length, total, failures, "个文件"),
       ordered.length > 0
     );
   };
@@ -506,7 +559,7 @@ function WorkList({
   onReorder,
 }: {
   works: Work[];
-  onDelete: (id: string) => void;
+  onDelete: (work: Work) => void;
   onTogglePin: (work: Work) => void;
   onEdit: (id: string) => void;
   onReorder: (work: Work, direction: "up" | "down") => void;
@@ -586,7 +639,7 @@ function WorkList({
                   编辑
                 </button>
                 <button
-                  onClick={() => onDelete(work.id)}
+                  onClick={() => onDelete(work)}
                   className="text-xs text-red-400/70 hover:text-red-400 transition-colors"
                 >
                   删除
@@ -697,6 +750,7 @@ function EditWorkForm({
   const [uploadTotal, setUploadTotal] = useState(0);
   const [uploadDone, setUploadDone] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [saveStep, setSaveStep] = useState("");
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const originalIds = useRef<string[]>([]);
 
@@ -756,9 +810,7 @@ function EditWorkForm({
     }))]);
     setUploading(false);
     showMsg(
-      failures.length > 0
-        ? `${ordered.length}/${total} 张新图上传成功；失败：${failures.join("；")}`
-        : `${ordered.length}/${total} 张新图上传成功`,
+      formatUploadResult(ordered.length, total, failures, "张新图"),
       ordered.length > 0
     );
   };
@@ -774,6 +826,7 @@ function EditWorkForm({
 
   const handleSave = async () => {
     setSaving(true);
+    setSaveStep("保存基础信息");
     const cover = allImages[coverIndex] || allImages[0];
     const tagArray = tags.split(",").map((t) => t.trim()).filter(Boolean);
 
@@ -785,9 +838,11 @@ function EditWorkForm({
       if (!updateRes.ok) {
         showMsg("更新作品信息失败", false);
         setSaving(false);
+        setSaveStep("");
         return;
       }
 
+      setSaveStep("清理已移除图片");
       // Delete removed images (DB + R2)
       const keptIds = allImages.filter((img) => img.source === "existing" && img.id).map((img) => img.id);
       const removedIds = originalIds.current.filter((id) => !keptIds.includes(id));
@@ -800,6 +855,7 @@ function EditWorkForm({
         }
       }
 
+      setSaveStep("同步图片顺序");
       // Wipe remaining DB rows (keep R2), then re-insert with correct sort_order
       await fetch(`/api/works/${workId}/images?keepFiles=true`, { method: "DELETE" });
       const toInsert = allImages.filter((img) => img.image_url);
@@ -811,16 +867,19 @@ function EditWorkForm({
         if (!insertRes.ok) {
           showMsg("图片列表重建失败，请手动检查", false);
           setSaving(false);
+          setSaveStep("");
           return;
         }
       }
 
       showMsg("已保存", true);
       setSaving(false);
+      setSaveStep("");
       onDone();
     } catch {
       showMsg("保存过程中出现网络错误，请重试", false);
       setSaving(false);
+      setSaveStep("");
     }
   };
 
@@ -912,7 +971,7 @@ function EditWorkForm({
         )}
       </div>
       <div className="flex gap-3">
-        <button onClick={handleSave} disabled={saving} className="px-8 py-2.5 bg-accent text-bg text-sm font-medium hover:bg-accent-dim disabled:opacity-50">{saving ? "保存中..." : "保存修改"}</button>
+        <button onClick={handleSave} disabled={saving} className="px-8 py-2.5 bg-accent text-bg text-sm font-medium hover:bg-accent-dim disabled:opacity-50">{saving ? saveStep || "保存中..." : "保存修改"}</button>
         <button onClick={onCancel} className="px-6 py-2.5 border border-border text-text-muted text-sm hover:text-text">取消</button>
       </div>
     </div>
@@ -930,6 +989,7 @@ function DetailSectionsEditor({ showMsg }: { showMsg: (text: string, ok: boolean
   const [sections, setSections] = useState<Section[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<Section | null>(null);
 
   useEffect(() => {
     fetch("/api/detail-sections")
@@ -970,13 +1030,15 @@ function DetailSectionsEditor({ showMsg }: { showMsg: (text: string, ok: boolean
     setSaving(false);
   };
 
-  const deleteSection = async (id: string) => {
-    if (!confirm("确定删除此栏目？")) return;
-    const res = await fetch(`/api/detail-sections/${id}`, { method: "DELETE" });
+  const deleteSection = async (section: Section) => {
+    const res = await fetch(`/api/detail-sections/${section.id}`, { method: "DELETE" });
     if (res.ok) {
-      setSections((prev) => prev.filter((s) => s.id !== id));
+      setSections((prev) => prev.filter((s) => s.id !== section.id));
       showMsg("已删除", true);
+    } else {
+      showMsg("删除失败", false);
     }
+    setPendingDelete(null);
   };
 
   const moveSection = async (id: string, direction: "up" | "down") => {
@@ -1024,7 +1086,7 @@ function DetailSectionsEditor({ showMsg }: { showMsg: (text: string, ok: boolean
               className="flex-1 bg-bg border border-border text-text px-3 py-1.5 text-sm focus:outline-none focus:border-accent-dim"
               placeholder="栏目标题"
             />
-            <button onClick={() => deleteSection(s.id)} className="px-2 py-1.5 text-xs text-red-400/70 hover:text-red-400">删除</button>
+            <button onClick={() => setPendingDelete(s)} className="px-2 py-1.5 text-xs text-red-400/70 hover:text-red-400">删除</button>
           </div>
           <textarea
             value={s.content}
@@ -1038,6 +1100,14 @@ function DetailSectionsEditor({ showMsg }: { showMsg: (text: string, ok: boolean
       {sections.length === 0 && (
         <p className="text-text-muted text-sm text-center py-8">暂无子栏目，点击上方按钮添加</p>
       )}
+      <ConfirmDialog
+        open={!!pendingDelete}
+        title="删除栏目"
+        body={pendingDelete ? `将删除“${pendingDelete.title}”这一段详细介绍。` : ""}
+        confirmText="删除"
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => pendingDelete && deleteSection(pendingDelete)}
+      />
     </div>
   );
 }

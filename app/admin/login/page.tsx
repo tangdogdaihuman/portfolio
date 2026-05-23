@@ -5,26 +5,33 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 function LoginForm() {
   const [key, setKey] = useState("");
-  const [error, setError] = useState(false);
+  const [error, setError] = useState("");
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(false);
+    setError("");
 
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key }),
-    });
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key }),
+      });
 
-    if (res.ok) {
-      const raw = searchParams.get("redirect");
-      const redirect = raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : "/admin";
-      router.push(redirect);
-    } else {
-      setError(true);
+      if (res.ok) {
+        const raw = searchParams.get("redirect");
+        const redirect = raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : "/admin";
+        router.push(redirect);
+        return;
+      }
+
+      if (res.status === 429) setError("尝试次数过多，请稍后再试");
+      else if (res.status === 500) setError("服务端密钥未配置");
+      else setError("密钥错误");
+    } catch {
+      setError("网络异常，请重试");
     }
   };
 
@@ -41,7 +48,7 @@ function LoginForm() {
         />
       </div>
       {error && (
-        <p className="text-red-400 text-xs">密钥错误</p>
+        <p className="text-red-400 text-xs">{error}</p>
       )}
       <button
         type="submit"

@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence, useScroll, useTransform, type MotionValue } from "framer-motion";
 import type { Work } from "@/lib/types";
@@ -298,7 +299,15 @@ export default function HomeClient({
 
         {filtered.length === 0 ? (
           <div className="text-center py-20 text-text-muted reveal">
-            {loadError ? "内容暂时加载失败，请稍后刷新" : "还没有作品"}
+            <p>{loadError ? "内容暂时加载失败，请稍后刷新" : "还没有作品"}</p>
+            {loadError && (
+              <button
+                onClick={refreshData}
+                className="mt-5 px-5 py-2 border border-border text-xs tracking-wider text-accent hover:bg-accent hover:text-bg transition-colors"
+              >
+                重试加载
+              </button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10">
@@ -408,7 +417,7 @@ export default function HomeClient({
       {/* Lightbox */}
       <AnimatePresence>
         {lightboxWork && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }} className="fixed inset-0 z-50 bg-bg flex flex-col" onClick={closeAll}>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }} className="fixed inset-0 z-[80] bg-bg flex flex-col" onClick={closeAll}>
             <div className="flex items-center justify-between px-6 py-4 border-b border-border/30 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
               <div>
                 <h2 className="font-display text-xl text-text">{lightboxWork.title}</h2>
@@ -417,7 +426,12 @@ export default function HomeClient({
                   {lightboxWork.tags.map((t) => <span key={t} className="text-xs text-text-muted/60">{t}</span>)}
                 </div>
               </div>
-              <button onClick={closeAll} className="text-text-muted hover:text-text transition-colors p-2"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
+              <div className="flex items-center gap-4">
+                <Link href={`/work/${lightboxWork.id}`} className="text-xs tracking-[0.2em] uppercase text-accent hover:text-text transition-colors">
+                  查看详情
+                </Link>
+                <button onClick={closeAll} className="text-text-muted hover:text-text transition-colors p-2"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
+              </div>
             </div>
             <div className="flex-1 overflow-y-auto px-6 py-8" onClick={(e) => e.stopPropagation()}>
               {lightboxWork.description && <p className="text-text-muted text-sm max-w-2xl mb-10 leading-relaxed">{lightboxWork.description}</p>}
@@ -432,7 +446,7 @@ export default function HomeClient({
                     onClick={(e) => { e.stopPropagation(); setFullImageIdx(i); }}
                     whileHover={{ scale: 1.02 }}
                   >
-                    <Image src={img.thumb_url} alt="" width={800} height={1000} unoptimized className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy" />
+                    <Image src={img.image_url} alt="" width={1200} height={1600} unoptimized className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy" />
                   </motion.div>
                 ))}
               </div>
@@ -444,8 +458,8 @@ export default function HomeClient({
       {/* Fullscreen with nav */}
       <AnimatePresence>
         {fullImage && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-bg/96 flex items-center justify-center" style={{ touchAction: "none" }} onClick={closeFullscreen}>
-            <button onClick={(e) => { e.stopPropagation(); closeAll(); }} className="absolute top-6 left-6 text-text-muted hover:text-text z-20 p-2 text-xs tracking-[0.3em] uppercase">Back</button>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[90] bg-bg/96 flex items-center justify-center" style={{ touchAction: "none" }} onClick={closeFullscreen}>
+            <button onClick={(e) => { e.stopPropagation(); closeAll(); }} className="absolute top-6 left-6 text-text-muted hover:text-text z-20 p-2 text-xs tracking-[0.3em] uppercase">返回作品集</button>
             <button onClick={(e) => { e.stopPropagation(); closeFullscreen(); }} className="absolute top-6 right-6 text-text-muted hover:text-text z-20 p-2"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
 
              {fullImageIdx !== null && fullImageIdx > 0 && (

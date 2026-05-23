@@ -75,8 +75,8 @@ export default async function WorkDetailPage(
   return (
     <main className="min-h-screen bg-bg text-text">
       <section className="max-w-6xl mx-auto px-4 md:px-6 py-8 md:py-14">
-        <Link href="/" className="text-xs tracking-[0.3em] uppercase text-text-muted hover:text-accent transition-colors">
-          Back
+        <Link href="/#works" className="inline-flex border border-border px-4 py-2 text-xs tracking-[0.2em] uppercase text-text-muted hover:border-accent hover:text-accent transition-colors">
+          返回作品集
         </Link>
 
         <header className="mt-10 mb-12 md:mb-16">
