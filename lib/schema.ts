@@ -54,6 +54,23 @@ export const BASE_SCHEMA_SQL = `
     version TEXT PRIMARY KEY,
     applied_at TEXT DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS audit_logs (
+    id TEXT PRIMARY KEY,
+    scope TEXT NOT NULL,
+    actor TEXT NOT NULL DEFAULT '',
+    path TEXT NOT NULL DEFAULT '',
+    method TEXT NOT NULL DEFAULT '',
+    meta TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_work_images_work_id_sort
+    ON work_images(work_id, sort_order, created_at);
+  CREATE INDEX IF NOT EXISTS idx_works_list_order
+    ON works(pinned, sort_order, created_at);
+  CREATE INDEX IF NOT EXISTS idx_audit_logs_scope_created
+    ON audit_logs(scope, created_at);
 `;
 
 export const COLUMN_PATCHES = [
@@ -66,6 +83,7 @@ export const COLUMN_PATCHES = [
 export const RECORDED_MIGRATIONS = [
   "0001_portfolio_baseline",
   "0002_work_metadata_columns",
+  "0003_indexes_and_audit_logs",
 ] as const;
 
 export async function addColumnIfMissing(
@@ -85,4 +103,3 @@ export async function recordMigration(client: Client, version: string) {
     args: [version],
   });
 }
-

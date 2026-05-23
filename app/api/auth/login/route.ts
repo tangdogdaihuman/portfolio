@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { rateLimit, requireSameOrigin } from "@/lib/api-security";
 import { setAuthCookie } from "@/lib/auth";
 import { reportApiError, reportMetric } from "@/lib/monitoring";
+import { writeAuditLog } from "@/lib/audit-log";
 
 export async function POST(req: NextRequest) {
   let body: unknown;
@@ -43,6 +44,7 @@ export async function POST(req: NextRequest) {
 
     await setAuthCookie();
     reportMetric({ scope: "auth.login.success", value: 1, path: req.nextUrl.pathname });
+    await writeAuditLog(req, "auth.login.success");
     return NextResponse.json({ ok: true });
   } catch (error) {
     reportApiError({

@@ -6,6 +6,7 @@ import db, { tagsToArray, tagsToString } from "@/lib/db";
 import { requireSameOrigin } from "@/lib/api-security";
 import { requireAuth } from "@/lib/auth";
 import { reportApiError, reportMetric } from "@/lib/monitoring";
+import { writeAuditLog } from "@/lib/audit-log";
 
 const workSchema = z.object({
   title: z.string().min(1),
@@ -59,6 +60,7 @@ export async function POST(req: NextRequest) {
     });
 
     reportMetric({ scope: "audit.work.create", value: 1, path: req.nextUrl.pathname, meta: { id } });
+    await writeAuditLog(req, "work.create", { id, title });
     revalidatePath("/");
     revalidatePath(`/work/${id}`);
     return NextResponse.json({ id }, { status: 201 });

@@ -4,6 +4,7 @@ import db from "@/lib/db";
 import { requireSameOrigin } from "@/lib/api-security";
 import { requireAuth } from "@/lib/auth";
 import { deleteFromR2 } from "@/lib/r2";
+import { writeAuditLog } from "@/lib/audit-log";
 
 export async function DELETE(
   req: NextRequest,
@@ -56,6 +57,7 @@ export async function DELETE(
   }
 
   deleteFromR2(urls).catch(() => {});
+  await writeAuditLog(req, "work.image.delete", { imageId, workId });
   revalidatePath("/");
   revalidatePath(`/work/${workId}`);
   return NextResponse.json({ ok: true });

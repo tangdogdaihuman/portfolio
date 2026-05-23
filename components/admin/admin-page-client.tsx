@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { Work } from "@/lib/types";
 import { cleanupUploadedFiles, uploadImageToR2, type UploadedFile } from "@/lib/upload-client";
 import WorkList from "@/components/admin/work-list";
@@ -593,7 +593,6 @@ function EditWorkForm({
   const [saveStep, setSaveStep] = useState("");
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [baseUpdatedAt, setBaseUpdatedAt] = useState("");
-  const originalIds = useRef<string[]>([]);
 
   useEffect(() => {
     async function load() {
@@ -612,7 +611,6 @@ function EditWorkForm({
       }
       if (imagesRes.ok) {
         const imgs = await imagesRes.json();
-        originalIds.current = imgs.map((img: Record<string, unknown>) => img.id as string).filter(Boolean);
         setAllImages(imgs.map((img: Record<string, unknown>) => ({
           id: (img.id as string) || "",
           image_url: img.image_url as string,
@@ -697,34 +695,25 @@ function EditWorkForm({
         return;
       }
 
-      setSaveStep("清理已移除图片");
-      // Delete removed images (DB + R2)
-      const keptIds = allImages.filter((img) => img.source === "existing" && img.id).map((img) => img.id);
-      const removedIds = originalIds.current.filter((id) => !keptIds.includes(id));
-      if (removedIds.length > 0) {
-        const delResults = await Promise.all(
-          removedIds.map((id) => fetch(`/api/works/images/${id}`, { method: "DELETE" }))
-        );
-        if (delResults.some((r) => !r.ok)) {
-          showMsg("部分旧图删除失败，作品已更新", true);
-        }
-      }
-
-      setSaveStep("同步图片顺序");
-      // Wipe remaining DB rows (keep R2), then re-insert with correct sort_order
-      await fetch(`/api/works/${workId}/images?keepFiles=true`, { method: "DELETE" });
+      setSaveStep("同步图片列表");
       const toInsert = allImages.filter((img) => img.image_url);
-      if (toInsert.length > 0) {
-        const insertRes = await fetch(`/api/works/${workId}/images`, {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(toInsert.map((img) => ({ imageUrl: img.image_url, thumbUrl: img.thumb_url, imageSize: img.size }))),
-        });
-        if (!insertRes.ok) {
-          showMsg("图片列表重建失败，请手动检查", false);
-          setSaving(false);
-          setSaveStep("");
-          return;
-        }
+      const replaceRes = await fetch(`/api/works/${workId}/images`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          toInsert.map((img, idx) => ({
+            imageUrl: img.image_url,
+            thumbUrl: img.thumb_url,
+            imageSize: img.size,
+            sortOrder: idx,
+          }))
+        ),
+      });
+      if (!replaceRes.ok) {
+        showMsg("图片列表同步失败，请重试", false);
+        setSaving(false);
+        setSaveStep("");
+        return;
       }
 
       showMsg("已保存", true);

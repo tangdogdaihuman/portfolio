@@ -6,6 +6,7 @@ import { requireSameOrigin } from "@/lib/api-security";
 import { requireAuth } from "@/lib/auth";
 import { deleteFromR2 } from "@/lib/r2";
 import { reportApiError, reportMetric } from "@/lib/monitoring";
+import { writeAuditLog } from "@/lib/audit-log";
 
 const updateSchema = z.object({
   title: z.string().min(1).optional(),
@@ -111,6 +112,7 @@ export async function PUT(
     }
 
     reportMetric({ scope: "audit.work.update", value: 1, path: req.nextUrl.pathname, meta: { id } });
+    await writeAuditLog(req, "work.update", { id, fields: Object.keys(parsed.data).filter((k) => k !== "expectedUpdatedAt") });
     revalidatePath("/");
     revalidatePath(`/work/${id}`);
     return NextResponse.json({ ok: true });
@@ -161,6 +163,7 @@ export async function DELETE(
     deleteFromR2(urls).catch(() => {});
 
     reportMetric({ scope: "audit.work.delete", value: 1, path: req.nextUrl.pathname, meta: { id } });
+    await writeAuditLog(req, "work.delete", { id, fileCount: urls.length });
     revalidatePath("/");
     revalidatePath(`/work/${id}`);
     return NextResponse.json({ ok: true });
