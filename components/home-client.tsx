@@ -188,14 +188,16 @@ export default function HomeClient({
       <div ref={ringRef} className="cursor-ring hidden md:block" />
 
       {/* Nav */}
-      <nav className="fixed top-0 left-0 right-0 z-[70] px-6 md:px-12 py-5 flex justify-between items-center bg-bg/50 backdrop-blur-sm">
-        <a href="#" onClick={closeAll} className="font-display text-lg tracking-wider text-text">Portfolio</a>
-        <div className="flex gap-8 text-xs tracking-[0.25em] uppercase text-text-muted">
-          <a href="#works" className="nav-link">作品</a>
-          <a href="#about" className="nav-link">关于</a>
-          <a href="#contact" className="nav-link">联系</a>
-        </div>
-      </nav>
+      {!lightboxWork && !fullImage && (
+        <nav className="fixed top-0 left-0 right-0 z-[70] px-6 md:px-12 py-5 flex justify-between items-center bg-bg/50 backdrop-blur-sm">
+          <a href="#" onClick={closeAll} className="font-display text-lg tracking-wider text-text">Portfolio</a>
+          <div className="flex gap-8 text-xs tracking-[0.25em] uppercase text-text-muted">
+            <a href="#works" className="nav-link">作品</a>
+            <a href="#about" className="nav-link">关于</a>
+            <a href="#contact" className="nav-link">联系</a>
+          </div>
+        </nav>
+      )}
 
       <BgCanvas />
 
