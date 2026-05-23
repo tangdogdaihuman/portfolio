@@ -1,9 +1,9 @@
-import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import db, { tagsToArray } from "@/lib/db";
 import type { Work, WorkImage } from "@/lib/types";
+import WorkDetailGallery from "@/components/work-detail-gallery";
 
 export const revalidate = 30;
 
@@ -71,6 +71,10 @@ export default async function WorkDetailPage(
   if (!data) notFound();
 
   const { work, images } = data;
+  const galleryImages = images.map((image) => ({
+    id: image.id,
+    image_url: image.image_url,
+  }));
 
   return (
     <main className="min-h-screen bg-bg text-text">
@@ -92,21 +96,7 @@ export default async function WorkDetailPage(
           )}
         </header>
 
-        <div className="space-y-6 md:space-y-10">
-          {images.map((image, index) => (
-            <figure key={image.id || index} className="bg-surface">
-              <Image
-                src={image.image_url}
-                alt={`${work.title} ${index + 1}`}
-                width={2400}
-                height={3000}
-                unoptimized
-                className="w-full h-auto object-contain"
-                priority={index === 0}
-              />
-            </figure>
-          ))}
-        </div>
+        <WorkDetailGallery workTitle={work.title} images={galleryImages} />
       </section>
     </main>
   );
