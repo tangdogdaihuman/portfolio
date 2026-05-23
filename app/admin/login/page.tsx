@@ -21,7 +21,7 @@ function LoginForm() {
 
     if (res.ok) {
       const raw = searchParams.get("redirect");
-      const redirect = raw && raw.startsWith("/") ? raw : "/admin";
+      const redirect = raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : "/admin";
       router.push(redirect);
     } else {
       setError(true);

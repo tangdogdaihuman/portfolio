@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence, useScroll, useTransform, type MotionValue } from "framer-motion";
 import type { Work } from "@/lib/types";
@@ -305,12 +306,14 @@ export default function HomeClient({
                   data-hover
                 >
                   <div className="overflow-hidden">
-                    <img
+                    <Image
                       src={work.thumb_url}
                       alt={work.title}
-                      className="max-w-full max-h-[32rem]"
+                      width={1200}
+                      height={1600}
+                      unoptimized
+                      className="max-w-full max-h-[32rem] w-auto h-auto"
                       loading="lazy"
-                      decoding="async"
                     />
                   </div>
                   <div className="card-meta">
@@ -418,7 +421,7 @@ export default function HomeClient({
                     onClick={(e) => { e.stopPropagation(); setFullImageIdx(i); }}
                     whileHover={{ scale: 1.02 }}
                   >
-                    <img src={img.thumb_url} alt="" width={800} height={1000} className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy" />
+                    <Image src={img.thumb_url} alt="" width={800} height={1000} unoptimized className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy" />
                   </motion.div>
                 ))}
               </div>

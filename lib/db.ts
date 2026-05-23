@@ -23,24 +23,27 @@ async function runMigrations() {
   if (_migrationPromise) return _migrationPromise;
   _migrationPromise = (async () => {
     const client = getClient();
-    try { await client.execute("ALTER TABLE works ADD COLUMN work_date TEXT DEFAULT ''"); } catch (e) { console.error("migration: works.work_date", e); }
-    try { await client.execute("ALTER TABLE works ADD COLUMN image_size INTEGER DEFAULT 0"); } catch (e) { console.error("migration: works.image_size", e); }
-    try { await client.execute("ALTER TABLE works ADD COLUMN size_weight REAL DEFAULT 1.0"); } catch (e) { console.error("migration: works.size_weight", e); }
-    try { await client.execute(`CREATE TABLE IF NOT EXISTS work_images (id TEXT PRIMARY KEY, work_id TEXT NOT NULL, image_url TEXT NOT NULL, thumb_url TEXT NOT NULL, sort_order INTEGER DEFAULT 0, image_size INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')))`); } catch (e) { console.error("migration: work_images", e); }
-    try { await client.execute("ALTER TABLE work_images ADD COLUMN image_size INTEGER DEFAULT 0"); } catch (e) { console.error("migration: work_images.image_size", e); }
-    try { await client.execute(`CREATE TABLE IF NOT EXISTS intro (id INTEGER PRIMARY KEY DEFAULT 1 CHECK(id=1), content TEXT NOT NULL DEFAULT '', updated_at TEXT DEFAULT (datetime('now')))`); } catch (e) { console.error("migration: intro", e); }
-    try { await client.execute("INSERT OR IGNORE INTO intro (id, content) VALUES (1, '')"); } catch (e) { console.error("migration: intro seed", e); }
-    try { await client.execute(`CREATE TABLE IF NOT EXISTS details (id INTEGER PRIMARY KEY DEFAULT 1 CHECK(id=1), content TEXT NOT NULL DEFAULT '', updated_at TEXT DEFAULT (datetime('now')))`); } catch (e) { console.error("migration: details", e); }
-    try { await client.execute("INSERT OR IGNORE INTO details (id, content) VALUES (1, '')"); } catch (e) { console.error("migration: details seed", e); }
-    try { await client.execute(`CREATE TABLE IF NOT EXISTS detail_sections (id TEXT PRIMARY KEY, title TEXT NOT NULL DEFAULT '', content TEXT NOT NULL DEFAULT '', sort_order INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')))`); } catch (e) { console.error("migration: detail_sections", e); }
+    await createSchema(client);
+    await addColumnIfMissing(client, "works", "work_date", "TEXT DEFAULT ''");
+    await addColumnIfMissing(client, "works", "image_size", "INTEGER DEFAULT 0");
+    await addColumnIfMissing(client, "works", "size_weight", "REAL DEFAULT 1.0");
+    await addColumnIfMissing(client, "work_images", "image_size", "INTEGER DEFAULT 0");
     _migrated = true;
   })();
-  return _migrationPromise;
+  try {
+    await _migrationPromise;
+  } catch (error) {
+    _migrationPromise = null;
+    throw error;
+  }
 }
 
 export function initializeDb() {
-  const client = getClient();
-  return client.executeMultiple(`
+  return runMigrations();
+}
+
+async function createSchema(client: Client) {
+  await client.executeMultiple(`
     CREATE TABLE IF NOT EXISTS works (
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL,
@@ -57,10 +60,6 @@ export function initializeDb() {
       updated_at TEXT DEFAULT (datetime('now'))
     );
 
-    ALTER TABLE works ADD COLUMN work_date TEXT DEFAULT '';
-    ALTER TABLE works ADD COLUMN image_size INTEGER DEFAULT 0;
-    ALTER TABLE works ADD COLUMN size_weight REAL DEFAULT 1.0;
-
     CREATE TABLE IF NOT EXISTS work_images (
       id TEXT PRIMARY KEY,
       work_id TEXT NOT NULL,
@@ -70,8 +69,6 @@ export function initializeDb() {
       image_size INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now'))
     );
-
-    ALTER TABLE work_images ADD COLUMN image_size INTEGER DEFAULT 0;
 
     CREATE TABLE IF NOT EXISTS intro (
       id INTEGER PRIMARY KEY DEFAULT 1 CHECK(id=1),
@@ -100,15 +97,26 @@ export function initializeDb() {
   `);
 }
 
+async function addColumnIfMissing(
+  client: Client,
+  table: string,
+  column: string,
+  definition: string
+) {
+  const columns = await client.execute(`PRAGMA table_info(${table})`);
+  if (columns.rows.some((row) => row.name === column)) return;
+  await client.execute(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+}
+
 const db = new Proxy({} as Client, {
   get(_target, prop) {
     const client = getClient();
-    if (!_migrated) {
-      runMigrations().catch(() => {});
-    }
     const value = (client as unknown as Record<string | symbol, unknown>)[prop];
     if (typeof value === "function") {
-      return value.bind(client);
+      return async (...args: unknown[]) => {
+        await runMigrations();
+        return value.apply(client, args);
+      };
     }
     return value;
   },
@@ -117,7 +125,7 @@ const db = new Proxy({} as Client, {
 export default db;
 
 export async function ensureMigrated() {
-  await runMigrations().catch(() => {});
+  await runMigrations();
 }
 
 export function tagsToArray(s: unknown): string[] {

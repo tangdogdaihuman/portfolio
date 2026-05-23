@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { Work } from "@/lib/types";
 import { uploadImageToR2, type UploadedFile } from "@/lib/upload-client";
@@ -64,9 +65,8 @@ export default function AdminPage() {
     const newB = a;
 
     const updated = [...works];
-    const temp = updated[idx];
-    updated[idx] = updated[swapIdx];
-    updated[swapIdx] = temp;
+    updated[idx] = { ...other, sort_order: newB };
+    updated[swapIdx] = { ...work, sort_order: newA };
     setWorks(updated);
 
     await Promise.all([
@@ -256,7 +256,7 @@ function AddWorkForm({
       uploadTotal: 0,
       uploadDone: 0,
     });
-    showMsg(`${results.length}/${total} 个文件上传成功`, results.length > 0);
+    showMsg(`${ordered.length}/${total} 个文件上传成功`, ordered.length > 0);
   };
 
   const removeFile = (index: number) => {
@@ -396,9 +396,12 @@ function AddWorkForm({
                     i === coverIndex ? "ring-2 ring-accent" : ""
                   }`}
                 >
-                  <img
+                  <Image
                     src={f.thumbUrl}
                     alt=""
+                    width={80}
+                    height={64}
+                    unoptimized
                     className="w-20 h-16 object-cover border border-border"
                   />
                   {i === coverIndex && (
@@ -508,9 +511,12 @@ function WorkList({
             className="bg-bg border border-border p-4"
           >
             <div className="flex items-start gap-4">
-              <img
+              <Image
                 src={work.thumb_url}
                 alt={work.title}
+                width={80}
+                height={64}
+                unoptimized
                 className="w-20 h-16 object-cover flex-shrink-0"
               />
               <div className="flex-1 min-w-0">
@@ -731,7 +737,7 @@ function EditWorkForm({
       id: "", image_url: r.imageUrl, thumb_url: r.thumbUrl, source: "new" as const, size: r.size,
     }))]);
     setUploading(false);
-    showMsg(`${results.length}/${total} 张新图上传成功`, results.length > 0);
+    showMsg(`${ordered.length}/${total} 张新图上传成功`, ordered.length > 0);
   };
 
   const removeImage = (i: number) => {
@@ -852,7 +858,7 @@ function EditWorkForm({
               onClick={() => setCoverIndex(i)}
               className={`relative inline-block cursor-grab active:cursor-grabbing group ${i === coverIndex ? "ring-2 ring-accent" : ""}`}
             >
-              <img src={img.thumb_url} alt="" className="w-20 h-16 object-cover border border-border" />
+              <Image src={img.thumb_url} alt="" width={80} height={64} unoptimized className="w-20 h-16 object-cover border border-border" />
               {i === coverIndex && <span className="absolute bottom-0.5 left-0.5 text-[9px] bg-accent text-bg px-1">封面</span>}
               <button onClick={(e) => { e.stopPropagation(); removeImage(i); }} className="absolute -top-1.5 -right-1.5 bg-bg border border-border text-text-muted text-[10px] w-4 h-4 flex items-center justify-center hover:text-red-400">x</button>
             </div>
@@ -954,14 +960,15 @@ function DetailSectionsEditor({ showMsg }: { showMsg: (text: string, ok: boolean
 
     const updated = [...sections];
     [updated[idx], updated[swapIdx]] = [updated[swapIdx], updated[idx]];
-    setSections(updated);
+    const reordered = updated.map((section, index) => ({ ...section, sort_order: index }));
+    setSections(reordered);
 
     await Promise.all([
-      fetch(`/api/detail-sections/${updated[idx].id}`, {
+      fetch(`/api/detail-sections/${reordered[idx].id}`, {
         method: "PUT", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sortOrder: idx }),
       }),
-      fetch(`/api/detail-sections/${updated[swapIdx].id}`, {
+      fetch(`/api/detail-sections/${reordered[swapIdx].id}`, {
         method: "PUT", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sortOrder: swapIdx }),
       }),
