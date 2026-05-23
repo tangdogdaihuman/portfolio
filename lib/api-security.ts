@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const buckets = new Map<string, { count: number; resetAt: number }>();
+let lastCleanupAt = 0;
+const CLEANUP_INTERVAL_MS = 60_000;
+
+function cleanupExpiredBuckets(now: number) {
+  if (now - lastCleanupAt < CLEANUP_INTERVAL_MS) return;
+  lastCleanupAt = now;
+
+  for (const [bucketKey, bucket] of buckets) {
+    if (bucket.resetAt <= now) {
+      buckets.delete(bucketKey);
+    }
+  }
+}
 
 export function requireSameOrigin(req: NextRequest): NextResponse | null {
   const origin = req.headers.get("origin");
@@ -23,6 +36,7 @@ export function rateLimit(
   const ip = forwarded || req.headers.get("x-real-ip") || "unknown";
   const bucketKey = `${key}:${ip}`;
   const now = Date.now();
+  cleanupExpiredBuckets(now);
   const bucket = buckets.get(bucketKey);
 
   if (!bucket || bucket.resetAt <= now) {

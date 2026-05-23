@@ -2,7 +2,9 @@ export interface UploadedFile {
   imageUrl: string;
   thumbUrl: string;
   size: number;
+  // Kept for compatibility: filename without extension.
   fileName: string;
+  originalFileName: string;
 }
 
 async function readError(res: Response, fallback: string): Promise<string> {
@@ -57,5 +59,6 @@ export async function uploadImageToR2(file: File): Promise<UploadedFile> {
     thumbUrl: data.thumbUrl,
     size: file.size,
     fileName: file.name.replace(/\.[^.]+$/, ""),
+    originalFileName: file.name,
   };
 }
