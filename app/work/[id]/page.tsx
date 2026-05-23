@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -8,37 +9,41 @@ import WorkDetailGallery from "@/components/work-detail-gallery";
 export const revalidate = 30;
 
 async function getWork(id: string): Promise<{ work: Work; images: WorkImage[] } | null> {
-  const result = await db.execute({
-    sql: "SELECT * FROM works WHERE id = ?",
-    args: [id],
-  });
+  const load = unstable_cache(async () => {
+    const result = await db.execute({
+      sql: "SELECT * FROM works WHERE id = ?",
+      args: [id],
+    });
 
-  if (result.rows.length === 0) return null;
-  const row = result.rows[0];
-  const work = {
-    ...row,
-    tags: tagsToArray(row.tags),
-    pinned: Boolean(row.pinned),
-  } as unknown as Work;
+    if (result.rows.length === 0) return null;
+    const row = result.rows[0];
+    const work = {
+      ...row,
+      tags: tagsToArray(row.tags),
+      pinned: Boolean(row.pinned),
+    } as unknown as Work;
 
-  const imageResult = await db.execute({
-    sql: "SELECT * FROM work_images WHERE work_id = ? ORDER BY sort_order ASC, created_at ASC",
-    args: [id],
-  });
+    const imageResult = await db.execute({
+      sql: "SELECT * FROM work_images WHERE work_id = ? ORDER BY sort_order ASC, created_at ASC",
+      args: [id],
+    });
 
-  const images = imageResult.rows.length > 0
-    ? imageResult.rows as unknown as WorkImage[]
-    : [{
-        id: "",
-        work_id: id,
-        image_url: work.image_url,
-        thumb_url: work.thumb_url,
-        sort_order: 0,
-        image_size: work.image_size || 0,
-        created_at: work.created_at,
-      }];
+    const images = imageResult.rows.length > 0
+      ? imageResult.rows as unknown as WorkImage[]
+      : [{
+          id: "",
+          work_id: id,
+          image_url: work.image_url,
+          thumb_url: work.thumb_url,
+          sort_order: 0,
+          image_size: work.image_size || 0,
+          created_at: work.created_at,
+        }];
 
-  return { work, images };
+    return { work, images };
+  }, [`work-data:${id}`], { revalidate: 30, tags: ["works", `work:${id}`] });
+
+  return load();
 }
 
 export async function generateMetadata(

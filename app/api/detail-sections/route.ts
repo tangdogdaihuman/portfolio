@@ -1,9 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
 import { createId } from "@paralleldrive/cuid2";
 import db, { ensureMigrated } from "@/lib/db";
 import { requireSameOrigin } from "@/lib/api-security";
 import { requireAuth } from "@/lib/auth";
+import { fail, ok } from "@/lib/api-response";
 
 const sectionSchema = z.object({
   title: z.string().min(1),
@@ -16,7 +18,7 @@ export async function GET() {
   const result = await db.execute(
     "SELECT id, title, content, sort_order, updated_at FROM detail_sections ORDER BY sort_order ASC, created_at ASC"
   );
-  return NextResponse.json(result.rows);
+  return ok(result.rows);
 }
 
 export async function POST(req: NextRequest) {
@@ -29,7 +31,7 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const parsed = sectionSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    return fail("BAD_REQUEST", "Invalid detail section payload", 400, parsed.error.flatten());
   }
 
   const id = createId();
@@ -45,5 +47,9 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  return NextResponse.json({ id });
+  revalidatePath("/");
+  revalidateTag("detail-sections", "max");
+  return ok({ id }, 201, "Created");
 }
+
+

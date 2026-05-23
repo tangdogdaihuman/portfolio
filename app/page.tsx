@@ -1,10 +1,11 @@
+import { unstable_cache } from "next/cache";
 import type { Work, Section } from "@/lib/types";
 import db, { tagsToArray } from "@/lib/db";
 import HomeClient from "@/components/home-client";
 
 export const revalidate = 30;
 
-async function getData() {
+const getData = unstable_cache(async () => {
   try {
     const [introRes, worksRes, sectionsRes] = await Promise.all([
       db.execute("SELECT content FROM intro WHERE id = 1"),
@@ -35,7 +36,7 @@ async function getData() {
   } catch {
     return { intro: "", works: [], sections: [], loadError: true };
   }
-}
+}, ["home-data"], { revalidate: 30, tags: ["works", "intro", "detail-sections"] });
 
 export default async function HomePage() {
   const { intro, works, sections, loadError } = await getData();

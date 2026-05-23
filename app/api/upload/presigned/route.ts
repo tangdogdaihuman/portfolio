@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { createId } from "@paralleldrive/cuid2";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
@@ -7,6 +7,7 @@ import { requireAuth } from "@/lib/auth";
 import { r2, R2_BUCKET, publicUrl } from "@/lib/r2";
 import { reportApiError, reportMetric } from "@/lib/monitoring";
 import { getIdempotencyStore } from "@/lib/idempotency-store";
+import { fail, ok } from "@/lib/api-response";
 
 const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
 
@@ -26,11 +27,11 @@ export async function POST(req: NextRequest) {
       ? getIdempotencyStore().get<{ uploadUrl: string; originalKey: string; imageUrl: string }>(cacheKey)
       : null;
     if (cached) {
-      return NextResponse.json(cached);
+      return ok(cached);
     }
     if (!ALLOWED.has(contentType)) {
       reportMetric({ scope: "upload.presigned.invalid_type", value: 1, path: req.nextUrl.pathname, meta: { contentType } });
-      return NextResponse.json({ error: "Invalid image type" }, { status: 400 });
+      return fail("BAD_REQUEST", "Invalid image type", 400);
     }
     const ext = contentType.split("/")[1] || "png";
     const id = createId();
@@ -54,13 +55,14 @@ export async function POST(req: NextRequest) {
     if (cacheKey) {
       getIdempotencyStore().set(cacheKey, payload, 10 * 60 * 1000);
     }
-    return NextResponse.json(payload);
+    return ok(payload);
   } catch (error) {
     reportApiError({
       scope: "upload.presigned.exception",
       message: error instanceof Error ? error.message : "Unknown error",
       path: req.nextUrl.pathname,
     });
-    return NextResponse.json({ error: "创建上传链接失败" }, { status: 500 });
+    return fail("SERVER_ERROR", "创建上传链接失败", 500);
   }
 }
+

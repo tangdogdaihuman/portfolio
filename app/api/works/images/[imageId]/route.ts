@@ -1,10 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { NextRequest } from "next/server";
+import { revalidatePath, revalidateTag } from "next/cache";
 import db from "@/lib/db";
 import { requireSameOrigin } from "@/lib/api-security";
 import { requireAuth } from "@/lib/auth";
-import { deleteFromR2 } from "@/lib/r2";
 import { writeAuditLog } from "@/lib/audit-log";
+import { fail, ok } from "@/lib/api-response";
+import { enqueueR2Delete, processR2DeleteJobs } from "@/lib/r2-delete-jobs";
 
 export async function DELETE(
   req: NextRequest,
@@ -15,6 +16,7 @@ export async function DELETE(
 
   const unauth = await requireAuth(req);
   if (unauth) return unauth;
+  await processR2DeleteJobs();
 
   const { imageId } = await params;
   const result = await db.execute({
@@ -22,7 +24,7 @@ export async function DELETE(
     args: [imageId],
   });
   if (result.rows.length === 0) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return fail("NOT_FOUND", "Image not found", 404);
   }
   const row = result.rows[0];
   const urls: string[] = [];
@@ -56,9 +58,13 @@ export async function DELETE(
     }
   }
 
-  deleteFromR2(urls).catch(() => {});
+  await enqueueR2Delete(urls);
   await writeAuditLog(req, "work.image.delete", { imageId, workId });
   revalidatePath("/");
   revalidatePath(`/work/${workId}`);
-  return NextResponse.json({ ok: true });
+  revalidateTag("works", "max");
+  revalidateTag(`work:${workId}`, "max");
+  return ok({ deleted: true });
 }
+
+

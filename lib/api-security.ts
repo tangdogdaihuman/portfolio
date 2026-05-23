@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRateLimitStore } from "@/lib/rate-limit-store";
+import { fail } from "@/lib/api-response";
 
 export function requireSameOrigin(req: NextRequest): NextResponse | null {
   const origin = req.headers.get("origin");
   if (!origin) return null;
 
   if (origin !== new URL(req.url).origin) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return fail("FORBIDDEN", "Origin mismatch", 403);
   }
 
   return null;
@@ -24,7 +25,7 @@ export async function rateLimit(
   const now = Date.now();
   const bucket = await getRateLimitStore().increment(bucketKey, windowMs, now);
   if (bucket.count > limit) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    return fail("RATE_LIMITED", "Too many requests", 429);
   }
 
   return null;

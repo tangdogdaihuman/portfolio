@@ -1,12 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { NextRequest } from "next/server";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
 import db, { tagsToArray, tagsToString } from "@/lib/db";
 import { requireSameOrigin } from "@/lib/api-security";
 import { requireAuth } from "@/lib/auth";
-import { deleteFromR2 } from "@/lib/r2";
 import { reportApiError, reportMetric } from "@/lib/monitoring";
 import { writeAuditLog } from "@/lib/audit-log";
+import { fail, ok } from "@/lib/api-response";
+import { enqueueR2Delete, processR2DeleteJobs } from "@/lib/r2-delete-jobs";
 
 const updateSchema = z.object({
   title: z.string().min(1).optional(),
@@ -32,7 +33,7 @@ export async function GET(
   });
 
   if (result.rows.length === 0) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return fail("NOT_FOUND", "Work not found", 404);
   }
 
   const row = result.rows[0];
@@ -41,7 +42,7 @@ export async function GET(
     tags: tagsToArray(row.tags),
     pinned: Boolean(row.pinned),
   };
-  return NextResponse.json(work);
+  return ok(work);
 }
 
 export async function PUT(
@@ -54,12 +55,13 @@ export async function PUT(
 
     const unauth = await requireAuth(req);
     if (unauth) return unauth;
+    await processR2DeleteJobs();
 
     const { id } = await params;
     const body = await req.json();
     const parsed = updateSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+      return fail("BAD_REQUEST", "Invalid update payload", 400, parsed.error.flatten());
     }
 
     const updates: string[] = [];
@@ -83,7 +85,7 @@ export async function PUT(
     }
 
     if (updates.length === 0) {
-      return NextResponse.json({ error: "No fields to update" }, { status: 400 });
+      return fail("BAD_REQUEST", "No fields to update", 400);
     }
 
     updates.push("updated_at = datetime('now')");
@@ -103,26 +105,28 @@ export async function PUT(
         args: [id],
       });
       if (exists.rows.length === 0) {
-        return NextResponse.json({ error: "Not found" }, { status: 404 });
+        return fail("NOT_FOUND", "Work not found", 404);
       }
       if (expectedUpdatedAt) {
-        return NextResponse.json({ error: "Conflict: work updated by another session" }, { status: 409 });
+        return fail("CONFLICT", "Conflict: work updated by another session", 409);
       }
-      return NextResponse.json({ error: "Not updated" }, { status: 400 });
+      return fail("BAD_REQUEST", "Not updated", 400);
     }
 
     reportMetric({ scope: "audit.work.update", value: 1, path: req.nextUrl.pathname, meta: { id } });
     await writeAuditLog(req, "work.update", { id, fields: Object.keys(parsed.data).filter((k) => k !== "expectedUpdatedAt") });
     revalidatePath("/");
     revalidatePath(`/work/${id}`);
-    return NextResponse.json({ ok: true });
+    revalidateTag("works", "max");
+    revalidateTag(`work:${id}`, "max");
+    return ok({ updated: true });
   } catch (error) {
     reportApiError({
       scope: "works.update.exception",
       message: error instanceof Error ? error.message : "Unknown error",
       path: req.nextUrl.pathname,
     });
-    return NextResponse.json({ error: "更新作品失败" }, { status: 500 });
+    return fail("SERVER_ERROR", "更新作品失败", 500);
   }
 }
 
@@ -160,19 +164,23 @@ export async function DELETE(
     await db.execute({ sql: "DELETE FROM work_images WHERE work_id = ?", args: [id] });
     await db.execute({ sql: "DELETE FROM works WHERE id = ?", args: [id] });
 
-    deleteFromR2(urls).catch(() => {});
+    await enqueueR2Delete(urls);
 
     reportMetric({ scope: "audit.work.delete", value: 1, path: req.nextUrl.pathname, meta: { id } });
     await writeAuditLog(req, "work.delete", { id, fileCount: urls.length });
     revalidatePath("/");
     revalidatePath(`/work/${id}`);
-    return NextResponse.json({ ok: true });
+    revalidateTag("works", "max");
+    revalidateTag(`work:${id}`, "max");
+    return ok({ deleted: true });
   } catch (error) {
     reportApiError({
       scope: "works.delete.exception",
       message: error instanceof Error ? error.message : "Unknown error",
       path: req.nextUrl.pathname,
     });
-    return NextResponse.json({ error: "删除作品失败" }, { status: 500 });
+    return fail("SERVER_ERROR", "删除作品失败", 500);
   }
 }
+
+

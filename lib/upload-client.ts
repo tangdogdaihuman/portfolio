@@ -17,6 +17,7 @@ function createRequestId() {
 async function readError(res: Response, fallback: string): Promise<string> {
   try {
     const data = await res.json();
+    if (typeof data.message === "string") return data.message;
     return typeof data.error === "string" ? data.error : fallback;
   } catch {
     return fallback;

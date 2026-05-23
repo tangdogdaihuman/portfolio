@@ -1,8 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
 import db from "@/lib/db";
 import { requireSameOrigin } from "@/lib/api-security";
 import { requireAuth } from "@/lib/auth";
+import { fail, ok } from "@/lib/api-response";
 
 const introSchema = z.object({
   content: z.string(),
@@ -11,7 +13,7 @@ const introSchema = z.object({
 export async function GET() {
   const result = await db.execute("SELECT content, updated_at FROM intro WHERE id = 1");
   const row = result.rows[0];
-  return NextResponse.json({
+  return ok({
     content: row?.content || "",
     updatedAt: row?.updated_at || "",
   });
@@ -27,7 +29,7 @@ export async function PUT(req: NextRequest) {
   const body = await req.json();
   const parsed = introSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    return fail("BAD_REQUEST", "Invalid intro payload", 400, parsed.error.flatten());
   }
 
   await db.execute({
@@ -35,5 +37,9 @@ export async function PUT(req: NextRequest) {
     args: [parsed.data.content],
   });
 
-  return NextResponse.json({ ok: true });
+  revalidatePath("/");
+  revalidateTag("intro", "max");
+  return ok({ updated: true });
 }
+
+

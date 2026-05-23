@@ -71,6 +71,18 @@ export const BASE_SCHEMA_SQL = `
     ON works(pinned, sort_order, created_at);
   CREATE INDEX IF NOT EXISTS idx_audit_logs_scope_created
     ON audit_logs(scope, created_at);
+
+  CREATE TABLE IF NOT EXISTS r2_delete_jobs (
+    id TEXT PRIMARY KEY,
+    urls_json TEXT NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0,
+    next_run_at TEXT NOT NULL DEFAULT (datetime('now')),
+    last_error TEXT NOT NULL DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_r2_delete_jobs_due
+    ON r2_delete_jobs(next_run_at, attempts);
 `;
 
 export const COLUMN_PATCHES = [
@@ -84,6 +96,7 @@ export const RECORDED_MIGRATIONS = [
   "0001_portfolio_baseline",
   "0002_work_metadata_columns",
   "0003_indexes_and_audit_logs",
+  "0004_r2_delete_retry_jobs",
 ] as const;
 
 export async function addColumnIfMissing(

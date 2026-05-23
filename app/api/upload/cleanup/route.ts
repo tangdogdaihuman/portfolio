@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { z } from "zod";
 import { requireSameOrigin } from "@/lib/api-security";
 import { requireAuth } from "@/lib/auth";
-import { deleteFromR2 } from "@/lib/r2";
+import { fail, ok } from "@/lib/api-response";
+import { enqueueR2Delete, processR2DeleteJobs } from "@/lib/r2-delete-jobs";
 
 const cleanupSchema = z.object({
   urls: z.array(z.string().url()).max(50),
@@ -14,12 +15,14 @@ export async function POST(req: NextRequest) {
 
   const unauth = await requireAuth(req);
   if (unauth) return unauth;
+  await processR2DeleteJobs();
 
   const parsed = cleanupSchema.safeParse(await req.json());
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    return fail("BAD_REQUEST", "Invalid cleanup payload", 400, parsed.error.flatten());
   }
 
-  await deleteFromR2(parsed.data.urls);
-  return NextResponse.json({ ok: true });
+  await enqueueR2Delete(parsed.data.urls);
+  return ok({ cleaned: parsed.data.urls.length });
 }
+

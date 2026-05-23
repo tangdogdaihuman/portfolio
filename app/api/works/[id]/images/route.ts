@@ -1,12 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { NextRequest } from "next/server";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { createId } from "@paralleldrive/cuid2";
 import { z } from "zod";
 import db from "@/lib/db";
 import { requireSameOrigin } from "@/lib/api-security";
 import { requireAuth } from "@/lib/auth";
-import { deleteFromR2 } from "@/lib/r2";
 import { writeAuditLog } from "@/lib/audit-log";
+import { ok } from "@/lib/api-response";
+import { enqueueR2Delete, processR2DeleteJobs } from "@/lib/r2-delete-jobs";
 
 const addImageSchema = z.object({
   imageUrl: z.string().url(),
@@ -24,14 +25,14 @@ export async function GET(
     sql: "SELECT * FROM work_images WHERE work_id = ? ORDER BY sort_order ASC, created_at ASC",
     args: [id],
   });
-  if (result.rows.length > 0) return NextResponse.json(result.rows);
+  if (result.rows.length > 0) return ok(result.rows);
 
   const work = await db.execute({
     sql: "SELECT image_url, thumb_url FROM works WHERE id = ?",
     args: [id],
   });
   if (work.rows.length > 0 && work.rows[0].image_url) {
-    return NextResponse.json([{
+    return ok([{
       id: "",
       work_id: id,
       image_url: work.rows[0].image_url,
@@ -41,7 +42,7 @@ export async function GET(
       created_at: "",
     }]);
   }
-  return NextResponse.json([]);
+  return ok([]);
 }
 
 export async function POST(
@@ -53,6 +54,7 @@ export async function POST(
 
   const unauth = await requireAuth(req);
   if (unauth) return unauth;
+  await processR2DeleteJobs();
 
   const { id: workId } = await params;
   const body = await req.json();
@@ -95,7 +97,9 @@ export async function POST(
   await writeAuditLog(req, "work.images.add", { workId, added: valid.length });
   revalidatePath("/");
   revalidatePath(`/work/${workId}`);
-  return NextResponse.json({ ids: valid.map((v) => v.id) }, { status: 201 });
+  revalidateTag("works", "max");
+  revalidateTag(`work:${workId}`, "max");
+  return ok({ ids: valid.map((v) => v.id) }, 201, "Created");
 }
 
 export async function DELETE(
@@ -107,6 +111,7 @@ export async function DELETE(
 
   const unauth = await requireAuth(req);
   if (unauth) return unauth;
+  await processR2DeleteJobs();
 
   const { id: workId } = await params;
   const keepFiles = new URL(req.url).searchParams.get("keepFiles") === "true";
@@ -121,12 +126,14 @@ export async function DELETE(
   }
   await db.execute({ sql: "DELETE FROM work_images WHERE work_id = ?", args: [workId] });
   if (!keepFiles) {
-    deleteFromR2(urls).catch(() => {});
+    await enqueueR2Delete(urls);
   }
   await writeAuditLog(req, "work.images.clear", { workId, removed: images.rows.length, keepFiles });
   revalidatePath("/");
   revalidatePath(`/work/${workId}`);
-  return NextResponse.json({ ok: true });
+  revalidateTag("works", "max");
+  revalidateTag(`work:${workId}`, "max");
+  return ok({ cleared: true });
 }
 
 export async function PUT(
@@ -138,6 +145,7 @@ export async function PUT(
 
   const unauth = await requireAuth(req);
   if (unauth) return unauth;
+  await processR2DeleteJobs();
 
   const { id: workId } = await params;
   const body = await req.json();
@@ -188,7 +196,7 @@ export async function PUT(
   });
 
   if (removedUrls.length > 0) {
-    deleteFromR2(removedUrls).catch(() => {});
+    await enqueueR2Delete(removedUrls);
   }
 
   await writeAuditLog(req, "work.images.replace", {
@@ -199,5 +207,9 @@ export async function PUT(
   });
   revalidatePath("/");
   revalidatePath(`/work/${workId}`);
-  return NextResponse.json({ ok: true, count: valid.length });
+  revalidateTag("works", "max");
+  revalidateTag(`work:${workId}`, "max");
+  return ok({ replaced: true, count: valid.length });
 }
+
+

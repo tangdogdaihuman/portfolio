@@ -29,6 +29,7 @@ export default function HomeClient({
   const [intro, setIntro] = useState(initialIntro);
   const [detailSections, setDetailSections] = useState<Section[]>(initialSections);
   const [loadError, setLoadError] = useState(initialLoadError);
+  const [loadingWorks, setLoadingWorks] = useState(initialWorks.length === 0 && !initialLoadError);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [works, setWorks] = useState<Work[]>(initialWorks);
   const [activeTag, setActiveTag] = useState<string | null>(null);
@@ -56,6 +57,8 @@ export default function HomeClient({
       setLoadError(false);
     } catch {
       setLoadError(true);
+    } finally {
+      setLoadingWorks(false);
     }
   }, []);
 
@@ -290,7 +293,23 @@ export default function HomeClient({
           </div>
         )}
 
-        {filtered.length === 0 ? (
+        {loadingWorks ? (
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10">
+            {Array.from({ length: 4 }).map((_, i) => {
+              const colSpan = i % 3 === 0 ? "md:col-span-8" : i % 3 === 1 ? "md:col-span-5" : "md:col-span-7";
+              return (
+                <div key={`skeleton-${i}`} className={`reveal ${colSpan}`}>
+                  <div className="bg-surface h-64 md:h-80 animate-pulse" />
+                  <div className="mt-3 space-y-2">
+                    <div className="h-3 w-28 bg-surface animate-pulse" />
+                    <div className="h-6 w-2/3 bg-surface animate-pulse" />
+                    <div className="h-3 w-1/2 bg-surface animate-pulse" />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="text-center py-20 text-text-muted reveal">
             <p>{loadError ? "内容暂时加载失败，请稍后刷新" : "还没有作品"}</p>
             {loadError && (

@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
+import { fail } from "@/lib/api-response";
 
 const COOKIE_NAME = "admin_token";
 const MAX_AGE = 60 * 60 * 24 * 7;
@@ -55,5 +56,5 @@ export async function verifyAuthRequest(req: NextRequest): Promise<boolean> {
 
 export async function requireAuth(req: NextRequest): Promise<NextResponse | null> {
   if (await verifyAuthRequest(req)) return null;
-  return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  return fail("UNAUTHORIZED", "Unauthorized", 401);
 }
