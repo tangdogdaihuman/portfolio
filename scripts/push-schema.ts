@@ -1,5 +1,12 @@
-import { createClient, type Client } from "@libsql/client";
+import { createClient } from "@libsql/client";
 import * as dotenv from "dotenv";
+import {
+  BASE_SCHEMA_SQL,
+  COLUMN_PATCHES,
+  RECORDED_MIGRATIONS,
+  addColumnIfMissing,
+  recordMigration,
+} from "../lib/schema";
 
 dotenv.config({ path: ".env.local" });
 
@@ -9,68 +16,13 @@ async function main() {
     authToken: process.env.DATABASE_AUTH_TOKEN,
   });
 
-  await client.executeMultiple(`
-    CREATE TABLE IF NOT EXISTS works (
-      id TEXT PRIMARY KEY,
-      title TEXT NOT NULL,
-      description TEXT NOT NULL,
-      tags TEXT DEFAULT '',
-      image_url TEXT NOT NULL,
-      thumb_url TEXT NOT NULL,
-      pinned INTEGER DEFAULT 0,
-      sort_order INTEGER DEFAULT 0,
-      work_date TEXT DEFAULT '',
-      image_size INTEGER DEFAULT 0,
-      size_weight REAL DEFAULT 1.0,
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now'))
-    );
-
-    CREATE TABLE IF NOT EXISTS work_images (
-      id TEXT PRIMARY KEY,
-      work_id TEXT NOT NULL,
-      image_url TEXT NOT NULL,
-      thumb_url TEXT NOT NULL,
-      sort_order INTEGER DEFAULT 0,
-      image_size INTEGER DEFAULT 0,
-      created_at TEXT DEFAULT (datetime('now'))
-    );
-
-    CREATE TABLE IF NOT EXISTS intro (
-      id INTEGER PRIMARY KEY DEFAULT 1 CHECK(id=1),
-      content TEXT NOT NULL DEFAULT '',
-      updated_at TEXT DEFAULT (datetime('now'))
-    );
-    INSERT OR IGNORE INTO intro (id, content) VALUES (1, '');
-
-    CREATE TABLE IF NOT EXISTS details (
-      id INTEGER PRIMARY KEY DEFAULT 1 CHECK(id=1),
-      content TEXT NOT NULL DEFAULT '',
-      updated_at TEXT DEFAULT (datetime('now'))
-    );
-    INSERT OR IGNORE INTO details (id, content) VALUES (1, '');
-
-    CREATE TABLE IF NOT EXISTS detail_sections (
-      id TEXT PRIMARY KEY,
-      title TEXT NOT NULL DEFAULT '',
-      content TEXT NOT NULL DEFAULT '',
-      sort_order INTEGER DEFAULT 0,
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now'))
-    );
-
-    CREATE TABLE IF NOT EXISTS schema_migrations (
-      version TEXT PRIMARY KEY,
-      applied_at TEXT DEFAULT (datetime('now'))
-    );
-  `);
-
-  await addColumnIfMissing(client, "works", "work_date", "TEXT DEFAULT ''");
-  await addColumnIfMissing(client, "works", "image_size", "INTEGER DEFAULT 0");
-  await addColumnIfMissing(client, "works", "size_weight", "REAL DEFAULT 1.0");
-  await addColumnIfMissing(client, "work_images", "image_size", "INTEGER DEFAULT 0");
-  await recordMigration(client, "0001_portfolio_baseline");
-  await recordMigration(client, "0002_work_metadata_columns");
+  await client.executeMultiple(BASE_SCHEMA_SQL);
+  for (const patch of COLUMN_PATCHES) {
+    await addColumnIfMissing(client, patch.table, patch.column, patch.definition);
+  }
+  for (const version of RECORDED_MIGRATIONS) {
+    await recordMigration(client, version);
+  }
 
   console.log("Schema pushed successfully");
 }
@@ -79,21 +31,3 @@ main().catch((error) => {
   console.error(error);
   process.exitCode = 1;
 });
-
-async function addColumnIfMissing(
-  client: Client,
-  table: string,
-  column: string,
-  definition: string
-) {
-  const columns = await client.execute(`PRAGMA table_info(${table})`);
-  if (columns.rows.some((row) => row.name === column)) return;
-  await client.execute(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
-}
-
-async function recordMigration(client: Client, version: string) {
-  await client.execute({
-    sql: "INSERT OR IGNORE INTO schema_migrations (version) VALUES (?)",
-    args: [version],
-  });
-}

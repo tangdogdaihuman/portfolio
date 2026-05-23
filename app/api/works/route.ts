@@ -4,6 +4,7 @@ import { z } from "zod";
 import db, { tagsToArray, tagsToString } from "@/lib/db";
 import { requireSameOrigin } from "@/lib/api-security";
 import { requireAuth } from "@/lib/auth";
+import { reportApiError } from "@/lib/monitoring";
 
 const workSchema = z.object({
   title: z.string().min(1),
@@ -34,26 +35,35 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const blockedOrigin = requireSameOrigin(req);
-  if (blockedOrigin) return blockedOrigin;
+  try {
+    const blockedOrigin = requireSameOrigin(req);
+    if (blockedOrigin) return blockedOrigin;
 
-  const unauth = await requireAuth(req);
-  if (unauth) return unauth;
+    const unauth = await requireAuth(req);
+    if (unauth) return unauth;
 
-  const body = await req.json();
-  const parsed = workSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    const body = await req.json();
+    const parsed = workSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+    }
+
+    const { title, description, tags, imageUrl, thumbUrl, pinned, sortOrder, workDate, imageSize, sizeWeight } = parsed.data;
+    const id = createId();
+
+    await db.execute({
+      sql: `INSERT INTO works (id, title, description, tags, image_url, thumb_url, pinned, sort_order, work_date, image_size, size_weight)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [id, title, description, tagsToString(tags), imageUrl, thumbUrl, pinned ? 1 : 0, sortOrder, workDate, imageSize, sizeWeight],
+    });
+
+    return NextResponse.json({ id }, { status: 201 });
+  } catch (error) {
+    reportApiError({
+      scope: "works.create.exception",
+      message: error instanceof Error ? error.message : "Unknown error",
+      path: req.nextUrl.pathname,
+    });
+    return NextResponse.json({ error: "创建作品失败" }, { status: 500 });
   }
-
-  const { title, description, tags, imageUrl, thumbUrl, pinned, sortOrder, workDate, imageSize, sizeWeight } = parsed.data;
-  const id = createId();
-
-  await db.execute({
-    sql: `INSERT INTO works (id, title, description, tags, image_url, thumb_url, pinned, sort_order, work_date, image_size, size_weight)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    args: [id, title, description, tagsToString(tags), imageUrl, thumbUrl, pinned ? 1 : 0, sortOrder, workDate, imageSize, sizeWeight],
-  });
-
-  return NextResponse.json({ id }, { status: 201 });
 }

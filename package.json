@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "db:push": "npx tsx scripts/push-schema.ts"
+    "db:push": "npx tsx scripts/push-schema.ts",
+    "test:schema": "node scripts/check-schema-source.mjs",
+    "test:smoke": "node scripts/smoke-check.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1050.0",

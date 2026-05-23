@@ -325,7 +325,9 @@ export default function HomeClient({
                         height={1600}
                         unoptimized
                         className="max-w-full max-h-[32rem] w-auto h-auto"
-                        loading="lazy"
+                        sizes="(max-width: 768px) 92vw, (max-width: 1280px) 50vw, 36vw"
+                        priority={i < 2}
+                        loading={i < 2 ? "eager" : "lazy"}
                       />
                     </div>
                     <div className="card-meta">
@@ -439,7 +441,7 @@ export default function HomeClient({
                     onClick={(e) => { e.stopPropagation(); setFullImageIdx(i); }}
                     whileHover={{ scale: 1.02 }}
                   >
-                    <Image src={img.image_url} alt="" width={1200} height={1600} unoptimized className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy" />
+                    <Image src={img.image_url} alt="" width={1200} height={1600} unoptimized sizes="(max-width: 768px) 100vw, 50vw" className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy" />
                   </motion.div>
                 ))}
               </div>

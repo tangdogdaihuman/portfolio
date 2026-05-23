@@ -76,6 +76,7 @@ export default function WorkDetailGallery({
               width={2400}
               height={3000}
               unoptimized
+              sizes="(max-width: 768px) 98vw, 96vw"
               className="w-full h-auto object-contain"
               priority={index === 0}
             />
