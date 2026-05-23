@@ -74,7 +74,7 @@ export default async function WorkDetailPage(
 
   return (
     <main className="min-h-screen bg-bg text-text">
-      <section className="max-w-6xl mx-auto px-4 md:px-6 py-8 md:py-14">
+      <section className="max-w-[96rem] mx-auto px-3 md:px-4 py-8 md:py-14">
         <Link href="/#works" className="inline-flex border border-border px-4 py-2 text-xs tracking-[0.2em] uppercase text-text-muted hover:border-accent hover:text-accent transition-colors">
           返回作品集
         </Link>
@@ -98,8 +98,8 @@ export default async function WorkDetailPage(
               <Image
                 src={image.image_url}
                 alt={`${work.title} ${index + 1}`}
-                width={1600}
-                height={2000}
+                width={2400}
+                height={3000}
                 unoptimized
                 className="w-full h-auto object-contain"
                 priority={index === 0}

@@ -140,15 +140,6 @@ export default function HomeClient({
   };
   const fullImage = fullImageIdx !== null ? lightboxImages[fullImageIdx] : null;
 
-  const openLightbox = async (work: Work) => {
-    setLightboxWork(work);
-    const res = await fetch(`/api/works/${work.id}/images`);
-    if (res.ok) {
-      const data = await res.json();
-      setLightboxImages(data.length > 0 ? data : [{ id: "", image_url: work.image_url, thumb_url: work.thumb_url }]);
-    }
-  };
-
   const closeAll = () => { setLightboxWork(null); setFullImageIdx(null); setLightboxImages([]); setZoom(1); setPan({ x: 0, y: 0 }); };
   const closeFullscreen = () => { setFullImageIdx(null); setZoom(1); setPan({ x: 0, y: 0 }); };
 
@@ -323,32 +314,32 @@ export default function HomeClient({
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: "-40px" }}
                   transition={{ ...springSlow, delay: (i % 4) * 0.08 }}
-                  className={`work-card reveal cursor-pointer group ${colSpan}`}
-                  onClick={() => openLightbox(work)}
-                  data-hover
+                  className={`work-card reveal group ${colSpan}`}
                 >
-                  <div className="overflow-hidden">
-                    <Image
-                      src={work.thumb_url}
-                      alt={work.title}
-                      width={1200}
-                      height={1600}
-                      unoptimized
-                      className="max-w-full max-h-[32rem] w-auto h-auto"
-                      loading="lazy"
-                    />
-                  </div>
-                  <div className="card-meta">
-                    <div className="flex items-center gap-3 text-[0.6rem] tracking-[0.3em] uppercase text-accent-dim">
-                      {work.pinned && <span>Featured</span>}
-                      {work.work_date && <span>{work.work_date}</span>}
+                  <Link href={`/work/${work.id}`} className="block" data-hover>
+                    <div className="overflow-hidden">
+                      <Image
+                        src={work.thumb_url}
+                        alt={work.title}
+                        width={1200}
+                        height={1600}
+                        unoptimized
+                        className="max-w-full max-h-[32rem] w-auto h-auto"
+                        loading="lazy"
+                      />
                     </div>
-                    <h3 className="font-display text-lg md:text-xl text-text mt-1 leading-tight group-hover:text-accent transition-colors">{work.title}</h3>
-                    <div className="flex items-center gap-3 flex-wrap text-xs text-text-muted tracking-[0.15em]">
-                      {work.tags.slice(0, 3).map((t) => <span key={t} className="text-accent-dim">{t}</span>)}
-                      {(work.image_count || 1) > 1 && <span className="text-text-muted/50">{work.image_count} 张</span>}
+                    <div className="card-meta">
+                      <div className="flex items-center gap-3 text-[0.6rem] tracking-[0.3em] uppercase text-accent-dim">
+                        {work.pinned && <span>Featured</span>}
+                        {work.work_date && <span>{work.work_date}</span>}
+                      </div>
+                      <h3 className="font-display text-lg md:text-xl text-text mt-1 leading-tight group-hover:text-accent transition-colors">{work.title}</h3>
+                      <div className="flex items-center gap-3 flex-wrap text-xs text-text-muted tracking-[0.15em]">
+                        {work.tags.slice(0, 3).map((t) => <span key={t} className="text-accent-dim">{t}</span>)}
+                        {(work.image_count || 1) > 1 && <span className="text-text-muted/50">{work.image_count} 张</span>}
+                      </div>
                     </div>
-                  </div>
+                  </Link>
                 </motion.div>
               );
             })}
