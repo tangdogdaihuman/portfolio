@@ -16,6 +16,7 @@ export async function enqueueR2Delete(urls: string[]) {
 }
 
 export async function processR2DeleteJobs(limit = 5) {
+  const summary = { processed: 0, succeeded: 0, failed: 0 };
   const jobs = await db.execute({
     sql: `SELECT id, urls_json, attempts
           FROM r2_delete_jobs
@@ -26,6 +27,7 @@ export async function processR2DeleteJobs(limit = 5) {
   });
 
   for (const row of jobs.rows) {
+    summary.processed += 1;
     const id = row.id as string;
     const attempts = Number(row.attempts || 0);
     let urls: string[] = [];
@@ -39,7 +41,9 @@ export async function processR2DeleteJobs(limit = 5) {
     try {
       await deleteFromR2(urls);
       await db.execute({ sql: "DELETE FROM r2_delete_jobs WHERE id = ?", args: [id] });
+      summary.succeeded += 1;
     } catch (error) {
+      summary.failed += 1;
       const nextAttempts = attempts + 1;
       const waitSeconds = backoffSeconds(nextAttempts);
       const errMsg = error instanceof Error ? error.message : "unknown";
@@ -51,5 +55,5 @@ export async function processR2DeleteJobs(limit = 5) {
       });
     }
   }
+  return summary;
 }
-

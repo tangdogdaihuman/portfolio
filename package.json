@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "db:push": "npx tsx scripts/push-schema.ts",
     "test:schema": "node scripts/check-schema-source.mjs",
-    "test:smoke": "node scripts/smoke-check.mjs"
+    "test:smoke": "node scripts/smoke-check.mjs",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1050.0",
@@ -27,6 +28,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.54.2",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20.19.41",
     "@types/react": "^19",
