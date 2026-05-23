@@ -30,13 +30,14 @@ async function getData() {
         title: row.title as string,
         content: row.content as string,
       })) satisfies Section[],
+      loadError: false,
     };
   } catch {
-    return { intro: "", works: [], sections: [] };
+    return { intro: "", works: [], sections: [], loadError: true };
   }
 }
 
 export default async function HomePage() {
-  const { intro, works, sections } = await getData();
-  return <HomeClient initialIntro={intro} initialWorks={works} initialSections={sections} />;
+  const { intro, works, sections, loadError } = await getData();
+  return <HomeClient initialIntro={intro} initialWorks={works} initialSections={sections} initialLoadError={loadError} />;
 }

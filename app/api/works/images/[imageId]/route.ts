@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import db from "@/lib/db";
+import { requireSameOrigin } from "@/lib/api-security";
 import { requireAuth } from "@/lib/auth";
 import { deleteFromR2 } from "@/lib/r2";
 
@@ -7,6 +8,9 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ imageId: string }> }
 ) {
+  const blockedOrigin = requireSameOrigin(req);
+  if (blockedOrigin) return blockedOrigin;
+
   const unauth = await requireAuth(req);
   if (unauth) return unauth;
 

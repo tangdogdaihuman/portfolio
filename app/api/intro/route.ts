@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import db from "@/lib/db";
+import { requireSameOrigin } from "@/lib/api-security";
 import { requireAuth } from "@/lib/auth";
 
 const introSchema = z.object({
@@ -17,6 +18,9 @@ export async function GET() {
 }
 
 export async function PUT(req: NextRequest) {
+  const blockedOrigin = requireSameOrigin(req);
+  if (blockedOrigin) return blockedOrigin;
+
   const unauth = await requireAuth(req);
   if (unauth) return unauth;
 

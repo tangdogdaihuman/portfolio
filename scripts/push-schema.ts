@@ -58,12 +58,19 @@ async function main() {
       created_at TEXT DEFAULT (datetime('now')),
       updated_at TEXT DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS schema_migrations (
+      version TEXT PRIMARY KEY,
+      applied_at TEXT DEFAULT (datetime('now'))
+    );
   `);
 
   await addColumnIfMissing(client, "works", "work_date", "TEXT DEFAULT ''");
   await addColumnIfMissing(client, "works", "image_size", "INTEGER DEFAULT 0");
   await addColumnIfMissing(client, "works", "size_weight", "REAL DEFAULT 1.0");
   await addColumnIfMissing(client, "work_images", "image_size", "INTEGER DEFAULT 0");
+  await recordMigration(client, "0001_portfolio_baseline");
+  await recordMigration(client, "0002_work_metadata_columns");
 
   console.log("Schema pushed successfully");
 }
@@ -82,4 +89,11 @@ async function addColumnIfMissing(
   const columns = await client.execute(`PRAGMA table_info(${table})`);
   if (columns.rows.some((row) => row.name === column)) return;
   await client.execute(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+}
+
+async function recordMigration(client: Client, version: string) {
+  await client.execute({
+    sql: "INSERT OR IGNORE INTO schema_migrations (version) VALUES (?)",
+    args: [version],
+  });
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import db, { tagsToArray, tagsToString } from "@/lib/db";
+import { requireSameOrigin } from "@/lib/api-security";
 import { requireAuth } from "@/lib/auth";
 import { deleteFromR2 } from "@/lib/r2";
 
@@ -43,6 +44,9 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const blockedOrigin = requireSameOrigin(req);
+  if (blockedOrigin) return blockedOrigin;
+
   const unauth = await requireAuth(req);
   if (unauth) return unauth;
 
@@ -94,6 +98,9 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const blockedOrigin = requireSameOrigin(req);
+  if (blockedOrigin) return blockedOrigin;
+
   const unauth = await requireAuth(req);
   if (unauth) return unauth;
 

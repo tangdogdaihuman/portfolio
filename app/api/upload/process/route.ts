@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createId } from "@paralleldrive/cuid2";
 import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
+import { requireSameOrigin } from "@/lib/api-security";
 import { requireAuth } from "@/lib/auth";
 import { generateThumbnail } from "@/lib/image";
 import { r2, R2_BUCKET, publicUrl } from "@/lib/r2";
 
 export async function POST(req: NextRequest) {
+  const blockedOrigin = requireSameOrigin(req);
+  if (blockedOrigin) return blockedOrigin;
+
   const unauth = await requireAuth(req);
   if (unauth) return unauth;
 

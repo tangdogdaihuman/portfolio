@@ -18,13 +18,16 @@ export default function HomeClient({
   initialIntro,
   initialWorks,
   initialSections,
+  initialLoadError,
 }: {
   initialIntro: string;
   initialWorks: Work[];
   initialSections: Section[];
+  initialLoadError: boolean;
 }) {
   const [intro, setIntro] = useState(initialIntro);
   const [detailSections, setDetailSections] = useState<Section[]>(initialSections);
+  const [loadError, setLoadError] = useState(initialLoadError);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [works, setWorks] = useState<Work[]>(initialWorks);
   const [activeTag, setActiveTag] = useState<string | null>(null);
@@ -43,10 +46,16 @@ export default function HomeClient({
   const refreshData = useCallback(async () => {
     try {
       const [introRes, sectionsRes, worksRes] = await Promise.all([fetch("/api/intro"), fetch("/api/detail-sections"), fetch("/api/works")]);
+      if (!introRes.ok || !sectionsRes.ok || !worksRes.ok) {
+        throw new Error("refresh failed");
+      }
       if (introRes.ok) setIntro((await introRes.json()).content || "");
       if (sectionsRes.ok) setDetailSections(await sectionsRes.json());
       if (worksRes.ok) setWorks(await worksRes.json());
-    } catch {}
+      setLoadError(false);
+    } catch {
+      setLoadError(true);
+    }
   }, []);
 
   useEffect(() => { const iv = setInterval(refreshData, 300000); return () => clearInterval(iv); }, [refreshData]);
@@ -288,7 +297,9 @@ export default function HomeClient({
         )}
 
         {filtered.length === 0 ? (
-          <div className="text-center py-20 text-text-muted reveal">还没有作品</div>
+          <div className="text-center py-20 text-text-muted reveal">
+            {loadError ? "内容暂时加载失败，请稍后刷新" : "还没有作品"}
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10">
             {sorted.map((work, i) => {

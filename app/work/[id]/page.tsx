@@ -1,0 +1,113 @@
+import Image from "next/image";
+import Link from "next/link";
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import db, { tagsToArray } from "@/lib/db";
+import type { Work, WorkImage } from "@/lib/types";
+
+export const revalidate = 30;
+
+async function getWork(id: string): Promise<{ work: Work; images: WorkImage[] } | null> {
+  const result = await db.execute({
+    sql: "SELECT * FROM works WHERE id = ?",
+    args: [id],
+  });
+
+  if (result.rows.length === 0) return null;
+  const row = result.rows[0];
+  const work = {
+    ...row,
+    tags: tagsToArray(row.tags),
+    pinned: Boolean(row.pinned),
+  } as unknown as Work;
+
+  const imageResult = await db.execute({
+    sql: "SELECT * FROM work_images WHERE work_id = ? ORDER BY sort_order ASC, created_at ASC",
+    args: [id],
+  });
+
+  const images = imageResult.rows.length > 0
+    ? imageResult.rows as unknown as WorkImage[]
+    : [{
+        id: "",
+        work_id: id,
+        image_url: work.image_url,
+        thumb_url: work.thumb_url,
+        sort_order: 0,
+        image_size: work.image_size || 0,
+        created_at: work.created_at,
+      }];
+
+  return { work, images };
+}
+
+export async function generateMetadata(
+  { params }: { params: Promise<{ id: string }> }
+): Promise<Metadata> {
+  const { id } = await params;
+  const data = await getWork(id);
+  if (!data) return {};
+
+  return {
+    title: data.work.title,
+    description: data.work.description,
+    openGraph: {
+      title: data.work.title,
+      description: data.work.description,
+      type: "article",
+      images: data.work.thumb_url ? [{ url: data.work.thumb_url }] : undefined,
+    },
+    alternates: {
+      canonical: `/work/${id}`,
+    },
+  };
+}
+
+export default async function WorkDetailPage(
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const data = await getWork(id);
+  if (!data) notFound();
+
+  const { work, images } = data;
+
+  return (
+    <main className="min-h-screen bg-bg text-text">
+      <section className="max-w-6xl mx-auto px-4 md:px-6 py-8 md:py-14">
+        <Link href="/" className="text-xs tracking-[0.3em] uppercase text-text-muted hover:text-accent transition-colors">
+          Back
+        </Link>
+
+        <header className="mt-10 mb-12 md:mb-16">
+          <div className="flex flex-wrap items-center gap-3 text-xs text-accent-dim mb-4">
+            {work.work_date && <span>{work.work_date}</span>}
+            {work.tags.map((tag) => <span key={tag}>{tag}</span>)}
+          </div>
+          <h1 className="font-display text-4xl md:text-7xl text-accent leading-none">{work.title}</h1>
+          {work.description && (
+            <p className="mt-6 max-w-2xl text-sm md:text-base text-text-muted leading-relaxed whitespace-pre-wrap">
+              {work.description}
+            </p>
+          )}
+        </header>
+
+        <div className="space-y-6 md:space-y-10">
+          {images.map((image, index) => (
+            <figure key={image.id || index} className="bg-surface">
+              <Image
+                src={image.image_url}
+                alt={`${work.title} ${index + 1}`}
+                width={1600}
+                height={2000}
+                unoptimized
+                className="w-full h-auto object-contain"
+                priority={index === 0}
+              />
+            </figure>
+          ))}
+        </div>
+      </section>
+    </main>
+  );
+}

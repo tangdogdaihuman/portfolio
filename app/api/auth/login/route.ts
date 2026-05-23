@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
+import { rateLimit, requireSameOrigin } from "@/lib/api-security";
 import { setAuthCookie } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
+  const blockedOrigin = requireSameOrigin(req);
+  if (blockedOrigin) return blockedOrigin;
+
+  const limited = rateLimit(req, "admin-login", 10, 5 * 60 * 1000);
+  if (limited) return limited;
+
   let key: string | null = null;
 
   try {

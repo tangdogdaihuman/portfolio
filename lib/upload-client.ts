@@ -5,28 +5,51 @@ export interface UploadedFile {
   fileName: string;
 }
 
+async function readError(res: Response, fallback: string): Promise<string> {
+  try {
+    const data = await res.json();
+    return typeof data.error === "string" ? data.error : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+export async function cleanupUploadedFiles(files: Pick<UploadedFile, "imageUrl" | "thumbUrl">[]) {
+  const urls = files.flatMap((file) => [file.imageUrl, file.thumbUrl]).filter(Boolean);
+  if (urls.length === 0) return;
+
+  await fetch("/api/upload/cleanup", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ urls }),
+  });
+}
+
 export async function uploadImageToR2(file: File): Promise<UploadedFile> {
   const presignedRes = await fetch("/api/upload/presigned", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ contentType: file.type }),
   });
-  if (!presignedRes.ok) throw new Error("presigned");
-  const { uploadUrl, originalKey } = await presignedRes.json();
+  if (!presignedRes.ok) throw new Error(await readError(presignedRes, "获取上传地址失败"));
+  const { uploadUrl, originalKey, imageUrl } = await presignedRes.json();
 
   const uploadRes = await fetch(uploadUrl, {
     method: "PUT",
     body: file,
     headers: { "Content-Type": file.type },
   });
-  if (!uploadRes.ok) throw new Error("upload");
+  if (!uploadRes.ok) throw new Error("上传原图失败");
 
   const processRes = await fetch("/api/upload/process", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ originalKey }),
   });
-  if (!processRes.ok) throw new Error("process");
+  if (!processRes.ok) {
+    await cleanupUploadedFiles([{ imageUrl, thumbUrl: "" }]);
+    throw new Error(await readError(processRes, "生成缩略图失败"));
+  }
   const data = await processRes.json();
 
   return {

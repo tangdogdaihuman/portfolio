@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createId } from "@paralleldrive/cuid2";
 import db, { ensureMigrated } from "@/lib/db";
+import { requireSameOrigin } from "@/lib/api-security";
 import { requireAuth } from "@/lib/auth";
 
 const sectionSchema = z.object({
@@ -19,6 +20,9 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const blockedOrigin = requireSameOrigin(req);
+  if (blockedOrigin) return blockedOrigin;
+
   const unauth = await requireAuth(req);
   if (unauth) return unauth;
 
