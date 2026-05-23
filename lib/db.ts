@@ -23,16 +23,16 @@ async function runMigrations() {
   if (_migrationPromise) return _migrationPromise;
   _migrationPromise = (async () => {
     const client = getClient();
-    try { await client.execute("ALTER TABLE works ADD COLUMN work_date TEXT DEFAULT ''"); } catch {}
-    try { await client.execute("ALTER TABLE works ADD COLUMN image_size INTEGER DEFAULT 0"); } catch {}
-    try { await client.execute("ALTER TABLE works ADD COLUMN size_weight REAL DEFAULT 1.0"); } catch {}
-    try { await client.execute(`CREATE TABLE IF NOT EXISTS work_images (id TEXT PRIMARY KEY, work_id TEXT NOT NULL, image_url TEXT NOT NULL, thumb_url TEXT NOT NULL, sort_order INTEGER DEFAULT 0, image_size INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')))`); } catch {}
-    try { await client.execute("ALTER TABLE work_images ADD COLUMN image_size INTEGER DEFAULT 0"); } catch {}
-    try { await client.execute(`CREATE TABLE IF NOT EXISTS intro (id INTEGER PRIMARY KEY DEFAULT 1 CHECK(id=1), content TEXT NOT NULL DEFAULT '', updated_at TEXT DEFAULT (datetime('now')))`); } catch {}
-    try { await client.execute("INSERT OR IGNORE INTO intro (id, content) VALUES (1, '')"); } catch {}
-    try { await client.execute(`CREATE TABLE IF NOT EXISTS details (id INTEGER PRIMARY KEY DEFAULT 1 CHECK(id=1), content TEXT NOT NULL DEFAULT '', updated_at TEXT DEFAULT (datetime('now')))`); } catch {}
-    try { await client.execute("INSERT OR IGNORE INTO details (id, content) VALUES (1, '')"); } catch {}
-    try { await client.execute(`CREATE TABLE IF NOT EXISTS detail_sections (id TEXT PRIMARY KEY, title TEXT NOT NULL DEFAULT '', content TEXT NOT NULL DEFAULT '', sort_order INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')))`); } catch {}
+    try { await client.execute("ALTER TABLE works ADD COLUMN work_date TEXT DEFAULT ''"); } catch (e) { console.error("migration: works.work_date", e); }
+    try { await client.execute("ALTER TABLE works ADD COLUMN image_size INTEGER DEFAULT 0"); } catch (e) { console.error("migration: works.image_size", e); }
+    try { await client.execute("ALTER TABLE works ADD COLUMN size_weight REAL DEFAULT 1.0"); } catch (e) { console.error("migration: works.size_weight", e); }
+    try { await client.execute(`CREATE TABLE IF NOT EXISTS work_images (id TEXT PRIMARY KEY, work_id TEXT NOT NULL, image_url TEXT NOT NULL, thumb_url TEXT NOT NULL, sort_order INTEGER DEFAULT 0, image_size INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')))`); } catch (e) { console.error("migration: work_images", e); }
+    try { await client.execute("ALTER TABLE work_images ADD COLUMN image_size INTEGER DEFAULT 0"); } catch (e) { console.error("migration: work_images.image_size", e); }
+    try { await client.execute(`CREATE TABLE IF NOT EXISTS intro (id INTEGER PRIMARY KEY DEFAULT 1 CHECK(id=1), content TEXT NOT NULL DEFAULT '', updated_at TEXT DEFAULT (datetime('now')))`); } catch (e) { console.error("migration: intro", e); }
+    try { await client.execute("INSERT OR IGNORE INTO intro (id, content) VALUES (1, '')"); } catch (e) { console.error("migration: intro seed", e); }
+    try { await client.execute(`CREATE TABLE IF NOT EXISTS details (id INTEGER PRIMARY KEY DEFAULT 1 CHECK(id=1), content TEXT NOT NULL DEFAULT '', updated_at TEXT DEFAULT (datetime('now')))`); } catch (e) { console.error("migration: details", e); }
+    try { await client.execute("INSERT OR IGNORE INTO details (id, content) VALUES (1, '')"); } catch (e) { console.error("migration: details seed", e); }
+    try { await client.execute(`CREATE TABLE IF NOT EXISTS detail_sections (id TEXT PRIMARY KEY, title TEXT NOT NULL DEFAULT '', content TEXT NOT NULL DEFAULT '', sort_order INTEGER DEFAULT 0, created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now')))`); } catch (e) { console.error("migration: detail_sections", e); }
     _migrated = true;
   })();
   return _migrationPromise;

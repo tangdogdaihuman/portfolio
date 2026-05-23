@@ -14,6 +14,8 @@ export function signToken(secret: string): string {
 export function verifyToken(token: string, secret: string): boolean {
   const [ts, hmac] = token.split(".");
   if (!ts || !hmac) return false;
+  const age = Date.now() - Number(ts);
+  if (!Number(ts) || age < 0 || age > MAX_AGE * 1000) return false;
   const expected = crypto.createHmac("sha256", secret).update(ts).digest("hex");
   try {
     const a = Buffer.from(hmac, "hex");

@@ -18,13 +18,17 @@ export async function POST(req: NextRequest) {
   const getResponse = await r2.send(
     new GetObjectCommand({ Bucket: R2_BUCKET, Key: originalKey })
   );
+  if (!getResponse.Body || !getResponse.ContentLength || getResponse.ContentLength === 0) {
+    return NextResponse.json({ error: "Original file is empty or not found" }, { status: 400 });
+  }
   const chunks: Buffer[] = [];
-  if (getResponse.Body) {
-    for await (const chunk of getResponse.Body as AsyncIterable<Uint8Array>) {
-      chunks.push(Buffer.from(chunk));
-    }
+  for await (const chunk of getResponse.Body as AsyncIterable<Uint8Array>) {
+    chunks.push(Buffer.from(chunk));
   }
   const originalBuffer = Buffer.concat(chunks);
+  if (originalBuffer.length === 0) {
+    return NextResponse.json({ error: "Original file is empty" }, { status: 400 });
+  }
 
   const thumbnail = await generateThumbnail(originalBuffer);
   const thumbId = createId();

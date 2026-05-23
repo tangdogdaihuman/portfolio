@@ -71,13 +71,21 @@ export async function PUT(
     }
   }
 
+  if (updates.length === 0) {
+    return NextResponse.json({ error: "No fields to update" }, { status: 400 });
+  }
+
   updates.push("updated_at = datetime('now')");
   args.push(id);
 
-  await db.execute({
+  const result = await db.execute({
     sql: `UPDATE works SET ${updates.join(", ")} WHERE id = ?`,
     args,
   });
+
+  if (result.rowsAffected === 0) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
   return NextResponse.json({ ok: true });
 }

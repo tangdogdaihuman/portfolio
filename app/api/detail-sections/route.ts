@@ -29,10 +29,17 @@ export async function POST(req: NextRequest) {
   }
 
   const id = createId();
-  await db.execute({
-    sql: `INSERT INTO detail_sections (id, title, content, sort_order) VALUES (?, ?, ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM detail_sections))`,
-    args: [id, parsed.data.title, parsed.data.content],
-  });
+  if (typeof parsed.data.sortOrder === "number") {
+    await db.execute({
+      sql: "INSERT INTO detail_sections (id, title, content, sort_order) VALUES (?, ?, ?, ?)",
+      args: [id, parsed.data.title, parsed.data.content, parsed.data.sortOrder],
+    });
+  } else {
+    await db.execute({
+      sql: "INSERT INTO detail_sections (id, title, content, sort_order) VALUES (?, ?, ?, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM detail_sections))",
+      args: [id, parsed.data.title, parsed.data.content],
+    });
+  }
 
   return NextResponse.json({ id });
 }

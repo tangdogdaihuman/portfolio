@@ -234,22 +234,23 @@ function AddWorkForm({
 
     const fileArray = Array.from(files);
     let completed = 0;
-    const results: UploadedFile[] = [];
+    const results = new Array<UploadedFile | null>(total).fill(null);
 
     await Promise.all(
-      fileArray.map(async (file) => {
+      fileArray.map(async (file, idx) => {
         try {
           const result = await uploadImageToR2(file);
-          results.push(result);
+          results[idx] = result;
         } catch {}
         completed++;
         setUp({ uploading: true, uploadProgress: "上传中", uploadTotal: total, uploadDone: completed });
       })
     );
 
+    const ordered = results.filter((r): r is UploadedFile => r !== null);
     setFormState({
       ...formState,
-      uploadedFiles: [...formState.uploadedFiles, ...results],
+      uploadedFiles: [...formState.uploadedFiles, ...ordered],
       uploading: false,
       uploadProgress: "",
       uploadTotal: 0,
@@ -622,7 +623,7 @@ function StoragePanel({ works }: { works: Work[] }) {
       <div className="space-y-2">
         <p className="text-sm text-text-muted mb-4">各作品占用</p>
         {works
-          .filter((w) => (w.image_size || 0) > 0)
+          .filter((w) => getSize(w) > 0)
           .sort((a, b) => getSize(b) - getSize(a))
           .map((work) => {
             const size = getSize(work);
@@ -713,18 +714,20 @@ function EditWorkForm({
     if (!files || files.length === 0) return;
     const total = files.length;
     setUploading(true); setUploadTotal(total); setUploadDone(0);
-    const results: { imageUrl: string; thumbUrl: string; size: number }[] = [];
+    const fileArray = Array.from(files);
+    const results = new Array<{ imageUrl: string; thumbUrl: string; size: number } | null>(total).fill(null);
     let done = 0;
     await Promise.all(
-      Array.from(files).map(async (file) => {
+      fileArray.map(async (file, idx) => {
         try {
           const result = await uploadImageToR2(file);
-          results.push({ imageUrl: result.imageUrl, thumbUrl: result.thumbUrl, size: result.size });
+          results[idx] = { imageUrl: result.imageUrl, thumbUrl: result.thumbUrl, size: result.size };
         } catch {}
         done++; setUploadDone(done);
       })
     );
-    setAllImages((prev) => [...prev, ...results.map((r) => ({
+    const ordered = results.filter((r): r is NonNullable<typeof r> => r !== null);
+    setAllImages((prev) => [...prev, ...ordered.map((r) => ({
       id: "", image_url: r.imageUrl, thumb_url: r.thumbUrl, source: "new" as const, size: r.size,
     }))]);
     setUploading(false);
@@ -741,33 +744,51 @@ function EditWorkForm({
     const cover = allImages[coverIndex] || allImages[0];
     const tagArray = tags.split(",").map((t) => t.trim()).filter(Boolean);
 
-    await fetch(`/api/works/${workId}`, {
-      method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, description, tags: tagArray, workDate, imageUrl: cover?.image_url, thumbUrl: cover?.thumb_url, sizeWeight }),
-    });
-
-    // Delete removed images (DB + R2)
-    const keptIds = allImages.filter((img) => img.source === "existing" && img.id).map((img) => img.id);
-    const removedIds = originalIds.current.filter((id) => !keptIds.includes(id));
-    if (removedIds.length > 0) {
-      await Promise.all(
-        removedIds.map((id) => fetch(`/api/works/images/${id}`, { method: "DELETE" }))
-      );
-    }
-
-    // Wipe remaining DB rows (keep R2), then re-insert with correct sort_order
-    await fetch(`/api/works/${workId}/images?keepFiles=true`, { method: "DELETE" });
-    const toInsert = allImages.filter((img) => img.image_url);
-    if (toInsert.length > 0) {
-      await fetch(`/api/works/${workId}/images`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(toInsert.map((img) => ({ imageUrl: img.image_url, thumbUrl: img.thumb_url, imageSize: img.size }))),
+    try {
+      const updateRes = await fetch(`/api/works/${workId}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, description, tags: tagArray, workDate, imageUrl: cover?.image_url, thumbUrl: cover?.thumb_url, sizeWeight }),
       });
-    }
+      if (!updateRes.ok) {
+        showMsg("更新作品信息失败", false);
+        setSaving(false);
+        return;
+      }
 
-    showMsg("已保存", true);
-    setSaving(false);
-    onDone();
+      // Delete removed images (DB + R2)
+      const keptIds = allImages.filter((img) => img.source === "existing" && img.id).map((img) => img.id);
+      const removedIds = originalIds.current.filter((id) => !keptIds.includes(id));
+      if (removedIds.length > 0) {
+        const delResults = await Promise.all(
+          removedIds.map((id) => fetch(`/api/works/images/${id}`, { method: "DELETE" }))
+        );
+        if (delResults.some((r) => !r.ok)) {
+          showMsg("部分旧图删除失败，作品已更新", true);
+        }
+      }
+
+      // Wipe remaining DB rows (keep R2), then re-insert with correct sort_order
+      await fetch(`/api/works/${workId}/images?keepFiles=true`, { method: "DELETE" });
+      const toInsert = allImages.filter((img) => img.image_url);
+      if (toInsert.length > 0) {
+        const insertRes = await fetch(`/api/works/${workId}/images`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(toInsert.map((img) => ({ imageUrl: img.image_url, thumbUrl: img.thumb_url, imageSize: img.size }))),
+        });
+        if (!insertRes.ok) {
+          showMsg("图片列表重建失败，请手动检查", false);
+          setSaving(false);
+          return;
+        }
+      }
+
+      showMsg("已保存", true);
+      setSaving(false);
+      onDone();
+    } catch {
+      showMsg("保存过程中出现网络错误，请重试", false);
+      setSaving(false);
+    }
   };
 
   if (loading) return <div className="text-text-muted text-sm">加载中...</div>;
