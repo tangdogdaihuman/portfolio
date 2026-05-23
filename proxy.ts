@@ -9,8 +9,12 @@ function proxy(req: NextRequest) {
   const url = new URL(req.url);
   const { pathname } = url;
   const secret = process.env.ADMIN_SECRET_KEY;
-
-  if (!secret) return NextResponse.next();
+  if (!secret) {
+    if (pathname.startsWith("/admin")) {
+      return NextResponse.json({ error: "Admin is not configured" }, { status: 503 });
+    }
+    return NextResponse.next();
+  }
 
   if (pathname === "/admin/login" || pathname === "/api/auth/login") {
     return NextResponse.next();

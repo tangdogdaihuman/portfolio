@@ -6,6 +6,7 @@ import { requireAuth } from "@/lib/auth";
 import { generateThumbnail } from "@/lib/image";
 import { r2, R2_BUCKET, publicUrl } from "@/lib/r2";
 import { reportApiError, reportMetric } from "@/lib/monitoring";
+import { getIdempotencyStore } from "@/lib/idempotency-store";
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,6 +18,14 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const { originalKey } = body;
+    const requestId = typeof body.requestId === "string" ? body.requestId : "";
+    const cacheKey = requestId ? `upload:process:${requestId}` : "";
+    const cached = cacheKey
+      ? getIdempotencyStore().get<{ imageUrl: string; thumbUrl: string }>(cacheKey)
+      : null;
+    if (cached) {
+      return NextResponse.json(cached);
+    }
     if (typeof originalKey !== "string" || !originalKey.startsWith("originals/")) {
       reportMetric({ scope: "upload.process.invalid_key", value: 1, path: req.nextUrl.pathname });
       return NextResponse.json({ error: "Invalid originalKey" }, { status: 400 });
@@ -52,10 +61,14 @@ export async function POST(req: NextRequest) {
       })
     );
 
-    return NextResponse.json({
+    const payload = {
       imageUrl: publicUrl(originalKey),
       thumbUrl: publicUrl(thumbKey),
-    });
+    };
+    if (cacheKey) {
+      getIdempotencyStore().set(cacheKey, payload, 10 * 60 * 1000);
+    }
+    return NextResponse.json(payload);
   } catch (error) {
     reportApiError({
       scope: "upload.process.exception",

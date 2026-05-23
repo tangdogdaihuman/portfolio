@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import db from "@/lib/db";
 import { requireSameOrigin } from "@/lib/api-security";
 import { requireAuth } from "@/lib/auth";
@@ -55,5 +56,7 @@ export async function DELETE(
   }
 
   deleteFromR2(urls).catch(() => {});
+  revalidatePath("/");
+  revalidatePath(`/work/${workId}`);
   return NextResponse.json({ ok: true });
 }

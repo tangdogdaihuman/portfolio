@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { createId } from "@paralleldrive/cuid2";
 import { z } from "zod";
 import db, { tagsToArray, tagsToString } from "@/lib/db";
 import { requireSameOrigin } from "@/lib/api-security";
 import { requireAuth } from "@/lib/auth";
-import { reportApiError } from "@/lib/monitoring";
+import { reportApiError, reportMetric } from "@/lib/monitoring";
 
 const workSchema = z.object({
   title: z.string().min(1),
@@ -57,6 +58,9 @@ export async function POST(req: NextRequest) {
       args: [id, title, description, tagsToString(tags), imageUrl, thumbUrl, pinned ? 1 : 0, sortOrder, workDate, imageSize, sizeWeight],
     });
 
+    reportMetric({ scope: "audit.work.create", value: 1, path: req.nextUrl.pathname, meta: { id } });
+    revalidatePath("/");
+    revalidatePath(`/work/${id}`);
     return NextResponse.json({ id }, { status: 201 });
   } catch (error) {
     reportApiError({

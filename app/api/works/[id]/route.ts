@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import db, { tagsToArray, tagsToString } from "@/lib/db";
 import { requireSameOrigin } from "@/lib/api-security";
 import { requireAuth } from "@/lib/auth";
 import { deleteFromR2 } from "@/lib/r2";
-import { reportApiError } from "@/lib/monitoring";
+import { reportApiError, reportMetric } from "@/lib/monitoring";
 
 const updateSchema = z.object({
   title: z.string().min(1).optional(),
@@ -16,6 +17,7 @@ const updateSchema = z.object({
   sortOrder: z.number().int().optional(),
   workDate: z.string().optional(),
   sizeWeight: z.number().min(0.5).max(2.0).optional(),
+  expectedUpdatedAt: z.string().optional(),
 });
 
 export async function GET(
@@ -61,9 +63,11 @@ export async function PUT(
 
     const updates: string[] = [];
     const args: (string | number)[] = [];
+    const expectedUpdatedAt = parsed.data.expectedUpdatedAt;
 
     for (const [key, value] of Object.entries(parsed.data)) {
       if (value === undefined) continue;
+      if (key === "expectedUpdatedAt") continue;
       if (key === "tags") {
         updates.push("tags = ?");
         args.push(tagsToString(value as string[]));
@@ -83,16 +87,32 @@ export async function PUT(
 
     updates.push("updated_at = datetime('now')");
     args.push(id);
+    if (expectedUpdatedAt) {
+      args.push(expectedUpdatedAt);
+    }
 
     const result = await db.execute({
-      sql: `UPDATE works SET ${updates.join(", ")} WHERE id = ?`,
+      sql: `UPDATE works SET ${updates.join(", ")} WHERE id = ?${expectedUpdatedAt ? " AND updated_at = ?" : ""}`,
       args,
     });
 
     if (result.rowsAffected === 0) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
+      const exists = await db.execute({
+        sql: "SELECT id FROM works WHERE id = ?",
+        args: [id],
+      });
+      if (exists.rows.length === 0) {
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+      if (expectedUpdatedAt) {
+        return NextResponse.json({ error: "Conflict: work updated by another session" }, { status: 409 });
+      }
+      return NextResponse.json({ error: "Not updated" }, { status: 400 });
     }
 
+    reportMetric({ scope: "audit.work.update", value: 1, path: req.nextUrl.pathname, meta: { id } });
+    revalidatePath("/");
+    revalidatePath(`/work/${id}`);
     return NextResponse.json({ ok: true });
   } catch (error) {
     reportApiError({
@@ -140,6 +160,9 @@ export async function DELETE(
 
     deleteFromR2(urls).catch(() => {});
 
+    reportMetric({ scope: "audit.work.delete", value: 1, path: req.nextUrl.pathname, meta: { id } });
+    revalidatePath("/");
+    revalidatePath(`/work/${id}`);
     return NextResponse.json({ ok: true });
   } catch (error) {
     reportApiError({

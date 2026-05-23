@@ -1,36 +1,86 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Tang Zihang Portfolio
 
-## Getting Started
+个人 CG 作品集网站，基于 Next.js 16 App Router。
 
-First, run the development server:
+## 技术栈
+
+- Next.js 16 + React 19 + TypeScript strict
+- Tailwind CSS v4 + Framer Motion
+- Turso (`@libsql/client`)
+- Cloudflare R2（原图 + 缩略图）
+
+## 本地开发
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+默认地址：`http://localhost:3000`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 常用命令
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run lint
+npm run typecheck
+npm run build
+npm run db:push
+npm run test:schema
+npm run test:smoke
+```
 
-## Learn More
+## 环境变量
 
-To learn more about Next.js, take a look at the following resources:
+必填（见 `.env.example`）：
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `DATABASE_URL`
+- `DATABASE_AUTH_TOKEN`
+- `R2_ACCOUNT_ID`
+- `R2_ACCESS_KEY_ID`
+- `R2_SECRET_ACCESS_KEY`
+- `R2_BUCKET_NAME`
+- `R2_PUBLIC_URL`
+- `ADMIN_SECRET_KEY`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+可选：
 
-## Deploy on Vercel
+- `NEXT_PUBLIC_BASE_URL`
+- `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`  
+  用于跨实例持久化登录限流；未配置时自动回退到进程内存限流。
+- `MONITORING_WEBHOOK_URL`  
+  监控事件 webhook，不配置时只打本地结构化日志。
+- `ADMIN_KEY`  
+  `test:smoke` 优先读取；未设置时会回退到 `ADMIN_SECRET_KEY`。
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 测试说明
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### `npm run test:schema`
+
+校验数据库 schema 来源一致：`lib/db.ts` 与 `scripts/push-schema.ts` 都必须引用 `lib/schema.ts`。
+
+### `npm run test:smoke`
+
+HTTP 冒烟检查：
+
+1. 首页可访问
+2. `GET /api/works` 正常
+3. 有作品时详情页可访问
+4. 管理端登录与作品创建/更新/删除链路（需要 `ADMIN_KEY` 或 `ADMIN_SECRET_KEY`）
+
+## 关键约定
+
+- `/admin` 保护由 `proxy.ts` 负责（不是 `middleware.ts`）。
+- 写操作接口统一先做 `requireSameOrigin` + `requireAuth`。
+- 上传流程固定为：`/api/upload/presigned` -> PUT 原图到 R2 -> `/api/upload/process`。
+- 前后台作品相关变更会触发 `revalidatePath("/")` 与 `revalidatePath("/work/[id]")` 路径刷新。
+
+## CI
+
+GitHub Actions (`.github/workflows/ci.yml`) 在 `push/master` 和 `PR` 上执行：
+
+1. `npm ci`
+2. `npm run lint`
+3. `npm run typecheck`
+4. `npm run test:schema`
+5. `npm run build`
+

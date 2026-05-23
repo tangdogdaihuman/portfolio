@@ -7,6 +7,13 @@ export interface UploadedFile {
   originalFileName: string;
 }
 
+function createRequestId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 async function readError(res: Response, fallback: string): Promise<string> {
   try {
     const data = await res.json();
@@ -28,10 +35,11 @@ export async function cleanupUploadedFiles(files: Pick<UploadedFile, "imageUrl" 
 }
 
 export async function uploadImageToR2(file: File): Promise<UploadedFile> {
+  const requestId = createRequestId();
   const presignedRes = await fetch("/api/upload/presigned", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ contentType: file.type }),
+    body: JSON.stringify({ contentType: file.type, requestId }),
   });
   if (!presignedRes.ok) throw new Error(await readError(presignedRes, "获取上传地址失败"));
   const { uploadUrl, originalKey, imageUrl } = await presignedRes.json();
@@ -46,7 +54,7 @@ export async function uploadImageToR2(file: File): Promise<UploadedFile> {
   const processRes = await fetch("/api/upload/process", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ originalKey }),
+    body: JSON.stringify({ originalKey, requestId }),
   });
   if (!processRes.ok) {
     await cleanupUploadedFiles([{ imageUrl, thumbUrl: "" }]);

@@ -15,6 +15,11 @@ function formatUploadResult(successCount: number, total: number, failures: strin
   return `${successCount}/${total} ${unit}上传成功，${failures.length} 个失败：${shown}${more}`;
 }
 
+function getWorkUpdatedAt(work: Work): string {
+  const value = (work as unknown as Record<string, unknown>).updated_at;
+  return typeof value === "string" ? value : "";
+}
+
 export default function AdminPageClient() {
   const [tab, setTab] = useState<"works" | "intro" | "add" | "storage" | "edit" | "detail">("works");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -80,16 +85,20 @@ export default function AdminPageClient() {
     updated[swapIdx] = { ...work, sort_order: newA };
     setWorks(updated);
 
-    await Promise.all([
+    const [resA, resB] = await Promise.all([
       fetch(`/api/works/${work.id}`, {
         method: "PUT", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sortOrder: newA }),
+        body: JSON.stringify({ sortOrder: newA, expectedUpdatedAt: getWorkUpdatedAt(work) }),
       }),
       fetch(`/api/works/${other.id}`, {
         method: "PUT", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sortOrder: newB }),
+        body: JSON.stringify({ sortOrder: newB, expectedUpdatedAt: getWorkUpdatedAt(other) }),
       }),
     ]);
+    if (!resA.ok || !resB.ok) {
+      refresh();
+      showMsg("排序冲突，已刷新，请重试", false);
+    }
   };
 
   const deleteWork = async (work: Work) => {
@@ -107,9 +116,13 @@ export default function AdminPageClient() {
     const res = await fetch(`/api/works/${work.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pinned: !work.pinned }),
+      body: JSON.stringify({ pinned: !work.pinned, expectedUpdatedAt: getWorkUpdatedAt(work) }),
     });
     if (res.ok) refresh();
+    else if (res.status === 409) {
+      refresh();
+      showMsg("置顶状态冲突，已刷新", false);
+    }
   };
 
   return (
@@ -579,6 +592,7 @@ function EditWorkForm({
   const [saving, setSaving] = useState(false);
   const [saveStep, setSaveStep] = useState("");
   const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [baseUpdatedAt, setBaseUpdatedAt] = useState("");
   const originalIds = useRef<string[]>([]);
 
   useEffect(() => {
@@ -594,6 +608,7 @@ function EditWorkForm({
         setTags((w.tags || []).join(","));
         setWorkDate(w.work_date || "");
         setSizeWeight(w.size_weight ?? 1);
+        setBaseUpdatedAt(typeof w.updated_at === "string" ? w.updated_at : "");
       }
       if (imagesRes.ok) {
         const imgs = await imagesRes.json();
@@ -660,10 +675,23 @@ function EditWorkForm({
     try {
       const updateRes = await fetch(`/api/works/${workId}`, {
         method: "PUT", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, description, tags: tagArray, workDate, imageUrl: cover?.image_url, thumbUrl: cover?.thumb_url, sizeWeight }),
+        body: JSON.stringify({
+          title,
+          description,
+          tags: tagArray,
+          workDate,
+          imageUrl: cover?.image_url,
+          thumbUrl: cover?.thumb_url,
+          sizeWeight,
+          expectedUpdatedAt: baseUpdatedAt,
+        }),
       });
       if (!updateRes.ok) {
-        showMsg("更新作品信息失败", false);
+        if (updateRes.status === 409) {
+          showMsg("检测到他人已修改该作品，请刷新后重试", false);
+        } else {
+          showMsg("更新作品信息失败", false);
+        }
         setSaving(false);
         setSaveStep("");
         return;

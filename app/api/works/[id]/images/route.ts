@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { createId } from "@paralleldrive/cuid2";
 import { z } from "zod";
 import db from "@/lib/db";
@@ -89,6 +90,8 @@ export async function POST(
     }
   }
 
+  revalidatePath("/");
+  revalidatePath(`/work/${workId}`);
   return NextResponse.json({ ids: valid.map((v) => v.id) }, { status: 201 });
 }
 
@@ -117,5 +120,7 @@ export async function DELETE(
   if (!keepFiles) {
     deleteFromR2(urls).catch(() => {});
   }
+  revalidatePath("/");
+  revalidatePath(`/work/${workId}`);
   return NextResponse.json({ ok: true });
 }
