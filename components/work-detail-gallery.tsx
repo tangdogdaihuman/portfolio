@@ -19,6 +19,8 @@ export default function WorkDetailGallery({
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const dragRef = useRef<{ sx: number; sy: number; px: number; py: number } | null>(null);
+  const swipeRef = useRef<{ x: number; y: number } | null>(null);
+  const touchPanRef = useRef<{ x: number; y: number } | null>(null);
 
   const activeImage = openIndex !== null ? images[openIndex] : null;
 
@@ -92,6 +94,7 @@ export default function WorkDetailGallery({
               closeViewer();
             }}
             className="absolute top-6 right-6 text-text-muted hover:text-text z-20 p-2"
+            aria-label="关闭大图"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
           </button>
@@ -104,6 +107,7 @@ export default function WorkDetailGallery({
                 resetView();
               }}
               className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted/60 hover:text-text z-20 p-4"
+              aria-label="上一张"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><polyline points="15 18 9 12 15 6" /></svg>
             </button>
@@ -117,18 +121,27 @@ export default function WorkDetailGallery({
                 resetView();
               }}
               className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted/60 hover:text-text z-20 p-4"
+              aria-label="下一张"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><polyline points="9 18 15 12 9 6" /></svg>
             </button>
           )}
+
+          <div className="absolute left-4 top-6 z-20 text-[0.65rem] tracking-[0.18em] uppercase text-text-muted/80 bg-bg/60 border border-border/40 px-3 py-2">
+            双击缩放 · 拖拽查看细节
+          </div>
 
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={activeImage.image_url}
             alt={workTitle}
             draggable={false}
-            className="max-w-[94vw] max-h-[94vh] object-contain select-none"
-            style={{ transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`, cursor: zoom > 1 ? "grab" : "zoom-in" }}
+            className="max-w-[97vw] max-h-[97vh] object-contain select-none"
+            style={{
+              transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
+              cursor: zoom > 1 ? "grab" : "zoom-in",
+              touchAction: zoom > 1 ? "none" : "pan-y",
+            }}
             onWheel={(event) => {
               event.stopPropagation();
               setZoom((currentZoom) => Math.min(5, Math.max(1, currentZoom - event.deltaY * 0.001)));
@@ -159,11 +172,82 @@ export default function WorkDetailGallery({
                 window.removeEventListener("mouseup", onUp);
               };
 
-              window.addEventListener("mousemove", onMove);
+                window.addEventListener("mousemove", onMove);
               window.addEventListener("mouseup", onUp);
+            }}
+            onTouchStart={(event) => {
+              const touch = event.touches[0];
+              swipeRef.current = { x: touch.clientX, y: touch.clientY };
+              touchPanRef.current = { x: touch.clientX, y: touch.clientY };
+            }}
+            onTouchMove={(event) => {
+              if (zoom <= 1 || !touchPanRef.current) return;
+              const touch = event.touches[0];
+              const prev = touchPanRef.current;
+              setPan((currentPan) => ({
+                x: currentPan.x + (touch.clientX - prev.x) / zoom,
+                y: currentPan.y + (touch.clientY - prev.y) / zoom,
+              }));
+              touchPanRef.current = { x: touch.clientX, y: touch.clientY };
+            }}
+            onTouchEnd={(event) => {
+              touchPanRef.current = null;
+              if (!swipeRef.current || zoom > 1) {
+                swipeRef.current = null;
+                return;
+              }
+              const touch = event.changedTouches[0];
+              const dx = touch.clientX - swipeRef.current.x;
+              const dy = touch.clientY - swipeRef.current.y;
+              swipeRef.current = null;
+              if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy)) return;
+              event.stopPropagation();
+              if (dx < 0 && openIndex !== null && openIndex < images.length - 1) {
+                setOpenIndex((index) => (index ?? 0) + 1);
+                resetView();
+              }
+              if (dx > 0 && openIndex !== null && openIndex > 0) {
+                setOpenIndex((index) => (index ?? 0) - 1);
+                resetView();
+              }
             }}
             onClick={(event) => event.stopPropagation()}
           />
+
+          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-bg/70 border border-border/50 px-2 py-1.5">
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                setZoom((currentZoom) => Math.max(1, currentZoom - 0.25));
+              }}
+              className="w-8 h-8 text-text-muted hover:text-text border border-border/40"
+              aria-label="缩小"
+            >
+              −
+            </button>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                resetView();
+              }}
+              className="px-3 h-8 text-[0.65rem] tracking-[0.15em] uppercase text-text-muted hover:text-text border border-border/40"
+            >
+              重置
+            </button>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                setZoom((currentZoom) => Math.min(5, currentZoom + 0.25));
+              }}
+              className="w-8 h-8 text-text-muted hover:text-text border border-border/40"
+              aria-label="放大"
+            >
+              +
+            </button>
+          </div>
 
           {openIndex !== null && images.length > 1 && (
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-xs text-text-muted/50 tracking-wider">

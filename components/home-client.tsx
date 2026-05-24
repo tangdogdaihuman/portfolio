@@ -34,6 +34,7 @@ export default function HomeClient({
   const [works, setWorks] = useState<Work[]>(initialWorks);
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<"default" | "newest" | "oldest">("default");
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [lightboxWork, setLightboxWork] = useState<Work | null>(null);
   const [lightboxImages, setLightboxImages] = useState<ImageItem[]>([]);
   const [fullImageIdx, setFullImageIdx] = useState<number | null>(null);
@@ -70,10 +71,14 @@ export default function HomeClient({
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [refreshData]);
 
-  // Hide native cursor only on this page
+  // Enable vignette always; hide native cursor only for fine pointer devices.
   useEffect(() => {
-    document.body.style.cursor = "none";
     document.body.classList.add("home-vignette");
+    const finePointer = window.matchMedia("(pointer: fine)").matches;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (finePointer && !reducedMotion) {
+      document.body.style.cursor = "none";
+    }
     return () => {
       document.body.style.cursor = "";
       document.body.classList.remove("home-vignette");
@@ -83,6 +88,9 @@ export default function HomeClient({
   // Cursor — reference-inspired: CSS class toggle + lerp ring
   useEffect(() => {
     if (typeof window === "undefined") return;
+    const finePointer = window.matchMedia("(pointer: fine)").matches;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!finePointer || reducedMotion) return;
     const cursor = cursorRef.current, ring = ringRef.current;
     if (!cursor || !ring) return;
     let mx = 0, my = 0, rx = 0, ry = 0;
@@ -105,6 +113,15 @@ export default function HomeClient({
     window.addEventListener("mousemove", onMove, { passive: true });
     return () => { window.removeEventListener("mousemove", onMove); cancelAnimationFrame(raf); };
   }, []);
+
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileNavOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [mobileNavOpen]);
 
   // Reveal
   useEffect(() => {
@@ -183,13 +200,32 @@ export default function HomeClient({
 
       {/* Nav */}
       {!lightboxWork && !fullImage && (
-        <nav className="fixed top-0 left-0 right-0 z-[70] px-6 md:px-12 py-5 flex justify-between items-center bg-bg/50 backdrop-blur-sm">
+        <nav className="fixed top-0 left-0 right-0 z-[70] px-4 md:px-12 py-4 md:py-5 flex justify-between items-center bg-bg/60 backdrop-blur-md border-b border-border/30">
           <a href="#" onClick={closeAll} className="font-display text-lg tracking-wider text-text">Portfolio</a>
-          <div className="flex gap-8 text-xs tracking-[0.25em] uppercase text-text-muted">
+          <div className="hidden md:flex gap-8 text-xs tracking-[0.25em] uppercase text-text-muted">
             <a href="#works" className="nav-link">作品</a>
             <a href="#about" className="nav-link">关于</a>
             <a href="#contact" className="nav-link">联系</a>
           </div>
+          <button
+            type="button"
+            aria-label={mobileNavOpen ? "关闭导航菜单" : "打开导航菜单"}
+            onClick={() => setMobileNavOpen((open) => !open)}
+            className="md:hidden inline-flex items-center justify-center w-10 h-10 border border-border text-text-muted hover:text-text transition-colors"
+          >
+            {mobileNavOpen ? (
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><line x1="4" y1="7" x2="20" y2="7" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="17" x2="20" y2="17" /></svg>
+            )}
+          </button>
+          {mobileNavOpen && (
+            <div className="absolute top-full right-4 mt-2 w-44 bg-surface border border-border/80 p-2 md:hidden">
+              <a href="#works" onClick={() => setMobileNavOpen(false)} className="block px-3 py-2 text-xs tracking-[0.2em] uppercase text-text-muted hover:text-accent transition-colors">作品</a>
+              <a href="#about" onClick={() => setMobileNavOpen(false)} className="block px-3 py-2 text-xs tracking-[0.2em] uppercase text-text-muted hover:text-accent transition-colors">关于</a>
+              <a href="#contact" onClick={() => setMobileNavOpen(false)} className="block px-3 py-2 text-xs tracking-[0.2em] uppercase text-text-muted hover:text-accent transition-colors">联系</a>
+            </div>
+          )}
         </nav>
       )}
 
@@ -270,7 +306,7 @@ export default function HomeClient({
       </section>
 
       {/* Works */}
-      <section id="works" className="px-4 md:px-6 pt-16 pb-24 max-w-7xl mx-auto">
+      <section id="works" className="scroll-mt-24 md:scroll-mt-28 px-4 md:px-6 pt-16 pb-24 max-w-7xl mx-auto">
         <div className="reveal">
           <div className="flex items-center gap-4 mb-4">
             <span className="font-display italic text-accent text-2xl">01</span>
@@ -370,7 +406,7 @@ export default function HomeClient({
 
       {/* About */}
       {detailSections.length > 0 && (
-        <section id="about" className="px-4 md:px-6 pb-16 max-w-7xl mx-auto">
+        <section id="about" className="scroll-mt-24 md:scroll-mt-28 px-4 md:px-6 pb-16 max-w-7xl mx-auto">
           <div className="reveal">
             <div className="flex items-center gap-4 mb-4">
               <span className="font-display italic text-accent text-2xl">02</span>
@@ -534,7 +570,7 @@ export default function HomeClient({
       </AnimatePresence>
 
       {/* Contact */}
-      <section id="contact" className="px-4 md:px-6 py-16 md:py-24 border-t border-border/20">
+      <section id="contact" className="scroll-mt-24 md:scroll-mt-28 px-4 md:px-6 py-16 md:py-24 border-t border-border/20">
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-12 gap-12">
             <div className="md:col-span-7 reveal">

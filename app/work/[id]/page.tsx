@@ -83,10 +83,12 @@ export default async function WorkDetailPage(
 
   return (
     <main className="min-h-screen bg-bg text-text">
-      <section className="max-w-[96rem] mx-auto px-3 md:px-4 py-8 md:py-14">
-        <Link href="/#works" className="inline-flex border border-border px-4 py-2 text-xs tracking-[0.2em] uppercase text-text-muted hover:border-accent hover:text-accent transition-colors">
-          返回作品集
-        </Link>
+      <section className="max-w-[112rem] mx-auto px-2 md:px-4 py-6 md:py-14">
+        <div className="sticky top-3 z-20 inline-block">
+          <Link href="/#works" className="inline-flex bg-bg/80 backdrop-blur-sm border border-border px-4 py-2 text-xs tracking-[0.2em] uppercase text-text-muted hover:border-accent hover:text-accent transition-colors">
+            返回作品集
+          </Link>
+        </div>
 
         <header className="mt-10 mb-12 md:mb-16">
           <div className="flex flex-wrap items-center gap-3 text-xs text-accent-dim mb-4">
