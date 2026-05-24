@@ -39,9 +39,9 @@
 }
 
 @keyframes auroraFloat {
-  0% { transform: translate3d(0, 0, 0) scaleY(1); }
-  50% { transform: translate3d(0, -2.5%, 0) scaleY(1.05); }
-  100% { transform: translate3d(0, 0, 0) scaleY(1); }
+  0% { transform: translate3d(-8%, 1%, 0) scaleY(0.98); }
+  50% { transform: translate3d(8%, -2.5%, 0) scaleY(1.08); }
+  100% { transform: translate3d(-8%, 1%, 0) scaleY(0.98); }
 }
 
 * { scrollbar-width: thin; scrollbar-color: #2a2622 transparent; }
@@ -221,7 +221,7 @@ body.home-vignette::after {
 }
 
 .font-display-sc {
-  font-family: var(--font-display-sc), "Songti SC", "STSong", serif;
+  font-family: var(--font-display-sc), "Noto Serif SC", "Songti SC", "STSong", serif;
 }
 
 .aurora-shell {
@@ -245,9 +245,10 @@ body.home-vignette::after {
       rgba(81, 61, 34, 0.16) 72%,
       rgba(10, 9, 8, 0) 100%
     );
-  filter: blur(22px);
+  filter: blur(32px);
   transform-origin: center center;
   animation: auroraFloat 20s ease-in-out infinite;
+  will-change: transform;
 }
 
 .aurora-haze {

@@ -1,16 +1,16 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Inter, Noto_Serif_SC } from "next/font/google";
+import { Bodoni_Moda, Inter, ZCOOL_XiaoWei } from "next/font/google";
 import "./globals.css";
 
-const cormorant = Cormorant_Garamond({
+const bodoni = Bodoni_Moda({
   variable: "--font-display-en",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "600"],
 });
 
-const notoSerifSc = Noto_Serif_SC({
+const zcoolXiaoWei = ZCOOL_XiaoWei({
   variable: "--font-display-cn",
-  weight: ["400", "500", "600", "700"],
+  weight: "400",
 });
 
 const inter = Inter({
@@ -40,7 +40,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="zh-CN" className={`${cormorant.variable} ${notoSerifSc.variable} ${inter.variable} dark`}>
+    <html lang="zh-CN" className={`${bodoni.variable} ${zcoolXiaoWei.variable} ${inter.variable} dark`}>
       <body className="min-h-screen bg-bg text-text antialiased">{children}</body>
     </html>
   );
