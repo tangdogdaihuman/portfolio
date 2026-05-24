@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { motion, AnimatePresence, useScroll, useTransform, type MotionValue } from "framer-motion";
+import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
 import type { Work } from "@/lib/types";
 import BgCanvas from "@/components/particle-bg";
 import AuroraCanvas from "@/components/aurora-canvas";
@@ -193,25 +193,6 @@ export default function HomeClient({
   const portfolioFilter = useTransform(portfolioBlur, (v: number) => `blur(${v}px)`);
   const portfolioScale = useTransform(scrollYProgress, [0, 0.45], [1, 0.88]);
 
-  const MAX_INTRO = 10;
-  const lineOps: MotionValue<number>[] = [];
-  const lineBlurs: MotionValue<number>[] = [];
-  const lineScales: MotionValue<number>[] = [];
-  const lineFilters: MotionValue<string>[] = [];
-  /* eslint-disable react-hooks/rules-of-hooks */
-  for (let i = 0; i < MAX_INTRO; i++) {
-    const enterStart = 0.04 + i * 0.045;
-    const enterEnd = enterStart + 0.08;
-    const exitStart = 0.26 + i * 0.045;
-    const exitEnd = exitStart + 0.08;
-    lineOps.push(useTransform(scrollYProgress, [enterStart, enterEnd, exitStart, exitEnd], [0, 1, 1, 0]));
-    const b = useTransform(scrollYProgress, [enterStart, enterEnd, exitStart, exitEnd], [12, 0, 0, 12]);
-    lineBlurs.push(b);
-    lineScales.push(useTransform(scrollYProgress, [enterStart, enterEnd, exitStart, exitEnd], [0.86, 1, 1, 0.86]));
-    lineFilters.push(useTransform(b, (v: number) => `blur(${v}px)`));
-  }
-  /* eslint-enable react-hooks/rules-of-hooks */
-
   // Marquee items: repeat tags 6x to ensure infinite scroll
   const marqueeItems = tags.length > 0 ? tags : ["Digital Art", "Character Design", "3D", "Illustration"];
   const navClass = (id: "works" | "about" | "contact") => `nav-link ${activeSection === id ? "nav-link-active text-text" : ""}`;
@@ -259,36 +240,60 @@ export default function HomeClient({
         <section ref={heroRef} className="hero-noise min-h-screen relative flex flex-col items-center justify-center px-4 overflow-hidden">
           <AuroraCanvas />
 
-          <div className="relative z-10 flex flex-col items-center justify-center w-full">
+          <div className="relative z-10 flex flex-col items-center justify-center w-full max-w-6xl mx-auto pt-16 md:pt-20">
             {/* Portfolio title — fades out on scroll */}
             <motion.div
               style={{ opacity: portfolioOpacity, scale: portfolioScale, filter: portfolioFilter }}
               className="text-center pointer-events-none"
             >
-              <h1 className="font-display text-[clamp(3rem,15vw,12rem)] leading-[0.92] tracking-[-0.04em] text-text whitespace-nowrap">
-                <span className="inline-block overflow-hidden"><motion.span initial={{ y: "110%" }} animate={{ y: 0 }} transition={{ duration: 1, ease: [0.2,0.9,0.3,1] }} className="inline-block">P</motion.span></span>
-                <span className="inline-block overflow-hidden"><motion.span initial={{ y: "110%" }} animate={{ y: 0 }} transition={{ duration: 1, ease: [0.2,0.9,0.3,1], delay: 0.12 }} className="inline-block">ortfolio</motion.span></span>
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, ease: [0.2, 0.9, 0.3, 1] }}
+                className="text-xs md:text-sm text-accent-dim uppercase mb-6"
+              >
+                Tang Zihang
+              </motion.p>
+              <h1 className="font-display leading-[0.95] text-text">
+                <span className="block overflow-hidden">
+                  <motion.span
+                    initial={{ y: "110%" }}
+                    animate={{ y: 0 }}
+                    transition={{ duration: 0.95, ease: [0.2, 0.9, 0.3, 1] }}
+                    className="inline-block text-5xl sm:text-6xl md:text-8xl lg:text-9xl"
+                  >
+                    Portfolio
+                  </motion.span>
+                </span>
+                <span className="block overflow-hidden mt-1 md:mt-2">
+                  <motion.span
+                    initial={{ y: "110%" }}
+                    animate={{ y: 0 }}
+                    transition={{ duration: 0.95, ease: [0.2, 0.9, 0.3, 1], delay: 0.12 }}
+                    className="inline-block text-2xl sm:text-3xl md:text-5xl lg:text-6xl text-accent"
+                  >
+                    CG Works Collection
+                  </motion.span>
+                </span>
               </h1>
             </motion.div>
 
             {/* Intro — reveals line by line on scroll, stays visible, fades on exit */}
             {intro && (
-              <div className="mt-10 md:mt-14 max-w-[40rem] mx-auto text-center px-3">
+              <div className="mt-9 md:mt-12 max-w-[46rem] mx-auto text-center px-3">
                 {(() => {
                   let idx = 0;
                   return intro.split("\n").map((line, i) => {
                     if (!line.trim()) return <br key={i} />;
-                    if (idx >= MAX_INTRO) return null;
-                    const animIdx = idx++;
+                    const delay = idx * 0.08;
+                    idx++;
                     return (
                       <motion.p
                         key={i}
-                        style={{
-                          opacity: lineOps[animIdx],
-                          scale: lineScales[animIdx],
-                          filter: lineFilters[animIdx],
-                        }}
-                        className="font-display text-lg md:text-[1.45rem] text-text-muted leading-[1.7] mb-4"
+                        initial={{ opacity: 0, y: 18, filter: "blur(8px)" }}
+                        animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                        transition={{ duration: 0.7, delay, ease: [0.2, 0.9, 0.3, 1] }}
+                        className="text-base md:text-lg text-text-muted leading-[1.85] mb-3.5"
                       >
                         {line.trim()}
                       </motion.p>
@@ -297,6 +302,20 @@ export default function HomeClient({
                 })()}
               </div>
             )}
+
+            <motion.div
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.35, ease: [0.2, 0.9, 0.3, 1] }}
+              className="mt-10 md:mt-12 flex items-center gap-3"
+            >
+              <a href="#works" className="px-5 py-2 text-xs uppercase text-text border border-border/70 hover:border-accent hover:text-accent transition-colors">
+                浏览作品
+              </a>
+              <a href="#contact" className="px-5 py-2 text-xs uppercase text-text-muted border border-border/50 hover:text-text transition-colors">
+                联系我
+              </a>
+            </motion.div>
           </div>
 
           {/* Scroll indicator — fades with Portfolio */}

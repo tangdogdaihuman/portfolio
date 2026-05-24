@@ -2,25 +2,25 @@
 import { useEffect, useRef } from "react";
 import { createNoise3D } from "simplex-noise";
 
-const RAY_COUNT = 500;
+const RAY_COUNT = 340;
 const RAY_PROPS = 8;
-const BASE_LEN = 200;
-const RANGE_LEN = 250;
-const BASE_SPEED = 0.015;
-const RANGE_SPEED = 0.07;
-const BASE_WIDTH = 5;
-const RANGE_WIDTH = 14;
-const BASE_TTL = 35;
-const RANGE_TTL = 90;
-const X_OFF = 0.001;
-const Y_OFF = 0.001;
-const Z_OFF = 0.001;
+const BASE_LEN = 260;
+const RANGE_LEN = 210;
+const BASE_SPEED = 0.008;
+const RANGE_SPEED = 0.04;
+const BASE_WIDTH = 8;
+const RANGE_WIDTH = 18;
+const BASE_TTL = 90;
+const RANGE_TTL = 120;
+const X_OFF = 0.0009;
+const Y_OFF = 0.0007;
+const Z_OFF = 0.0007;
 
 const COLORS = [
-  [201, 169, 97],
-  [188, 145, 68],
-  [218, 185, 125],
-  [170, 130, 55],
+  [203, 166, 89],
+  [224, 186, 118],
+  [177, 133, 72],
+  [143, 111, 58],
 ];
 
 export default function AuroraCanvas() {
@@ -51,11 +51,11 @@ export default function AuroraCanvas() {
 
     function initRay(i: number) {
       const x = rand(w);
-      const mid = h * 0.48;
+      const mid = h * 0.52;
       const len = BASE_LEN + rand(RANGE_LEN);
-      const y1 = mid + 80 + rand(40);
-      const y2 = y1 - len - rand(80);
-      const n = noise3D(x * X_OFF, y1 * Y_OFF, tick * Z_OFF) * 100;
+      const y1 = mid + 60 + rand(42);
+      const y2 = y1 - len - rand(90);
+      const n = noise3D(x * X_OFF, y1 * Y_OFF, tick * Z_OFF) * 72;
       const speed = BASE_SPEED + rand(RANGE_SPEED) * (Math.round(rand(1)) ? 1 : -1);
       const colorIdx = Math.floor(rand(COLORS.length));
       props.set([x, y1 + n, y2 + n, 0, BASE_TTL + rand(RANGE_TTL), BASE_WIDTH + rand(RANGE_WIDTH), speed, colorIdx], i);
@@ -82,7 +82,7 @@ export default function AuroraCanvas() {
 
       const gradient = ctxA!.createLinearGradient(x, y1, x, y2);
       gradient.addColorStop(0, `rgba(${r},${g},${b},0)`);
-      gradient.addColorStop(0.5, `rgba(${r},${g},${b},${a * 0.55})`);
+      gradient.addColorStop(0.5, `rgba(${r},${g},${b},${a * 0.42})`);
       gradient.addColorStop(1, `rgba(${r},${g},${b},0)`);
 
       ctxA!.beginPath();
@@ -109,18 +109,26 @@ export default function AuroraCanvas() {
       ctxB.save();
       ctxB.globalCompositeOperation = "source-over";
       const bgGradient = ctxB.createLinearGradient(0, 0, 0, h);
-      bgGradient.addColorStop(0, "rgba(10,9,8,0.82)");
-      bgGradient.addColorStop(0.9, "rgba(10,9,8,0.55)");
-      bgGradient.addColorStop(0.96, "rgba(10,9,8,0.18)");
+      bgGradient.addColorStop(0, "rgba(10,9,8,0.9)");
+      bgGradient.addColorStop(0.45, "rgba(10,9,8,0.72)");
+      bgGradient.addColorStop(0.9, "rgba(10,9,8,0.42)");
+      bgGradient.addColorStop(0.97, "rgba(10,9,8,0.12)");
       bgGradient.addColorStop(1, "rgba(10,9,8,0)");
       ctxB.fillStyle = bgGradient;
+      ctxB.fillRect(0, 0, w, h);
+
+      const focusGlow = ctxB.createRadialGradient(w * 0.5, h * 0.56, 0, w * 0.5, h * 0.56, Math.max(w * 0.42, 380));
+      focusGlow.addColorStop(0, "rgba(201,169,97,0.12)");
+      focusGlow.addColorStop(0.5, "rgba(201,169,97,0.04)");
+      focusGlow.addColorStop(1, "rgba(201,169,97,0)");
+      ctxB.fillStyle = focusGlow;
       ctxB.fillRect(0, 0, w, h);
       ctxB.restore();
 
       for (let i = 0; i < total; i += RAY_PROPS) updateRay(i);
 
       ctxB.save();
-      ctxB.filter = "blur(18px)";
+      ctxB.filter = "blur(24px)";
       ctxB.globalCompositeOperation = "lighter";
       ctxB.drawImage(offscreen, 0, 0);
       ctxB.restore();
