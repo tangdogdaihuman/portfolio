@@ -35,6 +35,8 @@ export default function HomeClient({
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<"default" | "newest" | "oldest">("default");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState<"works" | "about" | "contact">("works");
+  const [thumbReady, setThumbReady] = useState<Record<string, true>>({});
   const [lightboxWork, setLightboxWork] = useState<Work | null>(null);
   const [lightboxImages, setLightboxImages] = useState<ImageItem[]>([]);
   const [fullImageIdx, setFullImageIdx] = useState<number | null>(null);
@@ -123,6 +125,26 @@ export default function HomeClient({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [mobileNavOpen]);
 
+  useEffect(() => {
+    const sections = ["works", "about", "contact"] as const;
+    const io = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+        if (visible[0]?.target?.id) {
+          setActiveSection(visible[0].target.id as "works" | "about" | "contact");
+        }
+      },
+      { threshold: [0.25, 0.45, 0.65], rootMargin: "-22% 0px -55% 0px" }
+    );
+    sections.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) io.observe(el);
+    });
+    return () => io.disconnect();
+  }, [works.length, detailSections.length]);
+
   // Reveal
   useEffect(() => {
     const obs = new IntersectionObserver((entries) => entries.forEach((e) => { if (e.isIntersecting) e.target.classList.add("in"); }), { threshold: 0.15 });
@@ -192,6 +214,7 @@ export default function HomeClient({
 
   // Marquee items: repeat tags 6x to ensure infinite scroll
   const marqueeItems = tags.length > 0 ? tags : ["Digital Art", "Character Design", "3D", "Illustration"];
+  const navClass = (id: "works" | "about" | "contact") => `nav-link ${activeSection === id ? "nav-link-active text-text" : ""}`;
 
   return (
     <>
@@ -200,12 +223,12 @@ export default function HomeClient({
 
       {/* Nav */}
       {!lightboxWork && !fullImage && (
-        <nav className="fixed top-0 left-0 right-0 z-[70] px-4 md:px-12 py-4 md:py-5 flex justify-between items-center bg-bg/60 backdrop-blur-md border-b border-border/30">
+        <nav className="fixed top-0 left-0 right-0 z-[70] px-4 md:px-10 py-3.5 md:py-4.5 flex justify-between items-center bg-bg/70 backdrop-blur-md border-b border-border/30">
           <a href="#" onClick={closeAll} className="font-display text-lg tracking-wider text-text">Portfolio</a>
-          <div className="hidden md:flex gap-8 text-xs tracking-[0.25em] uppercase text-text-muted">
-            <a href="#works" className="nav-link">作品</a>
-            <a href="#about" className="nav-link">关于</a>
-            <a href="#contact" className="nav-link">联系</a>
+          <div className="hidden md:flex gap-7 text-[0.67rem] tracking-[0.22em] uppercase text-text-muted">
+            <a href="#works" className={navClass("works")}>作品</a>
+            <a href="#about" className={navClass("about")}>关于</a>
+            <a href="#contact" className={navClass("contact")}>联系</a>
           </div>
           <button
             type="button"
@@ -221,9 +244,9 @@ export default function HomeClient({
           </button>
           {mobileNavOpen && (
             <div className="absolute top-full right-4 mt-2 w-44 bg-surface border border-border/80 p-2 md:hidden">
-              <a href="#works" onClick={() => setMobileNavOpen(false)} className="block px-3 py-2 text-xs tracking-[0.2em] uppercase text-text-muted hover:text-accent transition-colors">作品</a>
-              <a href="#about" onClick={() => setMobileNavOpen(false)} className="block px-3 py-2 text-xs tracking-[0.2em] uppercase text-text-muted hover:text-accent transition-colors">关于</a>
-              <a href="#contact" onClick={() => setMobileNavOpen(false)} className="block px-3 py-2 text-xs tracking-[0.2em] uppercase text-text-muted hover:text-accent transition-colors">联系</a>
+              <a href="#works" onClick={() => setMobileNavOpen(false)} className={`block px-3 py-2 text-xs tracking-[0.2em] uppercase transition-colors ${activeSection === "works" ? "text-text" : "text-text-muted hover:text-accent"}`}>作品</a>
+              <a href="#about" onClick={() => setMobileNavOpen(false)} className={`block px-3 py-2 text-xs tracking-[0.2em] uppercase transition-colors ${activeSection === "about" ? "text-text" : "text-text-muted hover:text-accent"}`}>关于</a>
+              <a href="#contact" onClick={() => setMobileNavOpen(false)} className={`block px-3 py-2 text-xs tracking-[0.2em] uppercase transition-colors ${activeSection === "contact" ? "text-text" : "text-text-muted hover:text-accent"}`}>联系</a>
             </div>
           )}
         </nav>
@@ -242,7 +265,7 @@ export default function HomeClient({
               style={{ opacity: portfolioOpacity, scale: portfolioScale, filter: portfolioFilter }}
               className="text-center pointer-events-none"
             >
-              <h1 className="font-display text-[clamp(4rem,15vw,12rem)] leading-[0.9] tracking-[-0.04em] text-text whitespace-nowrap">
+              <h1 className="font-display text-[clamp(3rem,15vw,12rem)] leading-[0.92] tracking-[-0.04em] text-text whitespace-nowrap">
                 <span className="inline-block overflow-hidden"><motion.span initial={{ y: "110%" }} animate={{ y: 0 }} transition={{ duration: 1, ease: [0.2,0.9,0.3,1] }} className="inline-block">P</motion.span></span>
                 <span className="inline-block overflow-hidden"><motion.span initial={{ y: "110%" }} animate={{ y: 0 }} transition={{ duration: 1, ease: [0.2,0.9,0.3,1], delay: 0.12 }} className="inline-block">ortfolio</motion.span></span>
               </h1>
@@ -250,7 +273,7 @@ export default function HomeClient({
 
             {/* Intro — reveals line by line on scroll, stays visible, fades on exit */}
             {intro && (
-              <div className="mt-12 md:mt-16 max-w-2xl mx-auto text-center">
+              <div className="mt-10 md:mt-14 max-w-[40rem] mx-auto text-center px-3">
                 {(() => {
                   let idx = 0;
                   return intro.split("\n").map((line, i) => {
@@ -265,7 +288,7 @@ export default function HomeClient({
                           scale: lineScales[animIdx],
                           filter: lineFilters[animIdx],
                         }}
-                        className="font-display text-xl md:text-2xl text-text-muted leading-relaxed mb-5"
+                        className="font-display text-lg md:text-[1.45rem] text-text-muted leading-[1.7] mb-4"
                       >
                         {line.trim()}
                       </motion.p>
@@ -289,7 +312,7 @@ export default function HomeClient({
         </section>
 
       {/* Marquee */}
-      <section className="py-12 md:py-16 border-y border-border/20 overflow-hidden">
+      <section className="py-10 md:py-14 border-y border-border/20 overflow-hidden">
         <div className="overflow-hidden">
           <div className="flex animate-[marquee_10s_linear_infinite] md:animate-[marquee_14s_linear_infinite]" style={{ width: "max-content" }}>
             {[0, 1, 2].map((n) => (
@@ -306,24 +329,24 @@ export default function HomeClient({
       </section>
 
       {/* Works */}
-      <section id="works" className="scroll-mt-24 md:scroll-mt-28 px-4 md:px-6 pt-16 pb-24 max-w-7xl mx-auto">
+      <section id="works" className="scroll-mt-24 md:scroll-mt-28 px-4 md:px-6 pt-14 md:pt-16 pb-20 md:pb-24 max-w-7xl mx-auto">
         <div className="reveal">
           <div className="flex items-center gap-4 mb-4">
             <span className="font-display italic text-accent text-2xl">01</span>
             <div className="divider-line" />
             <span className="text-xs tracking-[0.4em] uppercase text-text-muted">Portfolio</span>
           </div>
-          <h2 className="font-display text-2xl md:text-4xl text-accent mb-12">作品集</h2>
+          <h2 className="font-display text-2xl md:text-4xl text-accent mb-10">作品集</h2>
         </div>
 
         {tags.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 mb-12 reveal">
-            <button onClick={() => setActiveTag(null)} className={`px-4 py-1.5 text-[0.65rem] tracking-wider uppercase transition-colors ${activeTag === null ? "text-accent border-b border-accent" : "text-text-muted hover:text-text"}`}>All</button>
+          <div className="flex flex-wrap items-center gap-1.5 md:gap-2 mb-10 reveal">
+            <button onClick={() => setActiveTag(null)} className={`px-3 py-1 text-[0.62rem] tracking-[0.12em] uppercase transition-colors border ${activeTag === null ? "text-accent border-accent/70 bg-surface" : "text-text-muted border-border/60 hover:text-text"}`}>All</button>
             {tags.map((t) => (
-              <button key={t} onClick={() => setActiveTag(t)} className={`px-4 py-1.5 text-[0.65rem] tracking-wider uppercase transition-colors ${activeTag === t ? "text-accent border-b border-accent" : "text-text-muted hover:text-text"}`}>{t}</button>
+              <button key={t} onClick={() => setActiveTag(t)} className={`px-3 py-1 text-[0.62rem] tracking-[0.12em] uppercase transition-colors border ${activeTag === t ? "text-accent border-accent/70 bg-surface" : "text-text-muted border-border/60 hover:text-text"}`}>{t}</button>
             ))}
             <span className="flex-1" />
-            <button onClick={nextSort} className="px-3 py-1.5 text-[0.6rem] tracking-wider uppercase text-text-muted hover:text-accent transition-colors border border-border">
+            <button onClick={nextSort} className="px-3 py-1 text-[0.6rem] tracking-[0.16em] uppercase text-text-muted hover:text-accent transition-colors border border-border/70">
               {sortLabels[sortMode]}
             </button>
           </div>
@@ -346,12 +369,12 @@ export default function HomeClient({
             })}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-20 text-text-muted reveal">
-            <p>{loadError ? "内容暂时加载失败，请稍后刷新" : "还没有作品"}</p>
+          <div className="status-surface text-center py-16 md:py-20 text-text-muted reveal">
+            <p className="text-sm tracking-[0.08em] uppercase">{loadError ? "内容暂时加载失败，请稍后刷新" : "还没有作品"}</p>
             {loadError && (
               <button
                 onClick={refreshData}
-                className="mt-5 px-5 py-2 border border-border text-xs tracking-wider text-accent hover:bg-accent hover:text-bg transition-colors"
+                className="mt-5 px-5 py-2 border border-border text-xs tracking-[0.16em] text-accent hover:bg-accent hover:text-bg transition-colors"
               >
                 重试加载
               </button>
@@ -372,28 +395,29 @@ export default function HomeClient({
                   className={`work-card reveal group ${colSpan}`}
                 >
                   <Link href={`/work/${work.id}`} className="block" data-hover>
-                    <div className="overflow-hidden">
+                    <div className="overflow-hidden bg-surface">
                       <Image
                         src={work.thumb_url}
                         alt={work.title}
                         width={1200}
                         height={1600}
                         unoptimized
-                        className="max-w-full max-h-[32rem] w-auto h-auto"
+                        className={`work-thumb ${thumbReady[work.id] ? "work-thumb-ready" : ""} max-w-full max-h-[32rem] w-auto h-auto`}
                         sizes="(max-width: 768px) 92vw, (max-width: 1280px) 50vw, 36vw"
                         priority={i < 2}
                         loading={i < 2 ? "eager" : "lazy"}
+                        onLoad={() => setThumbReady((current) => (current[work.id] ? current : { ...current, [work.id]: true }))}
                       />
                     </div>
                     <div className="card-meta">
-                      <div className="flex items-center gap-3 text-[0.6rem] tracking-[0.3em] uppercase text-accent-dim">
-                        {work.pinned && <span>Featured</span>}
+                      <div className="flex items-center gap-2.5 text-[0.58rem] tracking-[0.28em] uppercase text-accent-dim">
+                        {work.pinned && <span className="text-accent">Featured</span>}
                         {work.work_date && <span>{work.work_date}</span>}
                       </div>
-                      <h3 className="font-display text-lg md:text-xl text-text mt-1 leading-tight group-hover:text-accent transition-colors">{work.title}</h3>
-                      <div className="flex items-center gap-3 flex-wrap text-xs text-text-muted tracking-[0.15em]">
-                        {work.tags.slice(0, 3).map((t) => <span key={t} className="text-accent-dim">{t}</span>)}
-                        {(work.image_count || 1) > 1 && <span className="text-text-muted/50">{work.image_count} 张</span>}
+                      <h3 className="font-display text-[1.15rem] md:text-[1.45rem] text-text mt-1 leading-[1.1] group-hover:text-accent transition-colors">{work.title}</h3>
+                      <div className="flex items-center gap-2.5 flex-wrap text-[0.7rem] text-text-muted tracking-[0.12em] mt-1.5">
+                        {work.tags.slice(0, 3).map((t) => <span key={t} className="text-accent-dim/90">{t}</span>)}
+                        {(work.image_count || 1) > 1 && <span className="text-text-muted/60">{work.image_count} 张</span>}
                       </div>
                     </div>
                   </Link>
@@ -406,14 +430,14 @@ export default function HomeClient({
 
       {/* About */}
       {detailSections.length > 0 && (
-        <section id="about" className="scroll-mt-24 md:scroll-mt-28 px-4 md:px-6 pb-16 max-w-7xl mx-auto">
+        <section id="about" className="scroll-mt-24 md:scroll-mt-28 px-4 md:px-6 pb-14 md:pb-16 max-w-7xl mx-auto">
           <div className="reveal">
             <div className="flex items-center gap-4 mb-4">
               <span className="font-display italic text-accent text-2xl">02</span>
               <div className="divider-line" />
               <span className="text-xs tracking-[0.4em] uppercase text-text-muted">About</span>
             </div>
-            <h2 className="font-display text-2xl md:text-4xl text-accent mb-10">详细介绍</h2>
+            <h2 className="font-display text-2xl md:text-4xl text-accent mb-8 md:mb-10">详细介绍</h2>
           </div>
           <div className="max-w-2xl space-y-2">
             {detailSections.map((s, i) => {
@@ -509,14 +533,14 @@ export default function HomeClient({
       <AnimatePresence>
         {fullImage && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[90] bg-bg/96 flex items-center justify-center" style={{ touchAction: "none" }} onClick={closeFullscreen}>
-            <button onClick={(e) => { e.stopPropagation(); closeAll(); }} className="absolute top-6 left-6 text-text-muted hover:text-text z-20 p-2 text-xs tracking-[0.3em] uppercase">返回作品集</button>
-            <button onClick={(e) => { e.stopPropagation(); closeFullscreen(); }} className="absolute top-6 right-6 text-text-muted hover:text-text z-20 p-2"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
+            <button onClick={(e) => { e.stopPropagation(); closeAll(); }} className="absolute top-6 left-6 text-text-muted hover:text-text z-20 p-2 text-xs tracking-[0.3em] uppercase bg-bg/75 border border-border/50">返回作品集</button>
+            <button onClick={(e) => { e.stopPropagation(); closeFullscreen(); }} className="absolute top-6 right-6 text-text-muted hover:text-text z-20 p-2 bg-bg/75 border border-border/50"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
 
              {fullImageIdx !== null && fullImageIdx > 0 && (
-              <button onClick={(e) => { e.stopPropagation(); setFullImageIdx((i) => (i ?? 0) - 1); resetView(); }} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted/60 hover:text-text z-20 p-4"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><polyline points="15 18 9 12 15 6" /></svg></button>
+              <button onClick={(e) => { e.stopPropagation(); setFullImageIdx((i) => (i ?? 0) - 1); resetView(); }} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted hover:text-text z-20 p-4 bg-bg/75 border border-border/50"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><polyline points="15 18 9 12 15 6" /></svg></button>
             )}
             {fullImageIdx !== null && fullImageIdx < lightboxImages.length - 1 && (
-              <button onClick={(e) => { e.stopPropagation(); setFullImageIdx((i) => (i ?? 0) + 1); resetView(); }} className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted/60 hover:text-text z-20 p-4"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><polyline points="9 18 15 12 9 6" /></svg></button>
+              <button onClick={(e) => { e.stopPropagation(); setFullImageIdx((i) => (i ?? 0) + 1); resetView(); }} className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted hover:text-text z-20 p-4 bg-bg/75 border border-border/50"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><polyline points="9 18 15 12 9 6" /></svg></button>
             )}
 
             <motion.img
@@ -527,7 +551,7 @@ export default function HomeClient({
               transition={{ duration: 0.25 }}
               src={fullImage.image_url}
               alt={lightboxWork?.title ?? ""}
-              className="max-w-[94vw] max-h-[94vh] object-contain select-none"
+              className="max-w-[95vw] max-h-[95vh] object-contain select-none"
               style={{ transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`, cursor: zoom > 1 ? "grab" : "zoom-in" }}
               onTouchStart={(e) => {
                 const t = e.touches[0];
@@ -563,14 +587,14 @@ export default function HomeClient({
             />
 
             {fullImageIdx !== null && lightboxImages.length > 1 && (
-              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-xs text-text-muted/50 tracking-wider">{fullImageIdx + 1} / {lightboxImages.length}</div>
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-xs text-text-muted tracking-wider bg-bg/70 border border-border/50 px-2.5 py-1">{fullImageIdx + 1} / {lightboxImages.length}</div>
             )}
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Contact */}
-      <section id="contact" className="scroll-mt-24 md:scroll-mt-28 px-4 md:px-6 py-16 md:py-24 border-t border-border/20">
+      <section id="contact" className="scroll-mt-24 md:scroll-mt-28 px-4 md:px-6 py-14 md:py-20 border-t border-border/20">
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-12 gap-12">
             <div className="md:col-span-7 reveal">

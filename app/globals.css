@@ -2,10 +2,10 @@
 
 @theme inline {
   --color-bg: #0a0908;
-  --color-surface: #141210;
-  --color-border: #2a2622;
+  --color-surface: #171411;
+  --color-border: #322c26;
   --color-text: #e8e4dc;
-  --color-text-muted: #8a8276;
+  --color-text-muted: #9a9185;
   --color-accent: #c9a961;
   --color-accent-dim: #8b7340;
   --font-display: var(--font-playfair);
@@ -42,9 +42,14 @@
 body {
   background: var(--color-bg);
   color: var(--color-text);
-  font-family: var(--font-body), ui-sans-serif, sans-serif;
+  font-family: var(--font-body), "PingFang SC", "Microsoft YaHei", ui-sans-serif, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-accent) 85%, white);
+  outline-offset: 2px;
 }
 
 body::before {
@@ -86,14 +91,20 @@ body.home-vignette::after {
 .nav-link { position: relative; }
 .nav-link::after {
   content: ''; position: absolute; bottom: -4px; left: 0; width: 0; height: 1px;
-  background: var(--color-accent); transition: width 0.4s;
+  background: var(--color-accent); transition: width 0.28s cubic-bezier(.2,.9,.3,1);
 }
 .nav-link:hover::after { width: 100%; }
+.nav-link-active {
+  color: var(--color-text);
+}
+.nav-link-active::after {
+  width: 100%;
+}
 
 .reveal {
   opacity: 0;
   transform: translateY(40px);
-  transition: opacity 1s ease, transform 1s cubic-bezier(.2,.9,.3,1);
+  transition: opacity 0.8s ease, transform 0.8s cubic-bezier(.2,.9,.3,1);
 }
 .reveal.in {
   opacity: 1;
@@ -105,13 +116,26 @@ body.home-vignette::after {
   overflow: hidden;
 }
 .work-card img {
-  transition: transform 1.2s cubic-bezier(.2,.9,.3,1);
+  transition: transform 0.9s cubic-bezier(.2,.9,.3,1), opacity 0.45s ease;
 }
 .work-card:hover img {
-  transform: scale(1.06);
+  transform: scale(1.04);
 }
 .work-card .card-meta {
-  padding-top: 0.75rem;
+  padding-top: 0.9rem;
+}
+
+.work-thumb {
+  opacity: 0;
+}
+
+.work-thumb-ready {
+  opacity: 1;
+}
+
+.status-surface {
+  border: 1px solid color-mix(in srgb, var(--color-border) 85%, black);
+  background: color-mix(in srgb, var(--color-surface) 88%, black);
 }
 
 .scroll-line {
