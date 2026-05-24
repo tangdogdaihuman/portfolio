@@ -193,6 +193,11 @@ export default function HomeClient({
   const portfolioFilter = useTransform(portfolioBlur, (v: number) => `blur(${v}px)`);
   const portfolioScale = useTransform(scrollYProgress, [0, 0.45], [1, 0.88]);
 
+  const introExitOpacity = useTransform(scrollYProgress, [0.4, 0.7], [1, 0]);
+  const introExitBlur = useTransform(scrollYProgress, [0.4, 0.7], [0, 10]);
+  const introExitFilter = useTransform(introExitBlur, (v: number) => `blur(${v}px)`);
+  const introExitScale = useTransform(scrollYProgress, [0.4, 0.7], [1, 0.92]);
+
   // Marquee items: repeat tags 6x to ensure infinite scroll
   const marqueeItems = tags.length > 0 ? tags : ["Digital Art", "Character Design", "3D", "Illustration"];
   const navClass = (id: "works" | "about" | "contact") => `nav-link ${activeSection === id ? "nav-link-active text-text" : ""}`;
@@ -278,9 +283,12 @@ export default function HomeClient({
               </h1>
             </motion.div>
 
-            {/* Intro — reveals line by line on scroll, stays visible, fades on exit */}
-            {intro && (
-              <div className="mt-9 md:mt-12 max-w-[46rem] mx-auto text-center px-3">
+            {/* Intro — visible on load, fades out on scroll exit */}
+            <motion.div
+              style={{ opacity: introExitOpacity, scale: introExitScale, filter: introExitFilter }}
+            >
+              {intro && (
+                <div className="mt-9 md:mt-12 max-w-[46rem] mx-auto text-center px-3">
                 {(() => {
                   let idx = 0;
                   return intro.split("\n").map((line, i) => {
@@ -315,6 +323,7 @@ export default function HomeClient({
               <a href="#contact" className="px-5 py-2 text-xs uppercase text-text-muted border border-border/50 hover:text-text transition-colors">
                 联系我
               </a>
+            </motion.div>
             </motion.div>
           </div>
 
