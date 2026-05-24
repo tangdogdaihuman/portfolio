@@ -62,12 +62,11 @@ function LoginForm() {
 
 export default function AdminLoginPage() {
   return (
-    <div className="min-h-screen bg-bg flex items-start justify-center px-4 pt-24 md:pt-32">
+    <div className="min-h-screen bg-bg flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        <h1 className="font-display text-2xl text-text text-center mb-2">
+        <h1 className="font-display text-2xl text-text text-center mb-8">
           管理后台
         </h1>
-        <p className="text-xs text-text-muted text-center mb-8">输入管理密钥进入作品后台</p>
         <Suspense fallback={<div className="text-text-muted text-sm text-center">加载中...</div>}>
           <LoginForm />
         </Suspense>

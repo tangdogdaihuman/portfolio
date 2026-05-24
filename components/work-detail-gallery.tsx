@@ -133,8 +133,7 @@ export default function WorkDetailGallery({
           )}
 
           <div className="absolute left-4 top-6 z-20 text-[0.62rem] tracking-[0.15em] uppercase text-text-muted bg-bg/75 border border-border/50 px-3 py-2">
-            <span className="hidden md:inline">滚轮缩放 · 拖拽查看细节</span>
-            <span className="md:hidden">按钮缩放 · 左右滑动切图</span>
+            双击缩放 · 拖拽查看细节
           </div>
 
           {/* eslint-disable-next-line @next/next/no-img-element */}
