@@ -2,7 +2,7 @@
 import { useEffect, useRef } from "react";
 import { createNoise3D } from "simplex-noise";
 
-const RAY_COUNT = 340;
+const RAY_COUNT = 280;
 const RAY_PROPS = 8;
 const BASE_LEN = 260;
 const RANGE_LEN = 210;
@@ -17,10 +17,10 @@ const Y_OFF = 0.0007;
 const Z_OFF = 0.0007;
 
 const COLORS = [
-  [203, 166, 89],
-  [224, 186, 118],
-  [177, 133, 72],
-  [143, 111, 58],
+  [208, 171, 101],
+  [199, 163, 96],
+  [186, 149, 87],
+  [172, 137, 79],
 ];
 
 export default function AuroraCanvas() {
@@ -37,11 +37,16 @@ export default function AuroraCanvas() {
     const ctxA = offscreen.getContext("2d");
     if (!ctxA) return;
 
-    let w = visible.width = visible.offsetWidth;
-    let h = visible.height = visible.offsetHeight;
+    const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
+    let w = Math.max(1, visible.offsetWidth);
+    let h = Math.max(1, visible.offsetHeight);
     let rayCount = Math.min(RAY_COUNT, Math.floor(w / 2.8));
-    offscreen.width = w;
-    offscreen.height = h;
+    visible.width = Math.floor(w * dpr);
+    visible.height = Math.floor(h * dpr);
+    offscreen.width = Math.floor(w * dpr);
+    offscreen.height = Math.floor(h * dpr);
+    ctxB.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctxA.setTransform(dpr, 0, 0, dpr, 0, 0);
 
     const noise3D = createNoise3D();
     let total = rayCount * RAY_PROPS;
@@ -104,6 +109,7 @@ export default function AuroraCanvas() {
     }
 
     const draw = () => {
+      if (w <= 0 || h <= 0) return;
       tick++;
       ctxA.clearRect(0, 0, w, h);
 
@@ -130,8 +136,16 @@ export default function AuroraCanvas() {
 
       ctxB.save();
       ctxB.filter = "blur(24px)";
-      ctxB.globalCompositeOperation = "lighter";
-      ctxB.drawImage(offscreen, 0, 0);
+      ctxB.globalCompositeOperation = "screen";
+      ctxB.drawImage(offscreen, 0, 0, w, h);
+      ctxB.restore();
+
+      // Secondary soft pass to suppress visible color granularity on mobile.
+      ctxB.save();
+      ctxB.globalAlpha = 0.58;
+      ctxB.filter = "blur(48px)";
+      ctxB.globalCompositeOperation = "screen";
+      ctxB.drawImage(offscreen, 0, 0, w, h);
       ctxB.restore();
 
       if (!reducedMotion && !document.hidden) {
@@ -142,10 +156,14 @@ export default function AuroraCanvas() {
     let raf = requestAnimationFrame(draw);
 
     const onResize = () => {
-      w = visible.width = visible.offsetWidth;
-      h = visible.height = visible.offsetHeight;
-      offscreen.width = w;
-      offscreen.height = h;
+      w = Math.max(1, visible.offsetWidth);
+      h = Math.max(1, visible.offsetHeight);
+      visible.width = Math.floor(w * dpr);
+      visible.height = Math.floor(h * dpr);
+      offscreen.width = Math.floor(w * dpr);
+      offscreen.height = Math.floor(h * dpr);
+      ctxB.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctxA.setTransform(dpr, 0, 0, dpr, 0, 0);
       rebuild();
       draw();
     };

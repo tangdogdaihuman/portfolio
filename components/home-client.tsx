@@ -234,6 +234,7 @@ export default function HomeClient({
         {/* Hero */}
         <section ref={heroRef} className="hero-noise min-h-svh md:min-h-screen relative flex flex-col items-center justify-center px-4 overflow-hidden">
           <AuroraCanvas />
+          <div className="hero-contrast-scrim absolute inset-0 z-[1] pointer-events-none" />
 
           <div className="relative z-10 flex flex-col items-center justify-center w-full max-w-6xl mx-auto">
             {/* Portfolio title — fades out on scroll */}
@@ -341,11 +342,11 @@ export default function HomeClient({
       {/* Marquee */}
       <section className="py-3 md:py-4 border-y border-border/20 overflow-hidden">
         <div className="overflow-hidden">
-          <div className="flex animate-[marquee_10s_linear_infinite] md:animate-[marquee_14s_linear_infinite]" style={{ width: "max-content" }}>
-            {[0, 1, 2].map((n) => (
-              <div key={n} className="flex flex-shrink-0">
-                {[0, 1, 2, 3, 4].map((m) => (
-                  <span key={`${n}-${m}`} className="font-display italic text-lg md:text-xl text-text-muted/20 tracking-wider mx-5 whitespace-nowrap flex-shrink-0">
+          <div className="marquee-track">
+            {[0, 1].map((loop) => (
+              <div key={loop} className="marquee-segment" aria-hidden={loop === 1}>
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <span key={`${loop}-${i}`} className="font-display italic text-lg md:text-xl text-text-muted/20 tracking-wider whitespace-nowrap flex-shrink-0">
                     {marqueeItems.map((t, j) => `${t}${j < marqueeItems.length - 1 ? " · " : ""}`)}
                   </span>
                 ))}
@@ -443,7 +444,7 @@ export default function HomeClient({
                         width={1200}
                         height={1600}
                         unoptimized
-                        className={`work-thumb ${thumbReady[work.id] ? "work-thumb-ready" : ""} max-w-full max-h-[32rem] w-auto h-auto`}
+                        className={`work-thumb ${thumbReady[work.id] ? "work-thumb-ready" : ""} w-full h-auto max-h-[32rem] object-contain object-center`}
                         sizes="(max-width: 768px) 92vw, (max-width: 1280px) 50vw, 36vw"
                         priority={i < 2}
                         loading={i < 2 ? "eager" : "lazy"}

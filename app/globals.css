@@ -23,7 +23,7 @@
 }
 
 @keyframes marquee {
-  to { transform: translateX(calc(-100% / 3)); }
+  to { transform: translateX(-50%); }
 }
 
 @keyframes scrollDown {
@@ -211,4 +211,45 @@ body.home-vignette::after {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   mask-image: linear-gradient(to bottom, black 0%, black 76%, transparent 100%);
   -webkit-mask-image: linear-gradient(to bottom, black 0%, black 76%, transparent 100%);
+}
+
+.hero-contrast-scrim {
+  background:
+    radial-gradient(ellipse at 50% 38%, rgba(10, 9, 8, 0.56) 0%, rgba(10, 9, 8, 0.42) 38%, rgba(10, 9, 8, 0.12) 72%, rgba(10, 9, 8, 0) 100%),
+    linear-gradient(to bottom, rgba(10, 9, 8, 0.3) 0%, rgba(10, 9, 8, 0.08) 48%, rgba(10, 9, 8, 0) 100%);
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation: marquee 12s linear infinite;
+}
+
+.marquee-segment {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 2.5rem;
+  padding-right: 2.5rem;
+}
+
+@media (min-width: 768px) {
+  .marquee-track {
+    animation-duration: 16s;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .hero-contrast-scrim {
+    background:
+      radial-gradient(ellipse at 50% 36%, rgba(10, 9, 8, 0.7) 0%, rgba(10, 9, 8, 0.52) 40%, rgba(10, 9, 8, 0.2) 74%, rgba(10, 9, 8, 0) 100%),
+      linear-gradient(to bottom, rgba(10, 9, 8, 0.44) 0%, rgba(10, 9, 8, 0.12) 50%, rgba(10, 9, 8, 0) 100%);
+  }
 }
