@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
+import { motion, AnimatePresence, useScroll, useTransform, type MotionValue } from "framer-motion";
 import type { Work } from "@/lib/types";
 import BgCanvas from "@/components/particle-bg";
 import AuroraCanvas from "@/components/aurora-canvas";
@@ -193,10 +193,20 @@ export default function HomeClient({
   const portfolioFilter = useTransform(portfolioBlur, (v: number) => `blur(${v}px)`);
   const portfolioScale = useTransform(scrollYProgress, [0, 0.45], [1, 0.88]);
 
-  const introExitOpacity = useTransform(scrollYProgress, [0.4, 0.7], [1, 0]);
-  const introExitBlur = useTransform(scrollYProgress, [0.4, 0.7], [0, 10]);
-  const introExitFilter = useTransform(introExitBlur, (v: number) => `blur(${v}px)`);
-  const introExitScale = useTransform(scrollYProgress, [0.4, 0.7], [1, 0.92]);
+  const MAX_INTRO = 10;
+  const exitOps: MotionValue<number>[] = [];
+  const exitScales: MotionValue<number>[] = [];
+  const exitFilters: MotionValue<string>[] = [];
+  /* eslint-disable react-hooks/rules-of-hooks */
+  for (let i = 0; i < MAX_INTRO; i++) {
+    const exitStart = 0.4 + i * 0.04;
+    const exitEnd = exitStart + 0.12;
+    exitOps.push(useTransform(scrollYProgress, [0, exitStart, exitEnd], [1, 1, 0]));
+    const b = useTransform(scrollYProgress, [0, exitStart, exitEnd], [0, 0, 8]);
+    exitScales.push(useTransform(scrollYProgress, [0, exitStart, exitEnd], [1, 1, 0.9]));
+    exitFilters.push(useTransform(b, (v: number) => `blur(${v}px)`));
+  }
+  /* eslint-enable react-hooks/rules-of-hooks */
 
   // Marquee items: repeat tags 6x to ensure infinite scroll
   const marqueeItems = tags.length > 0 ? tags : ["Digital Art", "Character Design", "3D", "Illustration"];
@@ -283,28 +293,30 @@ export default function HomeClient({
               </h1>
             </motion.div>
 
-            {/* Intro — visible on load, fades out on scroll exit */}
-            <motion.div
-              style={{ opacity: introExitOpacity, scale: introExitScale, filter: introExitFilter }}
-            >
-              {intro && (
-                <div className="mt-9 md:mt-12 max-w-[46rem] mx-auto text-center px-3">
+            {/* Intro — visible on load, lines exit one by one on scroll */}
+            {intro && (
+              <div className="mt-9 md:mt-12 max-w-[46rem] mx-auto text-center px-3">
                 {(() => {
                   let idx = 0;
                   return intro.split("\n").map((line, i) => {
                     if (!line.trim()) return <br key={i} />;
                     const delay = idx * 0.08;
+                    const exitIdx = Math.min(idx, MAX_INTRO - 1);
                     idx++;
                     return (
-                      <motion.p
+                      <motion.div
                         key={i}
-                        initial={{ opacity: 0, y: 18, filter: "blur(8px)" }}
-                        animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                        transition={{ duration: 0.7, delay, ease: [0.2, 0.9, 0.3, 1] }}
-                        className="text-base md:text-lg text-text-muted leading-[1.85] mb-3.5"
+                        style={{ opacity: exitOps[exitIdx], scale: exitScales[exitIdx], filter: exitFilters[exitIdx] }}
                       >
-                        {line.trim()}
-                      </motion.p>
+                        <motion.p
+                          initial={{ opacity: 0, y: 18, filter: "blur(8px)" }}
+                          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                          transition={{ duration: 0.7, delay, ease: [0.2, 0.9, 0.3, 1] }}
+                          className="text-base md:text-lg text-text-muted leading-[1.85] mb-3.5"
+                        >
+                          {line.trim()}
+                        </motion.p>
+                      </motion.div>
                     );
                   });
                 })()}
@@ -323,7 +335,6 @@ export default function HomeClient({
               <a href="#contact" className="px-5 py-2 text-xs uppercase text-text-muted border border-border/50 hover:text-text transition-colors">
                 联系我
               </a>
-            </motion.div>
             </motion.div>
           </div>
 
