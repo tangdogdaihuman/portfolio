@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 
 interface GalleryImage {
   id: string;
@@ -16,12 +17,14 @@ export default function WorkDetailGallery({
   images: GalleryImage[];
 }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const [slideDirection, setSlideDirection] = useState<0 | 1 | -1>(0);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [readyMap, setReadyMap] = useState<Record<string, true>>({});
   const dragRef = useRef<{ sx: number; sy: number; px: number; py: number } | null>(null);
   const swipeRef = useRef<{ x: number; y: number } | null>(null);
   const touchPanRef = useRef<{ x: number; y: number } | null>(null);
+  const pinchRef = useRef<{ distance: number; startZoom: number } | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const triggerRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const lastOpenIndexRef = useRef<number | null>(null);
@@ -32,6 +35,33 @@ export default function WorkDetailGallery({
     setZoom(1);
     setPan({ x: 0, y: 0 });
   }, []);
+
+  const setZoomSafe = useCallback((value: number) => {
+    setZoom(Math.min(5, Math.max(1, value)));
+  }, []);
+
+  const calcDistance = (
+    a: { clientX: number; clientY: number },
+    b: { clientX: number; clientY: number }
+  ) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+
+  const goNext = useCallback(() => {
+    setOpenIndex((index) => {
+      if (index === null || index >= images.length - 1) return index;
+      setSlideDirection(1);
+      return index + 1;
+    });
+    resetView();
+  }, [images.length, resetView]);
+
+  const goPrev = useCallback(() => {
+    setOpenIndex((index) => {
+      if (index === null || index <= 0) return index;
+      setSlideDirection(-1);
+      return index - 1;
+    });
+    resetView();
+  }, [resetView]);
 
   const closeViewer = useCallback(() => {
     const restoreIndex = lastOpenIndexRef.current;
@@ -46,6 +76,7 @@ export default function WorkDetailGallery({
 
   const openViewer = useCallback((index: number) => {
     lastOpenIndexRef.current = index;
+    setSlideDirection(0);
     setOpenIndex(index);
     resetView();
   }, [resetView]);
@@ -56,14 +87,8 @@ export default function WorkDetailGallery({
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") closeViewer();
-      if (event.key === "ArrowRight" && openIndex < images.length - 1) {
-        setOpenIndex((index) => (index ?? 0) + 1);
-        resetView();
-      }
-      if (event.key === "ArrowLeft" && openIndex > 0) {
-        setOpenIndex((index) => (index ?? 0) - 1);
-        resetView();
-      }
+      if (event.key === "ArrowRight" && openIndex < images.length - 1) goNext();
+      if (event.key === "ArrowLeft" && openIndex > 0) goPrev();
     };
 
     const prevOverflow = document.body.style.overflow;
@@ -75,7 +100,7 @@ export default function WorkDetailGallery({
       document.body.style.overflow = prevOverflow;
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [openIndex, images.length, closeViewer, resetView]);
+  }, [openIndex, images.length, closeViewer, goNext, goPrev]);
 
   return (
     <>
@@ -131,10 +156,9 @@ export default function WorkDetailGallery({
             <button
               onClick={(event) => {
                 event.stopPropagation();
-                setOpenIndex((index) => (index ?? 0) - 1);
-                resetView();
+                goPrev();
               }}
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted hover:text-text z-20 w-11 h-11 inline-flex items-center justify-center bg-bg/75 border border-border/50"
+              className="hidden md:inline-flex absolute left-4 top-1/2 -translate-y-1/2 text-text-muted hover:text-text z-20 w-11 h-11 items-center justify-center bg-bg/75 border border-border/50"
               aria-label="上一张"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><polyline points="15 18 9 12 15 6" /></svg>
@@ -145,10 +169,9 @@ export default function WorkDetailGallery({
             <button
               onClick={(event) => {
                 event.stopPropagation();
-                setOpenIndex((index) => (index ?? 0) + 1);
-                resetView();
+                goNext();
               }}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted hover:text-text z-20 w-11 h-11 inline-flex items-center justify-center bg-bg/75 border border-border/50"
+              className="hidden md:inline-flex absolute right-4 top-1/2 -translate-y-1/2 text-text-muted hover:text-text z-20 w-11 h-11 items-center justify-center bg-bg/75 border border-border/50"
               aria-label="下一张"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><polyline points="9 18 15 12 9 6" /></svg>
@@ -156,98 +179,131 @@ export default function WorkDetailGallery({
           )}
 
           <div className="absolute left-4 top-6 z-20 text-[0.62rem] tracking-[0.15em] uppercase text-text-muted bg-bg/75 border border-border/50 px-3 py-2">
-            双击缩放 · 拖拽查看细节
+            双指缩放 · 拖拽查看细节
           </div>
 
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={activeImage.image_url}
-            alt={workTitle}
-            draggable={false}
-            className="max-w-[97vw] max-h-[97vh] object-contain select-none"
-            style={{
-              transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
-              cursor: zoom > 1 ? "grab" : "zoom-in",
-              touchAction: zoom > 1 ? "none" : "pan-y",
-            }}
-            onWheel={(event) => {
-              event.stopPropagation();
-              setZoom((currentZoom) => Math.min(5, Math.max(1, currentZoom - event.deltaY * 0.001)));
-            }}
-            onDoubleClick={(event) => {
-              event.stopPropagation();
-              setZoom((currentZoom) => (currentZoom > 1 ? 1 : 2));
-              setPan({ x: 0, y: 0 });
-            }}
-            onMouseDown={(event) => {
-              if (zoom <= 1) return;
-              event.stopPropagation();
-              event.preventDefault();
-              dragRef.current = { sx: event.clientX, sy: event.clientY, px: pan.x, py: pan.y };
-              (event.target as HTMLElement).style.cursor = "grabbing";
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={activeImage.id || String(openIndex)}
+              custom={slideDirection}
+              initial={{ opacity: 0, x: slideDirection === 0 ? 0 : slideDirection * 56 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: slideDirection === 0 ? 0 : slideDirection * -56 }}
+              transition={{ duration: 0.24, ease: [0.2, 0.9, 0.3, 1] }}
+              className="max-w-[97vw] max-h-[97vh] flex items-center justify-center"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <Image
+                src={activeImage.image_url}
+                alt={workTitle}
+                width={2400}
+                height={3000}
+                unoptimized
+                sizes="97vw"
+                draggable={false}
+                className="max-w-[97vw] max-h-[97vh] object-contain select-none"
+                style={{
+                  transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
+                  cursor: zoom > 1 ? "grab" : "zoom-in",
+                  touchAction: "none",
+                }}
+                onWheel={(event) => {
+                  event.stopPropagation();
+                  event.preventDefault();
+                  setZoomSafe(zoom - event.deltaY * 0.001);
+                }}
+                onDoubleClick={(event) => {
+                  event.stopPropagation();
+                  setZoom((currentZoom) => (currentZoom > 1 ? 1 : 2));
+                  setPan({ x: 0, y: 0 });
+                }}
+                onMouseDown={(event) => {
+                  if (zoom <= 1) return;
+                  event.stopPropagation();
+                  event.preventDefault();
+                  dragRef.current = { sx: event.clientX, sy: event.clientY, px: pan.x, py: pan.y };
+                  (event.target as HTMLElement).style.cursor = "grabbing";
 
-              const onMove = (moveEvent: MouseEvent) => {
-                if (!dragRef.current) return;
-                setPan({
-                  x: dragRef.current.px + (moveEvent.clientX - dragRef.current.sx) / zoom,
-                  y: dragRef.current.py + (moveEvent.clientY - dragRef.current.sy) / zoom,
-                });
-              };
+                  const onMove = (moveEvent: MouseEvent) => {
+                    if (!dragRef.current) return;
+                    setPan({
+                      x: dragRef.current.px + (moveEvent.clientX - dragRef.current.sx) / zoom,
+                      y: dragRef.current.py + (moveEvent.clientY - dragRef.current.sy) / zoom,
+                    });
+                  };
 
-              const onUp = () => {
-                dragRef.current = null;
-                window.removeEventListener("mousemove", onMove);
-                window.removeEventListener("mouseup", onUp);
-              };
+                  const onUp = () => {
+                    dragRef.current = null;
+                    window.removeEventListener("mousemove", onMove);
+                    window.removeEventListener("mouseup", onUp);
+                  };
 
-              window.addEventListener("mousemove", onMove);
-              window.addEventListener("mouseup", onUp);
-            }}
-            onTouchStart={(event) => {
-              const touch = event.touches[0];
-              swipeRef.current = { x: touch.clientX, y: touch.clientY };
-              touchPanRef.current = { x: touch.clientX, y: touch.clientY };
-            }}
-            onTouchMove={(event) => {
-              if (zoom <= 1 || !touchPanRef.current) return;
-              const touch = event.touches[0];
-              const prev = touchPanRef.current;
-              setPan((currentPan) => ({
-                x: currentPan.x + (touch.clientX - prev.x) / zoom,
-                y: currentPan.y + (touch.clientY - prev.y) / zoom,
-              }));
-              touchPanRef.current = { x: touch.clientX, y: touch.clientY };
-            }}
-            onTouchEnd={(event) => {
-              touchPanRef.current = null;
-              if (!swipeRef.current || zoom > 1) {
-                swipeRef.current = null;
-                return;
-              }
-              const touch = event.changedTouches[0];
-              const dx = touch.clientX - swipeRef.current.x;
-              const dy = touch.clientY - swipeRef.current.y;
-              swipeRef.current = null;
-              if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy)) return;
-              event.stopPropagation();
-              if (dx < 0 && openIndex !== null && openIndex < images.length - 1) {
-                setOpenIndex((index) => (index ?? 0) + 1);
-                resetView();
-              }
-              if (dx > 0 && openIndex !== null && openIndex > 0) {
-                setOpenIndex((index) => (index ?? 0) - 1);
-                resetView();
-              }
-            }}
-            onClick={(event) => event.stopPropagation()}
-          />
+                  window.addEventListener("mousemove", onMove);
+                  window.addEventListener("mouseup", onUp);
+                }}
+                onTouchStart={(event) => {
+                  if (event.touches.length === 2) {
+                    pinchRef.current = {
+                      distance: calcDistance(event.touches[0], event.touches[1]),
+                      startZoom: zoom,
+                    };
+                    swipeRef.current = null;
+                    touchPanRef.current = null;
+                    return;
+                  }
+                  const touch = event.touches[0];
+                  swipeRef.current = { x: touch.clientX, y: touch.clientY };
+                  touchPanRef.current = { x: touch.clientX, y: touch.clientY };
+                }}
+                onTouchMove={(event) => {
+                  if (event.touches.length === 2 && pinchRef.current) {
+                    event.preventDefault();
+                    const nextDistance = calcDistance(event.touches[0], event.touches[1]);
+                    const scaleFactor = nextDistance / pinchRef.current.distance;
+                    setZoomSafe(pinchRef.current.startZoom * scaleFactor);
+                    return;
+                  }
+                  if (event.touches.length !== 1 || zoom <= 1 || !touchPanRef.current) return;
+                  event.preventDefault();
+                  const touch = event.touches[0];
+                  const prev = touchPanRef.current;
+                  setPan((currentPan) => ({
+                    x: currentPan.x + (touch.clientX - prev.x) / zoom,
+                    y: currentPan.y + (touch.clientY - prev.y) / zoom,
+                  }));
+                  touchPanRef.current = { x: touch.clientX, y: touch.clientY };
+                }}
+                onTouchEnd={(event) => {
+                  if (pinchRef.current && event.touches.length < 2) {
+                    pinchRef.current = null;
+                    if (zoom > 1) return;
+                  }
+
+                  touchPanRef.current = null;
+                  if (!swipeRef.current || zoom > 1) {
+                    swipeRef.current = null;
+                    return;
+                  }
+                  const touch = event.changedTouches[0];
+                  const dx = touch.clientX - swipeRef.current.x;
+                  const dy = touch.clientY - swipeRef.current.y;
+                  swipeRef.current = null;
+                  if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy)) return;
+                  event.stopPropagation();
+                  if (dx < 0 && openIndex !== null && openIndex < images.length - 1) goNext();
+                  if (dx > 0 && openIndex !== null && openIndex > 0) goPrev();
+                }}
+                onClick={(event) => event.stopPropagation()}
+              />
+            </motion.div>
+          </AnimatePresence>
 
           <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-bg/78 border border-border/55 px-2 py-1.5">
             <button
               type="button"
               onClick={(event) => {
                 event.stopPropagation();
-                setZoom((currentZoom) => Math.max(1, currentZoom - 0.25));
+                setZoomSafe(zoom - 0.25);
               }}
               className="w-11 h-11 text-text-muted hover:text-text border border-border/40"
               aria-label="缩小"
@@ -268,7 +324,7 @@ export default function WorkDetailGallery({
               type="button"
               onClick={(event) => {
                 event.stopPropagation();
-                setZoom((currentZoom) => Math.min(5, currentZoom + 0.25));
+                setZoomSafe(zoom + 0.25);
               }}
               className="w-11 h-11 text-text-muted hover:text-text border border-border/40"
               aria-label="放大"

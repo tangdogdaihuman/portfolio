@@ -232,10 +232,10 @@ export default function HomeClient({
 
       <div className="relative z-10">
         {/* Hero */}
-        <section ref={heroRef} className="hero-noise min-h-[74vh] md:min-h-[78vh] relative flex flex-col items-center justify-center px-4 overflow-hidden">
+        <section ref={heroRef} className="hero-noise min-h-svh md:min-h-screen relative flex flex-col items-center justify-center px-4 overflow-hidden">
           <AuroraCanvas />
 
-          <div className="relative z-10 flex flex-col items-center justify-center w-full max-w-6xl mx-auto pt-14 md:pt-16">
+          <div className="relative z-10 flex flex-col items-center justify-center w-full max-w-6xl mx-auto">
             {/* Portfolio title — fades out on scroll */}
             <motion.div
               style={{ opacity: portfolioOpacity, scale: portfolioScale, filter: portfolioFilter }}
@@ -245,7 +245,7 @@ export default function HomeClient({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.7, ease: [0.2, 0.9, 0.3, 1] }}
-                className="text-xs md:text-sm text-accent-dim uppercase mb-6 tracking-[0.2em]"
+                className="text-xs text-accent-dim uppercase mb-6 tracking-[0.2em]"
               >
                 CG Artist Portfolio
               </motion.p>
@@ -255,17 +255,17 @@ export default function HomeClient({
                     initial={{ y: "110%" }}
                     animate={{ y: 0 }}
                     transition={{ duration: 0.95, ease: [0.2, 0.9, 0.3, 1] }}
-                    className="inline-block text-6xl sm:text-7xl md:text-8xl lg:text-9xl"
+                    className="inline-block text-[clamp(2.8rem,9vw,6.2rem)]"
                   >
                     唐子航
                   </motion.span>
                 </span>
-                <span className="block overflow-hidden mt-1 md:mt-2">
+                <span className="block overflow-hidden mt-1.5">
                   <motion.span
                     initial={{ y: "110%" }}
                     animate={{ y: 0 }}
                     transition={{ duration: 0.95, ease: [0.2, 0.9, 0.3, 1], delay: 0.12 }}
-                    className="inline-block text-xl sm:text-2xl md:text-4xl lg:text-5xl text-accent"
+                    className="inline-block text-[clamp(1.05rem,3.8vw,2.25rem)] text-accent"
                   >
                     Tang Zihang CG Portfolio
                   </motion.span>
@@ -275,7 +275,7 @@ export default function HomeClient({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.7, delay: 0.22, ease: [0.2, 0.9, 0.3, 1] }}
-                className="mt-4 text-[0.7rem] md:text-xs uppercase tracking-[0.18em] text-text-muted"
+                className="mt-4 text-[0.7rem] uppercase tracking-[0.18em] text-text-muted"
               >
                 Hard Surface / Stylized Character / Game Art
               </motion.p>
@@ -283,7 +283,7 @@ export default function HomeClient({
 
             {/* Intro — visible on load, lines exit one by one on scroll */}
             {intro && (
-               <div className="mt-6 md:mt-8 max-w-[46rem] mx-auto text-center px-3">
+               <div className="mt-6 max-w-[46rem] mx-auto text-center px-3">
                 {(() => {
                   let idx = 0;
                   return intro.split("\n").map((line, i) => {
@@ -300,7 +300,7 @@ export default function HomeClient({
                           initial={{ opacity: 0, y: 18, filter: "blur(8px)" }}
                           animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
                           transition={{ duration: 0.7, delay, ease: [0.2, 0.9, 0.3, 1] }}
-                          className="text-base md:text-lg text-text-muted leading-[1.85] mb-3.5"
+                          className="text-[clamp(0.95rem,2vw,1.12rem)] text-text-muted leading-[1.85] mb-3.5"
                         >
                           {line.trim()}
                         </motion.p>
@@ -315,7 +315,7 @@ export default function HomeClient({
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.35, ease: [0.2, 0.9, 0.3, 1] }}
-              className="mt-7 md:mt-8 flex items-center gap-3"
+              className="mt-7 flex items-center gap-3"
             >
               <a href="#works" className="min-h-11 inline-flex items-center justify-center px-5 py-2.5 text-xs uppercase text-text border border-border/70 hover:border-accent hover:text-accent transition-colors">
                 浏览作品
