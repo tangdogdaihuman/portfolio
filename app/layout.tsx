@@ -1,10 +1,16 @@
 import type { Metadata } from "next";
-import { Playfair_Display, Inter } from "next/font/google";
+import { Cormorant_Garamond, Inter, Noto_Serif_SC } from "next/font/google";
 import "./globals.css";
 
-const playfair = Playfair_Display({
-  variable: "--font-playfair",
+const cormorant = Cormorant_Garamond({
+  variable: "--font-display-en",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const notoSerifSc = Noto_Serif_SC({
+  variable: "--font-display-cn",
+  weight: ["400", "500", "600", "700"],
 });
 
 const inter = Inter({
@@ -34,7 +40,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="zh-CN" className={`${playfair.variable} ${inter.variable} dark`}>
+    <html lang="zh-CN" className={`${cormorant.variable} ${notoSerifSc.variable} ${inter.variable} dark`}>
       <body className="min-h-screen bg-bg text-text antialiased">{children}</body>
     </html>
   );

@@ -8,7 +8,8 @@
   --color-text-muted: #9a9185;
   --color-accent: #c9a961;
   --color-accent-dim: #8b7340;
-  --font-display: var(--font-playfair);
+  --font-display: var(--font-display-en);
+  --font-display-sc: var(--font-display-cn);
   --font-body: var(--font-inter);
   --animate-fade-up: fade-up 0.6s ease-out both;
 }
@@ -35,6 +36,12 @@
 
 @keyframes lineIn {
   to { transform: translateY(0); }
+}
+
+@keyframes auroraFloat {
+  0% { transform: translate3d(0, 0, 0) scaleY(1); }
+  50% { transform: translate3d(0, -2.5%, 0) scaleY(1.05); }
+  100% { transform: translate3d(0, 0, 0) scaleY(1); }
 }
 
 * { scrollbar-width: thin; scrollbar-color: #2a2622 transparent; }
@@ -213,6 +220,53 @@ body.home-vignette::after {
   -webkit-mask-image: linear-gradient(to bottom, black 0%, black 76%, transparent 100%);
 }
 
+.font-display-sc {
+  font-family: var(--font-display-sc), "Songti SC", "STSong", serif;
+}
+
+.aurora-shell {
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(201, 169, 97, 0.12) 0%, rgba(201, 169, 97, 0.05) 26%, rgba(10, 9, 8, 0) 58%),
+    linear-gradient(to bottom, rgba(18, 15, 11, 0.18) 0%, rgba(10, 9, 8, 0.02) 38%, rgba(10, 9, 8, 0.46) 100%);
+}
+
+.aurora-ribbon {
+  position: absolute;
+  top: 6%;
+  bottom: -8%;
+  border-radius: 999px;
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(205, 177, 114, 0) 0%,
+      rgba(205, 177, 114, 0.6) 18%,
+      rgba(171, 141, 86, 0.44) 46%,
+      rgba(81, 61, 34, 0.16) 72%,
+      rgba(10, 9, 8, 0) 100%
+    );
+  filter: blur(22px);
+  transform-origin: center center;
+  animation: auroraFloat 20s ease-in-out infinite;
+}
+
+.aurora-haze {
+  position: absolute;
+  inset: 0;
+}
+
+.aurora-haze-top {
+  background: linear-gradient(to bottom, rgba(10, 9, 8, 0.12) 0%, rgba(10, 9, 8, 0.04) 28%, rgba(10, 9, 8, 0) 54%);
+}
+
+.aurora-haze-center {
+  background: radial-gradient(ellipse at 50% 48%, rgba(201, 169, 97, 0.08) 0%, rgba(201, 169, 97, 0.04) 28%, rgba(10, 9, 8, 0) 66%);
+}
+
+.aurora-haze-edge {
+  background: linear-gradient(to bottom, rgba(10, 9, 8, 0) 0%, rgba(10, 9, 8, 0.12) 68%, rgba(10, 9, 8, 0.58) 100%);
+}
+
 .hero-contrast-scrim {
   background:
     radial-gradient(ellipse at 50% 38%, rgba(10, 9, 8, 0.56) 0%, rgba(10, 9, 8, 0.42) 38%, rgba(10, 9, 8, 0.12) 72%, rgba(10, 9, 8, 0) 100%),
@@ -243,6 +297,10 @@ body.home-vignette::after {
 
 @media (prefers-reduced-motion: reduce) {
   .marquee-track {
+    animation: none;
+  }
+
+  .aurora-ribbon {
     animation: none;
   }
 }

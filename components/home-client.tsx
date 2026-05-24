@@ -126,22 +126,44 @@ export default function HomeClient({
 
   useEffect(() => {
     const sections = ["works", "about", "contact"] as const;
-    const io = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
-        if (visible[0]?.target?.id) {
-          setActiveSection(visible[0].target.id as "works" | "about" | "contact");
-        }
-      },
-      { threshold: [0.25, 0.45, 0.65], rootMargin: "-22% 0px -55% 0px" }
-    );
-    sections.forEach((id) => {
-      const el = document.getElementById(id);
-      if (el) io.observe(el);
-    });
-    return () => io.disconnect();
+    let raf = 0;
+
+    const updateActiveSection = () => {
+      const scrollBottom = window.scrollY + window.innerHeight;
+      const docHeight = document.documentElement.scrollHeight;
+      const marker = window.scrollY + Math.max(180, window.innerHeight * 0.4);
+      let nextActive: "works" | "about" | "contact" = "works";
+
+      if (scrollBottom >= docHeight - 24) {
+        setActiveSection((current) => (current === "contact" ? current : "contact"));
+        raf = 0;
+        return;
+      }
+
+      for (const id of sections) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        if (el.offsetTop <= marker) nextActive = id;
+      }
+
+      setActiveSection((current) => (current === nextActive ? current : nextActive));
+      raf = 0;
+    };
+
+    const onScroll = () => {
+      if (raf) return;
+      raf = window.requestAnimationFrame(updateActiveSection);
+    };
+
+    updateActiveSection();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+
+    return () => {
+      if (raf) window.cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
   }, [works.length, detailSections.length]);
 
   // Reveal
@@ -257,7 +279,7 @@ export default function HomeClient({
                     initial={{ y: "110%" }}
                     animate={{ y: 0 }}
                     transition={{ duration: 0.95, ease: [0.2, 0.9, 0.3, 1] }}
-                    className="inline-block text-[clamp(2.8rem,9vw,6.2rem)]"
+                    className="inline-block font-display-sc text-[clamp(2.8rem,9vw,6.2rem)]"
                   >
                     唐子航
                   </motion.span>
