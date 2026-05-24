@@ -90,13 +90,25 @@ export default function HomeClient({
   // Cursor — reference-inspired: CSS class toggle + lerp ring
   useEffect(() => {
     if (typeof window === "undefined") return;
+    const hero = heroRef.current;
+    if (!hero) return;
     const finePointer = window.matchMedia("(pointer: fine)").matches;
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (!finePointer || reducedMotion) return;
     const cursor = cursorRef.current, ring = ringRef.current;
     if (!cursor || !ring) return;
-    let mx = 0, my = 0, rx = 0, ry = 0;
+    let mx = 0, my = 0, rx = 0, ry = 0, visible = true;
+    const heroObserver = new IntersectionObserver(
+      ([entry]) => {
+        visible = entry.isIntersecting;
+        cursor.style.display = visible ? "" : "none";
+        ring.style.display = visible ? "" : "none";
+      },
+      { threshold: 0 }
+    );
+    heroObserver.observe(hero);
     const onMove = (e: MouseEvent) => {
+      if (!visible) return;
       mx = e.clientX; my = e.clientY;
       cursor.style.left = mx + "px";
       cursor.style.top = my + "px";
@@ -113,7 +125,7 @@ export default function HomeClient({
     };
     let raf = requestAnimationFrame(animate);
     window.addEventListener("mousemove", onMove, { passive: true });
-    return () => { window.removeEventListener("mousemove", onMove); cancelAnimationFrame(raf); };
+    return () => { window.removeEventListener("mousemove", onMove); cancelAnimationFrame(raf); heroObserver.disconnect(); };
   }, []);
 
   useEffect(() => {
@@ -176,7 +188,7 @@ export default function HomeClient({
     return byDate;
   })();
 
-  const sortLabels: Record<typeof sortMode, string> = { default: "默认排序", newest: "最新优先", oldest: "最早优先" };
+  const sortLabels: Record<typeof sortMode, string> = { default: "默认", newest: "最新", oldest: "最早" };
   const nextSort = () => {
     setSortMode(sortMode === "default" ? "newest" : sortMode === "newest" ? "oldest" : "default");
   };
@@ -252,11 +264,11 @@ export default function HomeClient({
 
       <div className="relative z-10">
         {/* Hero */}
-        <section ref={heroRef} className="hero-noise min-h-screen relative flex flex-col items-center justify-center px-4 overflow-hidden">
+        <section ref={heroRef} className="hero-noise min-h-[90vh] md:min-h-screen relative flex flex-col items-center justify-center px-4 overflow-hidden">
           <AuroraCanvas />
 
-          <div className="relative z-10 flex flex-col items-center justify-center w-full max-w-6xl mx-auto pt-16 md:pt-20">
-            {/* Portfolio title — fades out on scroll */}
+          <div className="relative z-10 flex flex-col items-center justify-center w-full max-w-6xl mx-auto pt-8 sm:pt-12 md:pt-20">
+            {/* Hero branding — fades out on scroll */}
             <motion.div
               style={{ opacity: portfolioOpacity, scale: portfolioScale, filter: portfolioFilter }}
               className="text-center pointer-events-none"
@@ -265,19 +277,19 @@ export default function HomeClient({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.7, ease: [0.2, 0.9, 0.3, 1] }}
-                className="text-xs md:text-sm text-accent-dim uppercase mb-6"
+                className="text-[0.6rem] md:text-xs tracking-[0.35em] uppercase text-accent-dim mb-5 md:mb-6"
               >
-                Tang Zihang
+                Portfolio
               </motion.p>
-              <h1 className="font-display leading-[0.95] text-text">
+              <h1 className="font-display leading-[0.92] text-text">
                 <span className="block overflow-hidden">
                   <motion.span
                     initial={{ y: "110%" }}
                     animate={{ y: 0 }}
                     transition={{ duration: 0.95, ease: [0.2, 0.9, 0.3, 1] }}
-                    className="inline-block text-5xl sm:text-6xl md:text-8xl lg:text-9xl"
+                    className="inline-block text-5xl sm:text-6xl md:text-7xl lg:text-8xl"
                   >
-                    Portfolio
+                    唐子航
                   </motion.span>
                 </span>
                 <span className="block overflow-hidden mt-1 md:mt-2">
@@ -285,12 +297,20 @@ export default function HomeClient({
                     initial={{ y: "110%" }}
                     animate={{ y: 0 }}
                     transition={{ duration: 0.95, ease: [0.2, 0.9, 0.3, 1], delay: 0.12 }}
-                    className="inline-block text-2xl sm:text-3xl md:text-5xl lg:text-6xl text-accent"
+                    className="inline-block text-xl sm:text-2xl md:text-3xl lg:text-4xl text-accent"
                   >
-                    CG Works Collection
+                    Tang Zihang
                   </motion.span>
                 </span>
               </h1>
+              <motion.p
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.28, ease: [0.2, 0.9, 0.3, 1] }}
+                className="mt-4 md:mt-6 text-sm md:text-base text-text-muted/70"
+              >
+                CG Artist · Character / Environment / Material
+              </motion.p>
             </motion.div>
 
             {/* Intro — visible on load, lines exit one by one on scroll */}
@@ -380,14 +400,22 @@ export default function HomeClient({
 
         {tags.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5 md:gap-2 mb-10 reveal">
-            <button onClick={() => setActiveTag(null)} className={`px-3 py-1 text-[0.62rem] tracking-[0.12em] uppercase transition-colors border ${activeTag === null ? "text-accent border-accent/70 bg-surface" : "text-text-muted border-border/60 hover:text-text"}`}>All</button>
+            <button onClick={() => setActiveTag(null)} className={`px-3 py-1 text-[0.62rem] tracking-[0.12em] uppercase transition-colors border ${activeTag === null ? "text-accent border-accent/70 bg-surface" : "text-text-muted border-border/60 hover:text-text"}`}>全部</button>
             {tags.map((t) => (
               <button key={t} onClick={() => setActiveTag(t)} className={`px-3 py-1 text-[0.62rem] tracking-[0.12em] uppercase transition-colors border ${activeTag === t ? "text-accent border-accent/70 bg-surface" : "text-text-muted border-border/60 hover:text-text"}`}>{t}</button>
             ))}
             <span className="flex-1" />
-            <button onClick={nextSort} className="px-3 py-1 text-[0.6rem] tracking-[0.16em] uppercase text-text-muted hover:text-accent transition-colors border border-border/70">
-              {sortLabels[sortMode]}
-            </button>
+            <div className="flex border border-border/60 overflow-hidden">
+              {(["default", "newest", "oldest"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setSortMode(mode)}
+                  className={`px-2.5 py-1 text-[0.58rem] tracking-[0.12em] uppercase transition-colors ${sortMode === mode ? "text-accent bg-surface" : "text-text-muted hover:text-text"}`}
+                >
+                  {sortLabels[mode]}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -409,7 +437,17 @@ export default function HomeClient({
           </div>
         ) : filtered.length === 0 ? (
           <div className="status-surface text-center py-16 md:py-20 text-text-muted reveal">
-            <p className="text-sm tracking-[0.08em] uppercase">{loadError ? "内容暂时加载失败，请稍后刷新" : "还没有作品"}</p>
+            {loadError ? (
+              <>
+                <p className="text-sm tracking-[0.08em] uppercase">网络或数据库连接异常</p>
+                <p className="mt-2 text-xs text-text-muted/60">稍后将自动重试，您也可以手动刷新</p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm tracking-[0.08em] uppercase">还没有作品</p>
+                <p className="mt-2 text-xs text-text-muted/60">当前没有公开展示的作品项目</p>
+              </>
+            )}
             {loadError && (
               <button
                 onClick={refreshData}
@@ -457,6 +495,7 @@ export default function HomeClient({
                       <div className="flex items-center gap-2.5 flex-wrap text-[0.7rem] text-text-muted tracking-[0.12em] mt-1.5">
                         {work.tags.slice(0, 3).map((t) => <span key={t} className="text-accent-dim/90">{t}</span>)}
                         {(work.image_count || 1) > 1 && <span className="text-text-muted/60">{work.image_count} 张</span>}
+                        <span className="ml-auto text-[0.6rem] tracking-[0.2em] text-text-muted/0 group-hover:text-text-muted/60 transition-all duration-300">→</span>
                       </div>
                     </div>
                   </Link>

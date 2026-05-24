@@ -83,30 +83,28 @@ export default async function WorkDetailPage(
 
   return (
     <main className="min-h-screen bg-bg text-text">
-      <section className="max-w-[112rem] mx-auto px-2 md:px-4 py-6 md:py-12">
+      <section className="max-w-[112rem] mx-auto px-3 md:px-4 py-4 md:py-12">
         <div className="sticky top-3 z-20 inline-block">
-          <Link href="/#works" className="inline-flex bg-bg/80 backdrop-blur-sm border border-border px-4 py-2 text-xs tracking-[0.2em] uppercase text-text-muted hover:border-accent hover:text-accent transition-colors">
+          <Link href="/#works" className="inline-flex bg-bg/80 backdrop-blur-sm border border-border px-3 md:px-4 py-2 text-xs tracking-[0.2em] uppercase text-text-muted hover:border-accent hover:text-accent transition-colors">
             返回作品集
           </Link>
         </div>
 
-        <header className="mt-8 md:mt-10 mb-10 md:mb-14 border-b border-border/40 pb-8 md:pb-10">
-          <div className="grid md:grid-cols-12 gap-8 items-end">
-            <div className="md:col-span-8">
-              <h1 className="font-display text-4xl md:text-7xl text-accent leading-[0.92]">{work.title}</h1>
-              {work.description && (
-                <p className="mt-5 max-w-2xl text-sm md:text-base text-text-muted leading-[1.75] whitespace-pre-wrap">
-                  {work.description}
-                </p>
-              )}
-            </div>
-            <div className="md:col-span-4 md:justify-self-end">
-              <div className="flex flex-wrap md:justify-end items-center gap-2.5 text-[0.68rem] uppercase tracking-[0.16em]">
-                {work.work_date && <span className="border border-border/70 px-2.5 py-1 text-accent-dim">{work.work_date}</span>}
-                {work.tags.map((tag) => <span key={tag} className="border border-border/70 px-2.5 py-1 text-text-muted">{tag}</span>)}
-              </div>
-            </div>
+        <header className="mt-6 md:mt-10 mb-6 md:mb-14 border-b border-border/40 pb-6 md:pb-10">
+          <h1 className="font-display text-3xl md:text-7xl text-accent leading-[0.92]">{work.title}</h1>
+          <div className="mt-3 md:mt-5 flex flex-wrap items-center gap-2 text-[0.62rem] md:text-[0.68rem] uppercase tracking-[0.16em]">
+            {work.work_date && <span className="border border-border/70 px-2 py-0.5 md:px-2.5 md:py-1 text-accent-dim">{work.work_date}</span>}
+            {work.tags.map((tag) => <span key={tag} className="border border-border/70 px-2 py-0.5 md:px-2.5 md:py-1 text-text-muted">{tag}</span>)}
           </div>
+          {work.description && (
+            <details className="mt-4 md:hidden">
+              <summary className="text-xs text-text-muted cursor-pointer hover:text-text transition-colors">查看简介</summary>
+              <p className="mt-2 text-sm text-text-muted leading-[1.7] whitespace-pre-wrap">{work.description}</p>
+            </details>
+          )}
+          {work.description && (
+            <p className="hidden md:block mt-5 max-w-2xl text-sm md:text-base text-text-muted leading-[1.75] whitespace-pre-wrap">{work.description}</p>
+          )}
         </header>
 
         <WorkDetailGallery workTitle={work.title} images={galleryImages} />

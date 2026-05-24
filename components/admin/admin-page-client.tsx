@@ -730,43 +730,57 @@ function EditWorkForm({
   if (loading) return <div className="text-text-muted text-sm">加载中...</div>;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       <div className="flex items-center gap-4 mb-2">
         <button onClick={onCancel} className="text-sm text-text-muted hover:text-text">← 返回</button>
         <span className="text-sm text-text">编辑作品</span>
       </div>
-      <div>
-        <label className="block text-sm text-text-muted mb-1">标题</label>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full bg-bg border border-border text-text px-4 py-2 text-sm focus:outline-none focus:border-accent-dim" />
+
+      <div className="space-y-4">
+        <p className="text-[0.65rem] tracking-[0.18em] uppercase text-text-muted/60 border-b border-border/30 pb-2">基础信息</p>
+        <div>
+          <label className="block text-sm text-text-muted mb-1">标题</label>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full bg-bg border border-border text-text px-4 py-2 text-sm focus:outline-none focus:border-accent-dim" />
+        </div>
+        <div>
+          <label className="block text-sm text-text-muted mb-1">简介</label>
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className="w-full bg-bg border border-border text-text px-4 py-3 text-sm focus:outline-none focus:border-accent-dim resize-y" />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm text-text-muted mb-1">标签</label>
+            <input value={tags} onChange={(e) => setTags(e.target.value)} className="w-full bg-bg border border-border text-text px-4 py-2 text-sm focus:outline-none focus:border-accent-dim" placeholder="逗号分隔" />
+          </div>
+          <div>
+            <label className="block text-sm text-text-muted mb-1">时间</label>
+            <input value={workDate} onChange={(e) => setWorkDate(e.target.value)} className="w-full bg-bg border border-border text-text px-4 py-2 text-sm focus:outline-none focus:border-accent-dim" />
+          </div>
+        </div>
       </div>
-      <div>
-        <label className="block text-sm text-text-muted mb-1">简介</label>
-        <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className="w-full bg-bg border border-border text-text px-4 py-3 text-sm focus:outline-none focus:border-accent-dim resize-y" />
+
+      <div className="space-y-4">
+        <p className="text-[0.65rem] tracking-[0.18em] uppercase text-text-muted/60 border-b border-border/30 pb-2">展示设置</p>
+        <div>
+          <label className="block text-sm text-text-muted mb-1">
+            展示权重 {sizeWeight.toFixed(1)}（0.5=紧凑 1.0=默认 2.0=大）
+          </label>
+          <input
+            type="range"
+            min="0.5"
+            max="2.0"
+            step="0.1"
+            value={sizeWeight}
+            onChange={(e) => setSizeWeight(parseFloat(e.target.value))}
+            className="w-full accent-accent"
+          />
+        </div>
       </div>
-      <div>
-        <label className="block text-sm text-text-muted mb-1">标签</label>
-        <input value={tags} onChange={(e) => setTags(e.target.value)} className="w-full bg-bg border border-border text-text px-4 py-2 text-sm focus:outline-none focus:border-accent-dim" />
-      </div>
-      <div>
-        <label className="block text-sm text-text-muted mb-1">时间</label>
-        <input value={workDate} onChange={(e) => setWorkDate(e.target.value)} className="w-full bg-bg border border-border text-text px-4 py-2 text-sm focus:outline-none focus:border-accent-dim" />
-      </div>
-      <div>
-        <label className="block text-sm text-text-muted mb-1">
-          展示权重 {sizeWeight.toFixed(1)}（0.5=紧凑 1.0=默认 2.0=大）
-        </label>
-        <input
-          type="range"
-          min="0.5"
-          max="2.0"
-          step="0.1"
-          value={sizeWeight}
-          onChange={(e) => setSizeWeight(parseFloat(e.target.value))}
-          className="w-full accent-accent"
-        />
-      </div>
-      <div>
-        <label className="block text-sm text-text-muted mb-1">所有图片 · 拖拽排序 · 点击设封面（{allImages.length} 张）</label>
+
+      <div className="space-y-4">
+        <p className="text-[0.65rem] tracking-[0.18em] uppercase text-text-muted/60 border-b border-border/30 pb-2">图片管理</p>
+        <div>
+          <label className="block text-sm text-text-muted mb-1">已有图片 · 拖拽排序 · 点击设封面（{allImages.length} 张）</label>
+        </div>
         <div className="flex flex-wrap gap-2">
           {allImages.map((img, i) => (
             <div
@@ -814,7 +828,7 @@ function EditWorkForm({
           </label>
         )}
       </div>
-      <div className="flex gap-3">
+      <div className="sticky bottom-0 -mx-6 px-6 py-4 bg-bg border-t border-border/40 flex gap-3">
         <button onClick={handleSave} disabled={saving} className="px-8 py-2.5 bg-accent text-bg text-sm font-medium hover:bg-accent-dim disabled:opacity-50">{saving ? saveStep || "保存中..." : "保存修改"}</button>
         <button onClick={onCancel} className="px-6 py-2.5 border border-border text-text-muted text-sm hover:text-text">取消</button>
       </div>

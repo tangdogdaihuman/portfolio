@@ -44,7 +44,7 @@ export default function WorkList({
                   <h3 className="font-display text-text truncate">{work.title}</h3>
                   {work.pinned && (
                     <span className="text-[10px] uppercase tracking-wider bg-accent text-bg px-1.5 py-0.5">
-                      Top
+                      置顶
                     </span>
                   )}
                 </div>
@@ -73,33 +73,13 @@ export default function WorkList({
                   <span className="text-[10px] text-accent-dim">{wgt.toFixed(1)} / {wpct.toFixed(1)}%</span>
                 </div>
               </div>
-              <div className="flex flex-col gap-2 flex-shrink-0">
-                <div className="flex gap-1">
-                  <button onClick={() => onReorder(work, "up")} disabled={i === 0} className="text-xs text-text-muted hover:text-accent disabled:opacity-30">↑</button>
-                  <button onClick={() => onReorder(work, "down")} disabled={i === works.length - 1} className="text-xs text-text-muted hover:text-accent disabled:opacity-30">↓</button>
-                </div>
-                <button
-                  onClick={() => onTogglePin(work)}
-                  className="text-xs text-text-muted hover:text-accent transition-colors"
-                >
-                  {work.pinned ? "取消置顶" : "置顶"}
-                </button>
-                <button
-                  onClick={() => onEdit(work.id)}
-                  className="text-xs text-text-muted hover:text-accent transition-colors"
-                >
-                  编辑
-                </button>
-                <button
-                  onClick={() => onDelete(work)}
-                  className="text-xs text-red-400/70 hover:text-red-400 transition-colors"
-                >
-                  删除
-                </button>
+              <div className="flex items-center gap-1.5 flex-shrink-0">
+                <button onClick={() => onEdit(work.id)} className="px-3 py-1.5 text-[0.65rem] bg-accent text-bg hover:bg-accent-dim transition-colors">编辑</button>
+                <button onClick={() => onReorder(work, "up")} disabled={i === 0} className="px-2 py-1.5 text-xs border border-border text-text-muted hover:text-text disabled:opacity-20 transition-colors" title="上移">↑</button>
+                <button onClick={() => onReorder(work, "down")} disabled={i === works.length - 1} className="px-2 py-1.5 text-xs border border-border text-text-muted hover:text-text disabled:opacity-20 transition-colors" title="下移">↓</button>
+                <button onClick={() => onTogglePin(work)} className="px-2 py-1.5 text-xs border border-border text-text-muted hover:text-accent transition-colors">{work.pinned ? "取消" : "置顶"}</button>
+                <button onClick={() => onDelete(work)} className="px-2 py-1.5 text-xs border border-red-400/30 text-red-400/70 hover:text-red-400 hover:border-red-400/50 transition-colors">删除</button>
               </div>
-            </div>
-            <div className="mt-4 text-xs text-text-muted">
-              展示权重分布
             </div>
           </div>
         );
