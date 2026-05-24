@@ -192,6 +192,7 @@ export default function HomeClient({
 
   // Marquee items: repeat tags 6x to ensure infinite scroll
   const marqueeItems = tags.length > 0 ? tags : ["Digital Art", "Character Design", "3D", "Illustration"];
+  const marqueeLabel = `${marqueeItems.join(" · ")} ·`;
   const navClass = (id: "works" | "about" | "contact") => `nav-link ${activeSection === id ? "nav-link-active text-text" : ""}`;
 
   return (
@@ -250,8 +251,8 @@ export default function HomeClient({
               >
                 CG Artist Portfolio
               </motion.p>
-              <h1 className="font-display leading-[0.95] text-text">
-                <span className="block overflow-hidden">
+              <h1 className="font-display leading-[1.02] text-text">
+                <span className="block overflow-hidden pb-[0.06em]">
                   <motion.span
                     initial={{ y: "110%" }}
                     animate={{ y: 0 }}
@@ -261,7 +262,7 @@ export default function HomeClient({
                     唐子航
                   </motion.span>
                 </span>
-                <span className="block overflow-hidden mt-1.5">
+                <span className="block overflow-hidden mt-1.5 pb-[0.14em]">
                   <motion.span
                     initial={{ y: "110%" }}
                     animate={{ y: 0 }}
@@ -347,7 +348,7 @@ export default function HomeClient({
               <div key={loop} className="marquee-segment" aria-hidden={loop === 1}>
                 {Array.from({ length: 8 }).map((_, i) => (
                   <span key={`${loop}-${i}`} className="font-display italic text-lg md:text-xl text-text-muted/20 tracking-wider whitespace-nowrap flex-shrink-0">
-                    {marqueeItems.map((t, j) => `${t}${j < marqueeItems.length - 1 ? " · " : ""}`)}
+                    {marqueeLabel}
                   </span>
                 ))}
               </div>
@@ -437,14 +438,14 @@ export default function HomeClient({
                   className={`work-card reveal group ${colSpan}`}
                 >
                   <Link href={`/work/${work.id}`} className="block" data-hover>
-                    <div className="overflow-hidden bg-surface">
+                    <div className="overflow-hidden">
                       <Image
                         src={work.thumb_url}
                         alt={work.title}
                         width={1200}
                         height={1600}
                         unoptimized
-                        className={`work-thumb ${thumbReady[work.id] ? "work-thumb-ready" : ""} w-full h-auto max-h-[32rem] object-contain object-center`}
+                        className={`work-thumb ${thumbReady[work.id] ? "work-thumb-ready" : ""} block mx-auto w-full h-auto max-h-[32rem] object-contain object-center`}
                         sizes="(max-width: 768px) 92vw, (max-width: 1280px) 50vw, 36vw"
                         priority={i < 2}
                         loading={i < 2 ? "eager" : "lazy"}

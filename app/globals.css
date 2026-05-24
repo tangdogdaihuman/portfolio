@@ -230,8 +230,9 @@ body.home-vignette::after {
   display: flex;
   flex-shrink: 0;
   align-items: center;
-  gap: 2.5rem;
-  padding-right: 2.5rem;
+  width: max-content;
+  min-width: 100vw;
+  gap: 1.75rem;
 }
 
 @media (min-width: 768px) {
