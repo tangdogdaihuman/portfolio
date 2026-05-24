@@ -31,6 +31,7 @@ export default function AuroraCanvas() {
     if (!visible) return;
     const ctxB = visible.getContext("2d");
     if (!ctxB) return;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     const offscreen = document.createElement("canvas");
     const ctxA = offscreen.getContext("2d");
@@ -133,7 +134,9 @@ export default function AuroraCanvas() {
       ctxB.drawImage(offscreen, 0, 0);
       ctxB.restore();
 
-      raf = requestAnimationFrame(draw);
+      if (!reducedMotion && !document.hidden) {
+        raf = requestAnimationFrame(draw);
+      }
     };
 
     let raf = requestAnimationFrame(draw);
@@ -144,10 +147,29 @@ export default function AuroraCanvas() {
       offscreen.width = w;
       offscreen.height = h;
       rebuild();
+      draw();
+    };
+    const onVisibilityChange = () => {
+      if (reducedMotion) return;
+      if (document.hidden) {
+        cancelAnimationFrame(raf);
+        return;
+      }
+      raf = requestAnimationFrame(draw);
     };
     const observer = new ResizeObserver(onResize);
     observer.observe(visible);
-    return () => { cancelAnimationFrame(raf); observer.disconnect(); };
+    if (reducedMotion) {
+      cancelAnimationFrame(raf);
+      draw();
+    } else {
+      document.addEventListener("visibilitychange", onVisibilityChange);
+    }
+    return () => {
+      cancelAnimationFrame(raf);
+      observer.disconnect();
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, []);
 
   return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />;

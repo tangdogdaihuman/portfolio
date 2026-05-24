@@ -22,6 +22,9 @@ export default function WorkDetailGallery({
   const dragRef = useRef<{ sx: number; sy: number; px: number; py: number } | null>(null);
   const swipeRef = useRef<{ x: number; y: number } | null>(null);
   const touchPanRef = useRef<{ x: number; y: number } | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const triggerRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const lastOpenIndexRef = useRef<number | null>(null);
 
   const activeImage = openIndex !== null ? images[openIndex] : null;
 
@@ -31,12 +34,25 @@ export default function WorkDetailGallery({
   }, []);
 
   const closeViewer = useCallback(() => {
+    const restoreIndex = lastOpenIndexRef.current;
     setOpenIndex(null);
+    resetView();
+    if (restoreIndex !== null) {
+      requestAnimationFrame(() => {
+        triggerRefs.current[restoreIndex]?.focus();
+      });
+    }
+  }, [resetView]);
+
+  const openViewer = useCallback((index: number) => {
+    lastOpenIndexRef.current = index;
+    setOpenIndex(index);
     resetView();
   }, [resetView]);
 
   useEffect(() => {
     if (openIndex === null) return;
+    lastOpenIndexRef.current = openIndex;
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") closeViewer();
@@ -53,6 +69,7 @@ export default function WorkDetailGallery({
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     window.addEventListener("keydown", onKeyDown);
+    requestAnimationFrame(() => closeButtonRef.current?.focus());
 
     return () => {
       document.body.style.overflow = prevOverflow;
@@ -66,11 +83,10 @@ export default function WorkDetailGallery({
         {images.map((image, index) => (
           <button
             key={image.id || index}
+            ref={(element) => { triggerRefs.current[index] = element; }}
             type="button"
-            onClick={() => {
-              setOpenIndex(index);
-              resetView();
-            }}
+            onClick={() => openViewer(index)}
+            tabIndex={activeImage ? -1 : 0}
             className="block w-full bg-surface cursor-zoom-in border border-border/35"
           >
             <Image
@@ -92,13 +108,20 @@ export default function WorkDetailGallery({
       </div>
 
       {activeImage && (
-        <div className="fixed inset-0 z-[90] bg-bg/96 flex items-center justify-center" onClick={closeViewer}>
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${workTitle} 图片查看器`}
+          className="fixed inset-0 z-[90] bg-bg/96 flex items-center justify-center"
+          onClick={closeViewer}
+        >
           <button
+            ref={closeButtonRef}
             onClick={(event) => {
               event.stopPropagation();
               closeViewer();
             }}
-            className="absolute top-6 right-6 text-text-muted hover:text-text z-20 p-2 bg-bg/75 border border-border/50"
+            className="absolute top-6 right-6 text-text-muted hover:text-text z-20 w-11 h-11 inline-flex items-center justify-center bg-bg/75 border border-border/50"
             aria-label="关闭大图"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
@@ -111,7 +134,7 @@ export default function WorkDetailGallery({
                 setOpenIndex((index) => (index ?? 0) - 1);
                 resetView();
               }}
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted hover:text-text z-20 p-4 bg-bg/75 border border-border/50"
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted hover:text-text z-20 w-11 h-11 inline-flex items-center justify-center bg-bg/75 border border-border/50"
               aria-label="上一张"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><polyline points="15 18 9 12 15 6" /></svg>
@@ -125,7 +148,7 @@ export default function WorkDetailGallery({
                 setOpenIndex((index) => (index ?? 0) + 1);
                 resetView();
               }}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted hover:text-text z-20 p-4 bg-bg/75 border border-border/50"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted hover:text-text z-20 w-11 h-11 inline-flex items-center justify-center bg-bg/75 border border-border/50"
               aria-label="下一张"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><polyline points="9 18 15 12 9 6" /></svg>
@@ -226,7 +249,7 @@ export default function WorkDetailGallery({
                 event.stopPropagation();
                 setZoom((currentZoom) => Math.max(1, currentZoom - 0.25));
               }}
-              className="w-8 h-8 text-text-muted hover:text-text border border-border/40"
+              className="w-11 h-11 text-text-muted hover:text-text border border-border/40"
               aria-label="缩小"
             >
               −
@@ -237,7 +260,7 @@ export default function WorkDetailGallery({
                 event.stopPropagation();
                 resetView();
               }}
-              className="px-3 h-8 text-[0.65rem] tracking-[0.15em] uppercase text-text-muted hover:text-text border border-border/40"
+              className="px-3 h-11 text-[0.65rem] tracking-[0.15em] uppercase text-text-muted hover:text-text border border-border/40"
             >
               重置
             </button>
@@ -247,7 +270,7 @@ export default function WorkDetailGallery({
                 event.stopPropagation();
                 setZoom((currentZoom) => Math.min(5, currentZoom + 0.25));
               }}
-              className="w-8 h-8 text-text-muted hover:text-text border border-border/40"
+              className="w-11 h-11 text-text-muted hover:text-text border border-border/40"
               aria-label="放大"
             >
               +

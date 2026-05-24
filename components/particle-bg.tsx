@@ -12,6 +12,7 @@ export default function BgCanvas() {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     let w = window.innerWidth;
     let h = window.innerHeight;
@@ -68,7 +69,9 @@ export default function BgCanvas() {
         ctx.fillRect(0, 0, w, h);
       }
 
-      raf = requestAnimationFrame(draw);
+      if (!reducedMotion && !document.hidden) {
+        raf = requestAnimationFrame(draw);
+      }
     };
 
     let raf = requestAnimationFrame(draw);
@@ -79,13 +82,30 @@ export default function BgCanvas() {
       h = window.innerHeight;
       canvas.width = w;
       canvas.height = h;
+      draw();
     };
-    window.addEventListener("mousemove", onMove, { passive: true });
+    const onVisibilityChange = () => {
+      if (reducedMotion) return;
+      if (document.hidden) {
+        cancelAnimationFrame(raf);
+        return;
+      }
+      raf = requestAnimationFrame(draw);
+    };
+
+    if (reducedMotion) {
+      cancelAnimationFrame(raf);
+      draw();
+    } else {
+      window.addEventListener("mousemove", onMove, { passive: true });
+      document.addEventListener("visibilitychange", onVisibilityChange);
+    }
     window.addEventListener("resize", onResize);
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("resize", onResize);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, []);
 

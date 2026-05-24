@@ -2,11 +2,19 @@
 
 import Image from "next/image";
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import type { Work } from "@/lib/types";
 import { cleanupUploadedFiles, uploadImageToR2, type UploadedFile } from "@/lib/upload-client";
 import WorkList from "@/components/admin/work-list";
 import StoragePanel from "@/components/admin/storage-panel";
 import DetailSectionsEditor from "@/components/admin/detail-sections-editor";
+
+const MAIN_TABS = ["works", "add", "intro", "detail", "storage"] as const;
+type MainTab = typeof MAIN_TABS[number];
+
+function isMainTab(value: string | null): value is MainTab {
+  return value !== null && MAIN_TABS.includes(value as MainTab);
+}
 
 function formatUploadResult(successCount: number, total: number, failures: string[], unit: string) {
   if (failures.length === 0) return `${successCount}/${total} ${unit}上传成功`;
@@ -21,8 +29,13 @@ function getWorkUpdatedAt(work: Work): string {
 }
 
 export default function AdminPageClient() {
-  const [tab, setTab] = useState<"works" | "intro" | "add" | "storage" | "edit" | "detail">("works");
+  const [tab, setTab] = useState<"works" | "intro" | "add" | "storage" | "edit" | "detail">(() => {
+    if (typeof window === "undefined") return "works";
+    const queryTab = new URLSearchParams(window.location.search).get("tab");
+    return isMainTab(queryTab) ? queryTab : "works";
+  });
   const [editingId, setEditingId] = useState<string | null>(null);
+  const router = useRouter();
   const [formState, setFormState] = useState<FormState>({
     title: "",
     description: "",
@@ -57,6 +70,11 @@ export default function AdminPageClient() {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  const setMainTab = (nextTab: MainTab) => {
+    setTab(nextTab);
+    router.replace(`/admin?tab=${nextTab}`, { scroll: false });
+  };
 
   const saveIntro = async () => {
     setLoading(true);
@@ -140,11 +158,15 @@ export default function AdminPageClient() {
       )}
 
       <div className="mb-8 overflow-x-auto border-b border-border">
-        <div className="flex min-w-max gap-1">
-        {(["works", "add", "intro", "detail", "storage"] as const).map((t) => (
+        <div role="tablist" aria-label="后台功能" className="flex min-w-max gap-1">
+        {MAIN_TABS.map((t) => (
           <button
             key={t}
-            onClick={() => setTab(t)}
+            id={`admin-tab-${t}`}
+            role="tab"
+            aria-selected={tab === t}
+            aria-controls={`admin-panel-${t}`}
+            onClick={() => setMainTab(t)}
             className={`px-5 py-2.5 text-sm tracking-wide transition-colors ${
               tab === t
                 ? "text-accent border-b-2 border-accent"
@@ -157,27 +179,29 @@ export default function AdminPageClient() {
         </div>
       </div>
 
-      {tab === "intro" && <IntroForm intro={intro} setIntro={setIntro} onSave={saveIntro} loading={loading} />}
-      {tab === "detail" && <DetailSectionsEditor showMsg={showMsg} />}
-      {tab === "add" && <AddWorkForm formState={formState} setFormState={setFormState} onDone={() => { refresh(); setTab("works"); }} showMsg={showMsg} />}
+      {tab === "intro" && <div id="admin-panel-intro" role="tabpanel" aria-labelledby="admin-tab-intro"><IntroForm intro={intro} setIntro={setIntro} onSave={saveIntro} loading={loading} /></div>}
+      {tab === "detail" && <div id="admin-panel-detail" role="tabpanel" aria-labelledby="admin-tab-detail"><DetailSectionsEditor showMsg={showMsg} /></div>}
+      {tab === "add" && <div id="admin-panel-add" role="tabpanel" aria-labelledby="admin-tab-add"><AddWorkForm formState={formState} setFormState={setFormState} onDone={() => { refresh(); setMainTab("works"); }} showMsg={showMsg} /></div>}
       {tab === "works" && (
-        <WorkList
-          works={works}
-          onDelete={setPendingDelete}
-          onTogglePin={togglePin}
-          onEdit={(id) => { setEditingId(id); setTab("edit"); }}
-          onReorder={moveWork}
-        />
+        <div id="admin-panel-works" role="tabpanel" aria-labelledby="admin-tab-works">
+          <WorkList
+            works={works}
+            onDelete={setPendingDelete}
+            onTogglePin={togglePin}
+            onEdit={(id) => { setEditingId(id); setTab("edit"); }}
+            onReorder={moveWork}
+          />
+        </div>
       )}
       {tab === "edit" && editingId && (
         <EditWorkForm
           workId={editingId}
-          onDone={() => { refresh(); setEditingId(null); setTab("works"); }}
-          onCancel={() => { setEditingId(null); setTab("works"); }}
+          onDone={() => { refresh(); setEditingId(null); setMainTab("works"); }}
+          onCancel={() => { setEditingId(null); setMainTab("works"); }}
           showMsg={showMsg}
         />
       )}
-      {tab === "storage" && <StoragePanel works={works} />}
+      {tab === "storage" && <div id="admin-panel-storage" role="tabpanel" aria-labelledby="admin-tab-storage"><StoragePanel works={works} /></div>}
       <ConfirmDialog
         open={!!pendingDelete}
         title="删除作品"
@@ -423,23 +447,8 @@ function AddWorkForm({
               <div
                 className="h-full bg-accent transition-all duration-300 ease-out"
                 style={{ width: `${uploadTotal > 0 ? (uploadDone / uploadTotal) * 100 : 0}%` }}
-        />
-      </div>
-
-      <div>
-        <label className="block text-sm text-text-muted mb-1">
-          展示权重 {sizeWeight.toFixed(1)}（0.5=紧凑 1.0=默认 2.0=大）
-        </label>
-        <input
-          type="range"
-          min="0.5"
-          max="2.0"
-          step="0.1"
-          value={sizeWeight}
-          onChange={(e) => setFormState({ ...formState, sizeWeight: parseFloat(e.target.value) })}
-          className="w-full accent-accent"
-        />
-      </div>
+              />
+            </div>
           </div>
         ) : (
           <label className="inline-block px-6 py-10 border-2 border-dashed border-border text-text-muted text-sm cursor-pointer hover:border-accent-dim transition-colors">
@@ -453,6 +462,20 @@ function AddWorkForm({
             />
           </label>
         )}
+        <div className="mt-4">
+          <label className="block text-sm text-text-muted mb-1">
+            展示权重 {sizeWeight.toFixed(1)}（0.5=紧凑 1.0=默认 2.0=大）
+          </label>
+          <input
+            type="range"
+            min="0.5"
+            max="2.0"
+            step="0.1"
+            value={sizeWeight}
+            onChange={(e) => setFormState({ ...formState, sizeWeight: parseFloat(e.target.value) })}
+            className="w-full accent-accent"
+          />
+        </div>
         {uploadedFiles.length > 0 && !uploading && (
           <div className="mt-3 space-y-1">
             <p className="text-xs text-text-muted mb-2">拖拽排序 · 点击设封面</p>
@@ -495,9 +518,10 @@ function AddWorkForm({
                   )}
                   <button
                     onClick={(e) => { e.stopPropagation(); removeFile(i); if (i <= coverIndex && coverIndex > 0) setCoverIndex(coverIndex - 1); }}
-                    className="absolute -top-1.5 -right-1.5 bg-bg border border-border text-text-muted text-[10px] w-4 h-4 flex items-center justify-center hover:text-red-400"
+                    className="absolute -top-2 -right-2 bg-bg border border-border text-text-muted text-xs w-6 h-6 flex items-center justify-center hover:text-red-400"
+                    aria-label={`删除第 ${i + 1} 张`}
                   >
-                    x
+                    ×
                   </button>
                 </div>
               ))}
@@ -555,7 +579,7 @@ function AddWorkForm({
         <button
           onClick={createWork}
           disabled={submitting || uploading || uploadedFiles.length === 0}
-          className="px-8 py-2.5 bg-accent text-bg text-sm font-medium hover:bg-accent-dim transition-colors disabled:opacity-50"
+          className="min-h-11 px-8 py-2.5 bg-accent text-bg text-sm font-medium hover:bg-accent-dim transition-colors disabled:opacity-50"
         >
           {submitting ? "提交中..." : uploadedFiles.length > 1 ? `发布作品（${uploadedFiles.length} 张图）` : "发布作品"}
         </button>
@@ -790,7 +814,13 @@ function EditWorkForm({
             >
               <Image src={img.thumb_url} alt="" width={80} height={64} unoptimized className="w-20 h-16 object-cover border border-border" />
               {i === coverIndex && <span className="absolute bottom-0.5 left-0.5 text-[9px] bg-accent text-bg px-1">封面</span>}
-              <button onClick={(e) => { e.stopPropagation(); removeImage(i); }} className="absolute -top-1.5 -right-1.5 bg-bg border border-border text-text-muted text-[10px] w-4 h-4 flex items-center justify-center hover:text-red-400">x</button>
+              <button
+                onClick={(e) => { e.stopPropagation(); removeImage(i); }}
+                className="absolute -top-2 -right-2 bg-bg border border-border text-text-muted text-xs w-6 h-6 flex items-center justify-center hover:text-red-400"
+                aria-label={`删除第 ${i + 1} 张`}
+              >
+                ×
+              </button>
             </div>
           ))}
           {allImages.length === 0 && <p className="text-text-muted text-xs">暂无图片</p>}

@@ -16,13 +16,14 @@ export default function WorkList({
   onEdit: (id: string) => void;
   onReorder: (work: Work, direction: "up" | "down") => void;
 }) {
+  const totalWeight = works.reduce((sum, work) => sum + (work.size_weight ?? 1), 0);
+
   return (
     <div className="space-y-3">
       {works.length === 0 && (
         <p className="text-text-muted text-sm">暂无作品</p>
       )}
       {works.map((work, i) => {
-        const totalWeight = works.reduce((s, w) => s + (w.size_weight ?? 1), 0);
         const wgt = work.size_weight ?? 1;
         const wpct = totalWeight > 0 ? (wgt / totalWeight) * 100 : 0;
         return (
@@ -73,29 +74,28 @@ export default function WorkList({
                   <span className="text-[10px] text-accent-dim">{wgt.toFixed(1)} / {wpct.toFixed(1)}%</span>
                 </div>
               </div>
-              <div className="flex flex-col gap-2 flex-shrink-0">
-                <div className="flex gap-1">
-                  <button onClick={() => onReorder(work, "up")} disabled={i === 0} className="text-xs text-text-muted hover:text-accent disabled:opacity-30">↑</button>
-                  <button onClick={() => onReorder(work, "down")} disabled={i === works.length - 1} className="text-xs text-text-muted hover:text-accent disabled:opacity-30">↓</button>
+              <div className="flex flex-col gap-1.5 flex-shrink-0">
+                <div className="inline-flex border border-border/80">
+                  <button
+                    onClick={() => onReorder(work, "up")}
+                    disabled={i === 0}
+                    className="min-h-10 min-w-10 text-xs text-text-muted hover:text-accent disabled:opacity-30"
+                    aria-label="上移排序"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    onClick={() => onReorder(work, "down")}
+                    disabled={i === works.length - 1}
+                    className="min-h-10 min-w-10 border-l border-border/80 text-xs text-text-muted hover:text-accent disabled:opacity-30"
+                    aria-label="下移排序"
+                  >
+                    ↓
+                  </button>
                 </div>
-                <button
-                  onClick={() => onTogglePin(work)}
-                  className="text-xs text-text-muted hover:text-accent transition-colors"
-                >
-                  {work.pinned ? "取消置顶" : "置顶"}
-                </button>
-                <button
-                  onClick={() => onEdit(work.id)}
-                  className="text-xs text-text-muted hover:text-accent transition-colors"
-                >
-                  编辑
-                </button>
-                <button
-                  onClick={() => onDelete(work)}
-                  className="text-xs text-red-400/70 hover:text-red-400 transition-colors"
-                >
-                  删除
-                </button>
+                <button onClick={() => onTogglePin(work)} className="min-h-10 px-3 border border-border/80 text-xs text-text-muted hover:text-accent transition-colors">{work.pinned ? "取消置顶" : "置顶"}</button>
+                <button onClick={() => onEdit(work.id)} className="min-h-10 px-3 border border-border/80 text-xs text-text-muted hover:text-accent transition-colors">编辑</button>
+                <button onClick={() => onDelete(work)} className="min-h-10 px-3 border border-red-400/30 text-xs text-red-400/70 hover:text-red-400 transition-colors">删除</button>
               </div>
             </div>
             <div className="mt-4 text-xs text-text-muted">

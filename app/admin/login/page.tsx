@@ -43,6 +43,7 @@ function LoginForm() {
           value={key}
           onChange={(e) => setKey(e.target.value)}
           placeholder="请输入密钥"
+          aria-label="管理密钥"
           autoFocus
           className="w-full bg-surface border border-border text-text px-4 py-3 text-sm focus:outline-none focus:border-accent-dim transition-colors"
         />
@@ -64,9 +65,8 @@ export default function AdminLoginPage() {
   return (
     <div className="min-h-screen bg-bg flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        <h1 className="font-display text-2xl text-text text-center mb-8">
-          管理后台
-        </h1>
+        <h1 className="font-display text-2xl text-text text-center mb-3">输入管理密钥</h1>
+        <p className="text-center text-sm text-text-muted mb-8">登录后可编辑作品、排序与内容</p>
         <Suspense fallback={<div className="text-text-muted text-sm text-center">加载中...</div>}>
           <LoginForm />
         </Suspense>

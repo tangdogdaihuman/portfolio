@@ -8,8 +8,6 @@ import type { Work } from "@/lib/types";
 import BgCanvas from "@/components/particle-bg";
 import AuroraCanvas from "@/components/aurora-canvas";
 
-interface ImageItem { id: string; image_url: string; thumb_url: string; }
-
 const spring = { type: "spring" as const, damping: 28, stiffness: 200, mass: 0.8 };
 const springSlow = { type: "spring" as const, damping: 32, stiffness: 160, mass: 1 };
 
@@ -30,20 +28,13 @@ export default function HomeClient({
   const [detailSections, setDetailSections] = useState<Section[]>(initialSections);
   const [loadError, setLoadError] = useState(initialLoadError);
   const [loadingWorks, setLoadingWorks] = useState(initialWorks.length === 0 && !initialLoadError);
-  const [expandedSection, setExpandedSection] = useState<string | null>(null);
+  const [expandedSection, setExpandedSection] = useState<string | null>(initialSections[0]?.id ?? null);
   const [works, setWorks] = useState<Work[]>(initialWorks);
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<"default" | "newest" | "oldest">("default");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<"works" | "about" | "contact">("works");
   const [thumbReady, setThumbReady] = useState<Record<string, true>>({});
-  const [lightboxWork, setLightboxWork] = useState<Work | null>(null);
-  const [lightboxImages, setLightboxImages] = useState<ImageItem[]>([]);
-  const [fullImageIdx, setFullImageIdx] = useState<number | null>(null);
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const dragRef = useRef<{ sx: number; sy: number; px: number; py: number } | null>(null);
-  const touchRef = useRef<{ x: number; y: number } | null>(null);
   const cursorRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
@@ -55,7 +46,15 @@ export default function HomeClient({
         throw new Error("refresh failed");
       }
       if (introRes.ok) setIntro((await introRes.json()).content || "");
-      if (sectionsRes.ok) setDetailSections(await sectionsRes.json());
+      if (sectionsRes.ok) {
+        const nextSections = await sectionsRes.json() as Section[];
+        setDetailSections(nextSections);
+        setExpandedSection((current) => {
+          if (nextSections.length === 0) return null;
+          if (!current) return nextSections[0].id;
+          return nextSections.some((section) => section.id === current) ? current : nextSections[0].id;
+        });
+      }
       if (worksRes.ok) setWorks(await worksRes.json());
       setLoadError(false);
     } catch {
@@ -152,18 +151,6 @@ export default function HomeClient({
     return () => obs.disconnect();
   }, [works]);
 
-  // Fullscreen keyboard nav
-  useEffect(() => {
-    if (fullImageIdx === null || !lightboxImages.length) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "ArrowRight" && fullImageIdx < lightboxImages.length - 1) { setFullImageIdx((i) => (i ?? 0) + 1); setZoom(1); setPan({ x: 0, y: 0 }); }
-      if (e.key === "ArrowLeft" && fullImageIdx > 0) { setFullImageIdx((i) => (i ?? 0) - 1); setZoom(1); setPan({ x: 0, y: 0 }); }
-      if (e.key === "Escape") setFullImageIdx(null);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [fullImageIdx, lightboxImages]);
-
   const tags = [...new Set(works.flatMap((w) => w.tags))];
   const filtered = activeTag ? works.filter((w) => w.tags.includes(activeTag)) : works;
   const sorted = (() => {
@@ -176,16 +163,11 @@ export default function HomeClient({
     return byDate;
   })();
 
-  const sortLabels: Record<typeof sortMode, string> = { default: "默认排序", newest: "最新优先", oldest: "最早优先" };
-  const nextSort = () => {
-    setSortMode(sortMode === "default" ? "newest" : sortMode === "newest" ? "oldest" : "default");
-  };
-  const fullImage = fullImageIdx !== null ? lightboxImages[fullImageIdx] : null;
-
-  const closeAll = () => { setLightboxWork(null); setFullImageIdx(null); setLightboxImages([]); setZoom(1); setPan({ x: 0, y: 0 }); };
-  const closeFullscreen = () => { setFullImageIdx(null); setZoom(1); setPan({ x: 0, y: 0 }); };
-
-  const resetView = () => { setZoom(1); setPan({ x: 0, y: 0 }); };
+  const sortOptions: Array<{ value: "default" | "newest" | "oldest"; label: string }> = [
+    { value: "default", label: "精选" },
+    { value: "newest", label: "最新" },
+    { value: "oldest", label: "最早" },
+  ];
 
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
   const portfolioOpacity = useTransform(scrollYProgress, [0, 0.45], [1, 0]);
@@ -218,9 +200,8 @@ export default function HomeClient({
       <div ref={ringRef} className="cursor-ring hidden md:block" />
 
       {/* Nav */}
-      {!lightboxWork && !fullImage && (
-        <nav className="fixed top-0 left-0 right-0 z-[70] px-4 md:px-10 py-3.5 md:py-4.5 flex justify-between items-center bg-bg/70 backdrop-blur-md border-b border-border/30">
-          <a href="#" onClick={closeAll} className="font-display text-lg tracking-wider text-text">Portfolio</a>
+      <nav className="fixed top-0 left-0 right-0 z-[70] px-4 md:px-10 py-3.5 md:py-4.5 flex justify-between items-center bg-bg/70 backdrop-blur-md border-b border-border/30">
+          <a href="#" className="font-display text-lg tracking-wider text-text">Portfolio</a>
           <div className="hidden md:flex gap-7 text-[0.67rem] tracking-[0.22em] uppercase text-text-muted">
             <a href="#works" className={navClass("works")}>作品</a>
             <a href="#about" className={navClass("about")}>关于</a>
@@ -230,7 +211,7 @@ export default function HomeClient({
             type="button"
             aria-label={mobileNavOpen ? "关闭导航菜单" : "打开导航菜单"}
             onClick={() => setMobileNavOpen((open) => !open)}
-            className="md:hidden inline-flex items-center justify-center w-10 h-10 border border-border text-text-muted hover:text-text transition-colors"
+            className="md:hidden inline-flex items-center justify-center w-11 h-11 border border-border text-text-muted hover:text-text transition-colors"
           >
             {mobileNavOpen ? (
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
@@ -240,22 +221,21 @@ export default function HomeClient({
           </button>
           {mobileNavOpen && (
             <div className="absolute top-full right-4 mt-2 w-44 bg-surface border border-border/80 p-2 md:hidden">
-              <a href="#works" onClick={() => setMobileNavOpen(false)} className={`block px-3 py-2 text-xs tracking-[0.2em] uppercase transition-colors ${activeSection === "works" ? "text-text" : "text-text-muted hover:text-accent"}`}>作品</a>
-              <a href="#about" onClick={() => setMobileNavOpen(false)} className={`block px-3 py-2 text-xs tracking-[0.2em] uppercase transition-colors ${activeSection === "about" ? "text-text" : "text-text-muted hover:text-accent"}`}>关于</a>
-              <a href="#contact" onClick={() => setMobileNavOpen(false)} className={`block px-3 py-2 text-xs tracking-[0.2em] uppercase transition-colors ${activeSection === "contact" ? "text-text" : "text-text-muted hover:text-accent"}`}>联系</a>
+              <a href="#works" onClick={() => setMobileNavOpen(false)} className={`block px-3 py-3 text-xs tracking-[0.2em] uppercase transition-colors ${activeSection === "works" ? "text-text" : "text-text-muted hover:text-accent"}`}>作品</a>
+              <a href="#about" onClick={() => setMobileNavOpen(false)} className={`block px-3 py-3 text-xs tracking-[0.2em] uppercase transition-colors ${activeSection === "about" ? "text-text" : "text-text-muted hover:text-accent"}`}>关于</a>
+              <a href="#contact" onClick={() => setMobileNavOpen(false)} className={`block px-3 py-3 text-xs tracking-[0.2em] uppercase transition-colors ${activeSection === "contact" ? "text-text" : "text-text-muted hover:text-accent"}`}>联系</a>
             </div>
           )}
         </nav>
-      )}
 
       <BgCanvas />
 
       <div className="relative z-10">
         {/* Hero */}
-        <section ref={heroRef} className="hero-noise min-h-screen relative flex flex-col items-center justify-center px-4 overflow-hidden">
+        <section ref={heroRef} className="hero-noise min-h-[74vh] md:min-h-[78vh] relative flex flex-col items-center justify-center px-4 overflow-hidden">
           <AuroraCanvas />
 
-          <div className="relative z-10 flex flex-col items-center justify-center w-full max-w-6xl mx-auto pt-16 md:pt-20">
+          <div className="relative z-10 flex flex-col items-center justify-center w-full max-w-6xl mx-auto pt-14 md:pt-16">
             {/* Portfolio title — fades out on scroll */}
             <motion.div
               style={{ opacity: portfolioOpacity, scale: portfolioScale, filter: portfolioFilter }}
@@ -265,9 +245,9 @@ export default function HomeClient({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.7, ease: [0.2, 0.9, 0.3, 1] }}
-                className="text-xs md:text-sm text-accent-dim uppercase mb-6"
+                className="text-xs md:text-sm text-accent-dim uppercase mb-6 tracking-[0.2em]"
               >
-                Tang Zihang
+                CG Artist Portfolio
               </motion.p>
               <h1 className="font-display leading-[0.95] text-text">
                 <span className="block overflow-hidden">
@@ -275,9 +255,9 @@ export default function HomeClient({
                     initial={{ y: "110%" }}
                     animate={{ y: 0 }}
                     transition={{ duration: 0.95, ease: [0.2, 0.9, 0.3, 1] }}
-                    className="inline-block text-5xl sm:text-6xl md:text-8xl lg:text-9xl"
+                    className="inline-block text-6xl sm:text-7xl md:text-8xl lg:text-9xl"
                   >
-                    Portfolio
+                    唐子航
                   </motion.span>
                 </span>
                 <span className="block overflow-hidden mt-1 md:mt-2">
@@ -285,17 +265,25 @@ export default function HomeClient({
                     initial={{ y: "110%" }}
                     animate={{ y: 0 }}
                     transition={{ duration: 0.95, ease: [0.2, 0.9, 0.3, 1], delay: 0.12 }}
-                    className="inline-block text-2xl sm:text-3xl md:text-5xl lg:text-6xl text-accent"
+                    className="inline-block text-xl sm:text-2xl md:text-4xl lg:text-5xl text-accent"
                   >
-                    CG Works Collection
+                    Tang Zihang CG Portfolio
                   </motion.span>
                 </span>
               </h1>
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, delay: 0.22, ease: [0.2, 0.9, 0.3, 1] }}
+                className="mt-4 text-[0.7rem] md:text-xs uppercase tracking-[0.18em] text-text-muted"
+              >
+                Hard Surface / Stylized Character / Game Art
+              </motion.p>
             </motion.div>
 
             {/* Intro — visible on load, lines exit one by one on scroll */}
             {intro && (
-              <div className="mt-9 md:mt-12 max-w-[46rem] mx-auto text-center px-3">
+               <div className="mt-6 md:mt-8 max-w-[46rem] mx-auto text-center px-3">
                 {(() => {
                   let idx = 0;
                   return intro.split("\n").map((line, i) => {
@@ -327,12 +315,12 @@ export default function HomeClient({
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.35, ease: [0.2, 0.9, 0.3, 1] }}
-              className="mt-10 md:mt-12 flex items-center gap-3"
+              className="mt-7 md:mt-8 flex items-center gap-3"
             >
-              <a href="#works" className="px-5 py-2 text-xs uppercase text-text border border-border/70 hover:border-accent hover:text-accent transition-colors">
+              <a href="#works" className="min-h-11 inline-flex items-center justify-center px-5 py-2.5 text-xs uppercase text-text border border-border/70 hover:border-accent hover:text-accent transition-colors">
                 浏览作品
               </a>
-              <a href="#contact" className="px-5 py-2 text-xs uppercase text-text-muted border border-border/50 hover:text-text transition-colors">
+              <a href="#contact" className="min-h-11 inline-flex items-center justify-center px-5 py-2.5 text-xs uppercase text-text-muted border border-border/50 hover:text-text transition-colors">
                 联系我
               </a>
             </motion.div>
@@ -351,13 +339,13 @@ export default function HomeClient({
         </section>
 
       {/* Marquee */}
-      <section className="py-10 md:py-14 border-y border-border/20 overflow-hidden">
+      <section className="py-3 md:py-4 border-y border-border/20 overflow-hidden">
         <div className="overflow-hidden">
           <div className="flex animate-[marquee_10s_linear_infinite] md:animate-[marquee_14s_linear_infinite]" style={{ width: "max-content" }}>
             {[0, 1, 2].map((n) => (
               <div key={n} className="flex flex-shrink-0">
                 {[0, 1, 2, 3, 4].map((m) => (
-                  <span key={`${n}-${m}`} className="font-display italic text-2xl md:text-3xl text-text-muted/25 tracking-wider mx-6 whitespace-nowrap flex-shrink-0">
+                  <span key={`${n}-${m}`} className="font-display italic text-lg md:text-xl text-text-muted/20 tracking-wider mx-5 whitespace-nowrap flex-shrink-0">
                     {marqueeItems.map((t, j) => `${t}${j < marqueeItems.length - 1 ? " · " : ""}`)}
                   </span>
                 ))}
@@ -379,15 +367,29 @@ export default function HomeClient({
         </div>
 
         {tags.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5 md:gap-2 mb-10 reveal">
-            <button onClick={() => setActiveTag(null)} className={`px-3 py-1 text-[0.62rem] tracking-[0.12em] uppercase transition-colors border ${activeTag === null ? "text-accent border-accent/70 bg-surface" : "text-text-muted border-border/60 hover:text-text"}`}>All</button>
+          <div className="flex flex-wrap items-center gap-2 md:gap-2.5 mb-10 reveal">
+            <button onClick={() => setActiveTag(null)} className={`min-h-11 px-3.5 py-2 text-[0.64rem] tracking-[0.12em] uppercase transition-colors border ${activeTag === null ? "text-accent border-accent/70 bg-surface" : "text-text-muted border-border/60 hover:text-text"}`}>All</button>
             {tags.map((t) => (
-              <button key={t} onClick={() => setActiveTag(t)} className={`px-3 py-1 text-[0.62rem] tracking-[0.12em] uppercase transition-colors border ${activeTag === t ? "text-accent border-accent/70 bg-surface" : "text-text-muted border-border/60 hover:text-text"}`}>{t}</button>
+              <button key={t} onClick={() => setActiveTag(t)} className={`min-h-11 px-3.5 py-2 text-[0.64rem] tracking-[0.12em] uppercase transition-colors border ${activeTag === t ? "text-accent border-accent/70 bg-surface" : "text-text-muted border-border/60 hover:text-text"}`}>{t}</button>
             ))}
             <span className="flex-1" />
-            <button onClick={nextSort} className="px-3 py-1 text-[0.6rem] tracking-[0.16em] uppercase text-text-muted hover:text-accent transition-colors border border-border/70">
-              {sortLabels[sortMode]}
-            </button>
+            <div className="inline-flex border border-border/70">
+              {sortOptions.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  aria-pressed={sortMode === option.value}
+                  onClick={() => setSortMode(option.value)}
+                  className={`min-h-11 px-3.5 text-[0.6rem] tracking-[0.16em] uppercase transition-colors ${
+                    sortMode === option.value
+                      ? "text-accent bg-surface"
+                      : "text-text-muted hover:text-text"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -454,9 +456,9 @@ export default function HomeClient({
                         {work.work_date && <span>{work.work_date}</span>}
                       </div>
                       <h3 className="font-display text-[1.15rem] md:text-[1.45rem] text-text mt-1 leading-[1.1] group-hover:text-accent transition-colors">{work.title}</h3>
-                      <div className="flex items-center gap-2.5 flex-wrap text-[0.7rem] text-text-muted tracking-[0.12em] mt-1.5">
-                        {work.tags.slice(0, 3).map((t) => <span key={t} className="text-accent-dim/90">{t}</span>)}
-                        {(work.image_count || 1) > 1 && <span className="text-text-muted/60">{work.image_count} 张</span>}
+                      <div className="flex items-center gap-2.5 flex-wrap text-[0.7rem] text-text-muted tracking-[0.11em] mt-1.5">
+                        {work.tags.slice(0, 2).map((t) => <span key={t} className="text-accent-dim/90">{t}</span>)}
+                        <span className="text-text-muted/60">{(work.image_count || 1) > 1 ? `${work.image_count} 张图集` : "单图展示"}</span>
                       </div>
                     </div>
                   </Link>
@@ -493,7 +495,9 @@ export default function HomeClient({
                 >
                   <button
                     onClick={() => setExpandedSection(isOpen ? null : s.id)}
-                    className="w-full flex items-center justify-between py-4 text-left group"
+                    aria-expanded={isOpen}
+                    aria-controls={`about-panel-${s.id}`}
+                    className="w-full min-h-11 flex items-center justify-between py-4 text-left group"
                     data-hover
                   >
                     <span className="font-display text-lg text-text-muted group-hover:text-accent transition-colors duration-300">{s.title}</span>
@@ -508,6 +512,7 @@ export default function HomeClient({
                   <AnimatePresence initial={false}>
                     {isOpen && (
                       <motion.div
+                        id={`about-panel-${s.id}`}
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: "auto", opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
@@ -526,111 +531,6 @@ export default function HomeClient({
           </div>
         </section>
       )}
-
-      {/* Lightbox */}
-      <AnimatePresence>
-        {lightboxWork && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }} className="fixed inset-0 z-[80] bg-bg flex flex-col" onClick={closeAll}>
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border/30 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-              <div>
-                <h2 className="font-display text-xl text-text">{lightboxWork.title}</h2>
-                <div className="flex items-center gap-3 mt-1">
-                  {lightboxWork.work_date && <span className="text-xs text-accent-dim">{lightboxWork.work_date}</span>}
-                  {lightboxWork.tags.map((t) => <span key={t} className="text-xs text-text-muted/60">{t}</span>)}
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <Link href={`/work/${lightboxWork.id}`} className="text-xs tracking-[0.2em] uppercase text-accent hover:text-text transition-colors">
-                  查看详情
-                </Link>
-                <button onClick={closeAll} className="text-text-muted hover:text-text transition-colors p-2"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
-              </div>
-            </div>
-            <div className="flex-1 overflow-y-auto px-6 py-8" onClick={(e) => e.stopPropagation()}>
-              {lightboxWork.description && <p className="text-text-muted text-sm max-w-2xl mb-10 leading-relaxed">{lightboxWork.description}</p>}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-5xl mx-auto pb-8">
-                {lightboxImages.map((img, i) => (
-                  <motion.div
-                    key={img.id || i}
-                    initial={{ opacity: 0, scale: 0.96 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ ...spring, delay: i * 0.04 }}
-                    className="cursor-zoom-in bg-surface overflow-hidden group"
-                    onClick={(e) => { e.stopPropagation(); setFullImageIdx(i); }}
-                    whileHover={{ scale: 1.02 }}
-                  >
-                    <Image src={img.image_url} alt="" width={1200} height={1600} unoptimized sizes="(max-width: 768px) 100vw, 50vw" className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-105" loading="lazy" />
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Fullscreen with nav */}
-      <AnimatePresence>
-        {fullImage && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[90] bg-bg/96 flex items-center justify-center" style={{ touchAction: "none" }} onClick={closeFullscreen}>
-            <button onClick={(e) => { e.stopPropagation(); closeAll(); }} className="absolute top-6 left-6 text-text-muted hover:text-text z-20 p-2 text-xs tracking-[0.3em] uppercase bg-bg/75 border border-border/50">返回作品集</button>
-            <button onClick={(e) => { e.stopPropagation(); closeFullscreen(); }} className="absolute top-6 right-6 text-text-muted hover:text-text z-20 p-2 bg-bg/75 border border-border/50"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg></button>
-
-             {fullImageIdx !== null && fullImageIdx > 0 && (
-              <button onClick={(e) => { e.stopPropagation(); setFullImageIdx((i) => (i ?? 0) - 1); resetView(); }} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted hover:text-text z-20 p-4 bg-bg/75 border border-border/50"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><polyline points="15 18 9 12 15 6" /></svg></button>
-            )}
-            {fullImageIdx !== null && fullImageIdx < lightboxImages.length - 1 && (
-              <button onClick={(e) => { e.stopPropagation(); setFullImageIdx((i) => (i ?? 0) + 1); resetView(); }} className="absolute right-4 top-1/2 -translate-y-1/2 text-text-muted hover:text-text z-20 p-4 bg-bg/75 border border-border/50"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><polyline points="9 18 15 12 9 6" /></svg></button>
-            )}
-
-            <motion.img
-              key={fullImageIdx}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.25 }}
-              src={fullImage.image_url}
-              alt={lightboxWork?.title ?? ""}
-              className="max-w-[95vw] max-h-[95vh] object-contain select-none"
-              style={{ transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`, cursor: zoom > 1 ? "grab" : "zoom-in" }}
-              onTouchStart={(e) => {
-                const t = e.touches[0];
-                touchRef.current = { x: t.clientX, y: t.clientY };
-              }}
-              onTouchEnd={(e) => {
-                if (!touchRef.current || zoom > 1) return;
-                const t = e.changedTouches[0];
-                const dx = t.clientX - touchRef.current.x;
-                const dy = t.clientY - touchRef.current.y;
-                touchRef.current = null;
-                if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
-                e.stopPropagation();
-                if (dx < 0 && fullImageIdx !== null && fullImageIdx < lightboxImages.length - 1) { setFullImageIdx((i) => (i ?? 0) + 1); resetView(); }
-                if (dx > 0 && fullImageIdx !== null && fullImageIdx > 0) { setFullImageIdx((i) => (i ?? 0) - 1); resetView(); }
-              }}
-              onWheel={(e) => { e.stopPropagation(); setZoom((z) => Math.min(5, Math.max(1, z - e.deltaY * 0.001))); }}
-              onDoubleClick={(e) => { e.stopPropagation(); setZoom((z) => z > 1 ? 1 : 2); setPan({ x: 0, y: 0 }); }}
-              onMouseDown={(e) => {
-                if (zoom <= 1) return;
-                e.stopPropagation(); e.preventDefault();
-                dragRef.current = { sx: e.clientX, sy: e.clientY, px: pan.x, py: pan.y };
-                (e.target as HTMLElement).style.cursor = "grabbing";
-                const onMove = (ev: MouseEvent) => {
-                  if (!dragRef.current) return;
-                  setPan({ x: dragRef.current.px + (ev.clientX - dragRef.current.sx) / zoom, y: dragRef.current.py + (ev.clientY - dragRef.current.sy) / zoom });
-                };
-                const onUp = () => { dragRef.current = null; window.removeEventListener("mousemove", onMove); window.removeEventListener("mouseup", onUp); };
-                window.addEventListener("mousemove", onMove);
-                window.addEventListener("mouseup", onUp);
-              }}
-              onClick={(e: React.MouseEvent) => e.stopPropagation()}
-            />
-
-            {fullImageIdx !== null && lightboxImages.length > 1 && (
-              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-xs text-text-muted tracking-wider bg-bg/70 border border-border/50 px-2.5 py-1">{fullImageIdx + 1} / {lightboxImages.length}</div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Contact */}
       <section id="contact" className="scroll-mt-24 md:scroll-mt-28 px-4 md:px-6 py-14 md:py-20 border-t border-border/20">
