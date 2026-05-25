@@ -24,7 +24,14 @@ export default function WorkDetailGallery({
   const dragRef = useRef<{ sx: number; sy: number; px: number; py: number } | null>(null);
   const swipeRef = useRef<{ x: number; y: number } | null>(null);
   const touchPanRef = useRef<{ x: number; y: number } | null>(null);
-  const pinchRef = useRef<{ distance: number; startZoom: number } | null>(null);
+  const pinchRef = useRef<{
+    distance: number;
+    startZoom: number;
+    centerX: number;
+    centerY: number;
+    startPanX: number;
+    startPanY: number;
+  } | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const triggerRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const lastOpenIndexRef = useRef<number | null>(null);
@@ -44,6 +51,11 @@ export default function WorkDetailGallery({
     a: { clientX: number; clientY: number },
     b: { clientX: number; clientY: number }
   ) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+
+  const calcMidpoint = (
+    a: { clientX: number; clientY: number },
+    b: { clientX: number; clientY: number }
+  ) => ({ x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 });
 
   const goNext = useCallback(() => {
     setOpenIndex((index) => {
@@ -179,17 +191,17 @@ export default function WorkDetailGallery({
           )}
 
           <div className="absolute left-4 top-6 z-20 text-[0.62rem] tracking-[0.15em] uppercase text-text-muted bg-bg/75 border border-border/50 px-3 py-2">
-            双指缩放 · 拖拽查看细节
+            双指缩放/平移 · 单指滑动切图
           </div>
 
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={activeImage.id || String(openIndex)}
               custom={slideDirection}
-              initial={{ opacity: 0, x: slideDirection === 0 ? 0 : slideDirection * 56 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: slideDirection === 0 ? 0 : slideDirection * -56 }}
-              transition={{ duration: 0.24, ease: [0.2, 0.9, 0.3, 1] }}
+              initial={{ x: slideDirection === 0 ? 0 : slideDirection * 86 }}
+              animate={{ x: 0 }}
+              exit={{ x: slideDirection === 0 ? 0 : slideDirection * -86 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
               className="max-w-[97vw] max-h-[97vh] flex items-center justify-center"
               onClick={(event) => event.stopPropagation()}
             >
@@ -243,9 +255,14 @@ export default function WorkDetailGallery({
                 }}
                 onTouchStart={(event) => {
                   if (event.touches.length === 2) {
+                    const midpoint = calcMidpoint(event.touches[0], event.touches[1]);
                     pinchRef.current = {
                       distance: calcDistance(event.touches[0], event.touches[1]),
                       startZoom: zoom,
+                      centerX: midpoint.x,
+                      centerY: midpoint.y,
+                      startPanX: pan.x,
+                      startPanY: pan.y,
                     };
                     swipeRef.current = null;
                     touchPanRef.current = null;
@@ -260,7 +277,13 @@ export default function WorkDetailGallery({
                     event.preventDefault();
                     const nextDistance = calcDistance(event.touches[0], event.touches[1]);
                     const scaleFactor = nextDistance / pinchRef.current.distance;
-                    setZoomSafe(pinchRef.current.startZoom * scaleFactor);
+                    const nextZoom = Math.min(5, Math.max(1, pinchRef.current.startZoom * scaleFactor));
+                    const midpoint = calcMidpoint(event.touches[0], event.touches[1]);
+                    setZoom(nextZoom);
+                    setPan({
+                      x: pinchRef.current.startPanX + (midpoint.x - pinchRef.current.centerX) / nextZoom,
+                      y: pinchRef.current.startPanY + (midpoint.y - pinchRef.current.centerY) / nextZoom,
+                    });
                     return;
                   }
                   if (event.touches.length !== 1 || zoom <= 1 || !touchPanRef.current) return;
@@ -277,6 +300,7 @@ export default function WorkDetailGallery({
                   if (pinchRef.current && event.touches.length < 2) {
                     pinchRef.current = null;
                     if (zoom > 1) return;
+                    setPan({ x: 0, y: 0 });
                   }
 
                   touchPanRef.current = null;

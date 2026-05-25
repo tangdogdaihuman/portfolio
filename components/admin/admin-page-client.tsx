@@ -10,6 +10,20 @@ import StoragePanel from "@/components/admin/storage-panel";
 import DetailSectionsEditor from "@/components/admin/detail-sections-editor";
 
 const MAIN_TABS = ["works", "add", "intro", "detail", "storage"] as const;
+const SOFTWARE_PRESETS = [
+  "Blender",
+  "Maya",
+  "3ds Max",
+  "ZBrush",
+  "Substance 3D Painter",
+  "Substance 3D Designer",
+  "Marmoset Toolbag",
+  "Unreal Engine",
+  "Unity",
+  "Photoshop",
+  "Marvelous Designer",
+  "RizomUV",
+] as const;
 type MainTab = typeof MAIN_TABS[number];
 
 function isMainTab(value: string | null): value is MainTab {
@@ -28,6 +42,17 @@ function getWorkUpdatedAt(work: Work): string {
   return typeof value === "string" ? value : "";
 }
 
+function splitCommaValues(input: string): string[] {
+  return input
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function mergeSoftwareValues(selected: string[], customInput: string): string[] {
+  return Array.from(new Set([...selected, ...splitCommaValues(customInput)]));
+}
+
 export default function AdminPageClient() {
   const [tab, setTab] = useState<"works" | "intro" | "add" | "storage" | "edit" | "detail">(() => {
     if (typeof window === "undefined") return "works";
@@ -40,6 +65,8 @@ export default function AdminPageClient() {
     title: "",
     description: "",
     tags: "",
+    software: [],
+    softwareCustom: "",
     workDate: "",
     uploadedFiles: [],
     coverIndex: 0,
@@ -51,6 +78,7 @@ export default function AdminPageClient() {
   });
   const [works, setWorks] = useState<Work[]>([]);
   const [intro, setIntro] = useState("");
+  const [tagline, setTagline] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Work | null>(null);
@@ -64,7 +92,13 @@ export default function AdminPageClient() {
     fetch("/api/works")
       .then((r) => { if (r.ok) r.json().then(setWorks); });
     fetch("/api/intro")
-      .then((r) => { if (r.ok) r.json().then((d) => setIntro(d.content)); });
+      .then((r) => {
+        if (!r.ok) return;
+        r.json().then((d: { content?: string; tagline?: string }) => {
+          setIntro(d.content || "");
+          setTagline(d.tagline || "");
+        });
+      });
   }, []);
 
   useEffect(() => {
@@ -81,7 +115,7 @@ export default function AdminPageClient() {
     const res = await fetch("/api/intro", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: intro }),
+      body: JSON.stringify({ content: intro, tagline }),
     });
     showMsg(res.ok ? "已保存" : "保存失败", res.ok);
     setLoading(false);
@@ -179,7 +213,7 @@ export default function AdminPageClient() {
         </div>
       </div>
 
-      {tab === "intro" && <div id="admin-panel-intro" role="tabpanel" aria-labelledby="admin-tab-intro"><IntroForm intro={intro} setIntro={setIntro} onSave={saveIntro} loading={loading} /></div>}
+      {tab === "intro" && <div id="admin-panel-intro" role="tabpanel" aria-labelledby="admin-tab-intro"><IntroForm intro={intro} setIntro={setIntro} tagline={tagline} setTagline={setTagline} onSave={saveIntro} loading={loading} /></div>}
       {tab === "detail" && <div id="admin-panel-detail" role="tabpanel" aria-labelledby="admin-tab-detail"><DetailSectionsEditor showMsg={showMsg} /></div>}
       {tab === "add" && <div id="admin-panel-add" role="tabpanel" aria-labelledby="admin-tab-add"><AddWorkForm formState={formState} setFormState={setFormState} onDone={() => { refresh(); setMainTab("works"); }} showMsg={showMsg} /></div>}
       {tab === "works" && (
@@ -252,18 +286,33 @@ function ConfirmDialog({
 function IntroForm({
   intro,
   setIntro,
+  tagline,
+  setTagline,
   onSave,
   loading,
   label,
 }: {
   intro: string;
   setIntro: (v: string) => void;
+  tagline: string;
+  setTagline: (v: string) => void;
   onSave: () => void;
   loading: boolean;
   label?: string;
 }) {
   return (
-    <div>
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm text-text-muted mb-2">
+          Hero 副标题（显示在姓名下方）
+        </label>
+        <input
+          value={tagline}
+          onChange={(e) => setTagline(e.target.value)}
+          className="w-full bg-bg border border-border text-text px-4 py-2 text-sm focus:outline-none focus:border-accent-dim transition-colors"
+          placeholder="Hard Surface / Stylized Character / Game Art"
+        />
+      </div>
       <label className="block text-sm text-text-muted mb-2">
         {label || "个人介绍（支持换行，前台按段落显示）"}
       </label>
@@ -288,6 +337,8 @@ interface FormState {
   title: string;
   description: string;
   tags: string;
+  software: string[];
+  softwareCustom: string;
   workDate: string;
   sizeWeight: number;
   uploadedFiles: UploadedFile[];
@@ -310,16 +361,20 @@ function AddWorkForm({
   showMsg: (text: string, ok: boolean) => void;
 }) {
   const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [previewIndex, setPreviewIndex] = useState(0);
   const [submitting, setSubmitting] = useState(false);
 
-  const { title, description, tags, workDate, sizeWeight, uploadedFiles, coverIndex, uploading, uploadProgress, uploadTotal, uploadDone } = formState;
+  const { title, description, tags, software, softwareCustom, workDate, sizeWeight, uploadedFiles, coverIndex, uploading, uploadProgress, uploadTotal, uploadDone } = formState;
   const setTitle = (v: string) => setFormState({ ...formState, title: v });
   const setDescription = (v: string) => setFormState({ ...formState, description: v });
   const setTags = (v: string) => setFormState({ ...formState, tags: v });
+  const setSoftware = (v: string[]) => setFormState({ ...formState, software: v });
+  const setSoftwareCustom = (v: string) => setFormState({ ...formState, softwareCustom: v });
   const setWorkDate = (v: string) => setFormState({ ...formState, workDate: v });
   const setUploadedFiles = (v: UploadedFile[]) => setFormState({ ...formState, uploadedFiles: v });
   const setCoverIndex = (v: number) => setFormState({ ...formState, coverIndex: v });
   const setUp = (p: Partial<FormState>) => setFormState({ ...formState, ...p });
+  const activePreviewIndex = uploadedFiles.length === 0 ? 0 : Math.min(previewIndex, uploadedFiles.length - 1);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -371,6 +426,7 @@ function AddWorkForm({
     }
     setSubmitting(true);
     const tagArray = tags.split(",").map((t) => t.trim()).filter(Boolean);
+    const softwareArray = mergeSoftwareValues(software, softwareCustom);
     const cover = uploadedFiles[coverIndex] || uploadedFiles[0];
 
     // Create work with cover image
@@ -381,6 +437,7 @@ function AddWorkForm({
         title,
         description,
         tags: tagArray,
+        software: softwareArray,
         imageUrl: cover.imageUrl,
         thumbUrl: cover.thumbUrl,
         pinned: false,
@@ -423,7 +480,7 @@ function AddWorkForm({
 
     showMsg("作品已发布", true);
     setFormState({
-      title: "", description: "", tags: "", workDate: "",
+      title: "", description: "", tags: "", software: [], softwareCustom: "", workDate: "",
       uploadedFiles: [], coverIndex: 0, sizeWeight: 1,
       uploading: false, uploadProgress: "", uploadTotal: 0, uploadDone: 0,
     });
@@ -477,54 +534,87 @@ function AddWorkForm({
           />
         </div>
         {uploadedFiles.length > 0 && !uploading && (
-          <div className="mt-3 space-y-1">
-            <p className="text-xs text-text-muted mb-2">拖拽排序 · 点击设封面</p>
-            <div className="flex flex-wrap gap-2">
-              {uploadedFiles.map((f, i) => (
-                <div
-                  key={i}
-                  draggable
-                  onDragStart={() => setDragIdx(i)}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={() => {
-                    if (dragIdx === null || dragIdx === i) return;
-                    const updated = [...uploadedFiles];
-                    const [moved] = updated.splice(dragIdx, 1);
-                    updated.splice(i, 0, moved);
-                    // Adjust cover index
-                    if (dragIdx === coverIndex) setCoverIndex(i);
-                    else if (dragIdx < coverIndex && i >= coverIndex) setCoverIndex(coverIndex - 1);
-                    else if (dragIdx > coverIndex && i <= coverIndex) setCoverIndex(coverIndex + 1);
-                    setUploadedFiles(updated);
-                    setDragIdx(null);
-                  }}
-                  onClick={() => setCoverIndex(i)}
-                  className={`relative inline-block cursor-grab active:cursor-grabbing group ${
-                    i === coverIndex ? "ring-2 ring-accent" : ""
-                  }`}
-                >
-                  <Image
-                    src={f.thumbUrl}
-                    alt=""
-                    width={80}
-                    height={64}
-                    unoptimized
-                    className="w-20 h-16 object-cover border border-border"
-                  />
-                  {i === coverIndex && (
-                    <span className="absolute bottom-0.5 left-0.5 text-[9px] bg-accent text-bg px-1">
-                      封面
-                    </span>
-                  )}
-                  <button
-                    onClick={(e) => { e.stopPropagation(); removeFile(i); if (i <= coverIndex && coverIndex > 0) setCoverIndex(coverIndex - 1); }}
-                    className="absolute -top-2 -right-2 bg-bg border border-border text-text-muted text-xs w-6 h-6 flex items-center justify-center hover:text-red-400"
-                    aria-label={`删除第 ${i + 1} 张`}
+          <div className="mt-3 space-y-2">
+            <p className="text-xs text-text-muted">拖拽排序 · 单击缩略图预览原图 · 按钮设封面</p>
+            <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_18rem]">
+              <div className="flex flex-wrap gap-2">
+                {uploadedFiles.map((f, i) => (
+                  <div
+                    key={i}
+                    draggable
+                    onDragStart={() => setDragIdx(i)}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={() => {
+                      if (dragIdx === null || dragIdx === i) return;
+                      const updated = [...uploadedFiles];
+                      const [moved] = updated.splice(dragIdx, 1);
+                      updated.splice(i, 0, moved);
+                      if (dragIdx === coverIndex) setCoverIndex(i);
+                      else if (dragIdx < coverIndex && i >= coverIndex) setCoverIndex(coverIndex - 1);
+                      else if (dragIdx > coverIndex && i <= coverIndex) setCoverIndex(coverIndex + 1);
+                      if (dragIdx === activePreviewIndex) setPreviewIndex(i);
+                      else if (dragIdx < activePreviewIndex && i >= activePreviewIndex) setPreviewIndex(activePreviewIndex - 1);
+                      else if (dragIdx > activePreviewIndex && i <= activePreviewIndex) setPreviewIndex(activePreviewIndex + 1);
+                      setUploadedFiles(updated);
+                      setDragIdx(null);
+                    }}
+                    onClick={() => setPreviewIndex(i)}
+                    className={`relative inline-block cursor-grab active:cursor-grabbing group border ${
+                      i === activePreviewIndex ? "border-accent" : "border-border"
+                    }`}
                   >
-                    ×
-                  </button>
-                </div>
-              ))}
+                    <Image
+                      src={f.thumbUrl}
+                      alt=""
+                      width={80}
+                      height={64}
+                      unoptimized
+                      className="w-20 h-16 object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCoverIndex(i);
+                      }}
+                      className={`absolute bottom-0.5 left-0.5 text-[9px] px-1 border ${
+                        i === coverIndex
+                          ? "bg-accent text-bg border-accent"
+                          : "bg-bg/80 text-text-muted border-border/70 hover:text-text"
+                      }`}
+                    >
+                      封面
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeFile(i);
+                        if (i <= coverIndex && coverIndex > 0) setCoverIndex(coverIndex - 1);
+                        setPreviewIndex((current) => {
+                          if (i === current) return Math.max(0, current - 1);
+                          if (current > i) return current - 1;
+                          return current;
+                        });
+                      }}
+                      className="absolute -top-2 -right-2 bg-bg border border-border text-text-muted text-xs w-6 h-6 flex items-center justify-center hover:text-red-400"
+                      aria-label={`删除第 ${i + 1} 张`}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="hidden md:block border border-border/70 bg-surface/50 p-2">
+                <p className="mb-2 text-[11px] tracking-[0.12em] uppercase text-text-muted">原图预览</p>
+                <Image
+                  src={(uploadedFiles[activePreviewIndex] || uploadedFiles[0]).imageUrl}
+                  alt="原图预览"
+                  width={840}
+                  height={840}
+                  unoptimized
+                  className="w-full h-auto max-h-[18rem] object-contain bg-bg/70 border border-border/40"
+                />
+              </div>
             </div>
           </div>
         )}
@@ -564,6 +654,40 @@ function AddWorkForm({
       </div>
 
       <div>
+        <label className="block text-sm text-text-muted mb-2">
+          使用软件（可多选）
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {SOFTWARE_PRESETS.map((name) => {
+            const checked = software.includes(name);
+            return (
+              <button
+                key={name}
+                type="button"
+                aria-pressed={checked}
+                onClick={() => {
+                  setSoftware(checked ? software.filter((item) => item !== name) : [...software, name]);
+                }}
+                className={`px-3 py-1.5 text-xs border transition-colors ${
+                  checked
+                    ? "border-accent text-accent bg-surface"
+                    : "border-border text-text-muted hover:text-text"
+                }`}
+              >
+                {name}
+              </button>
+            );
+          })}
+        </div>
+        <input
+          value={softwareCustom}
+          onChange={(e) => setSoftwareCustom(e.target.value)}
+          className="mt-2 w-full bg-bg border border-border text-text px-4 py-2 text-sm focus:outline-none focus:border-accent-dim transition-colors"
+          placeholder="自定义软件（逗号分隔）"
+        />
+      </div>
+
+      <div>
         <label className="block text-sm text-text-muted mb-1">
           时间（如：2024 年 3 月 / 2025 暑期）
         </label>
@@ -584,7 +708,7 @@ function AddWorkForm({
           {submitting ? "提交中..." : uploadedFiles.length > 1 ? `发布作品（${uploadedFiles.length} 张图）` : "发布作品"}
         </button>
         {uploadedFiles.length > 0 && (
-          <span className="text-xs text-text-muted">{uploadedFiles.length} 张图片，点击设封面，选中的已金色标记</span>
+          <span className="text-xs text-text-muted">{uploadedFiles.length} 张图片，单击缩略图可预览原图，封面用按钮单独设置</span>
         )}
       </div>
     </div>
@@ -605,9 +729,12 @@ function EditWorkForm({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState("");
+  const [software, setSoftware] = useState<string[]>([]);
+  const [softwareCustom, setSoftwareCustom] = useState("");
   const [workDate, setWorkDate] = useState("");
   const [allImages, setAllImages] = useState<{ id: string; image_url: string; thumb_url: string; source: "existing" | "new"; size: number }[]>([]);
   const [coverIndex, setCoverIndex] = useState(0);
+  const [previewIndex, setPreviewIndex] = useState(0);
   const [sizeWeight, setSizeWeight] = useState(1);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -629,6 +756,11 @@ function EditWorkForm({
         setTitle(w.title || "");
         setDescription(w.description || "");
         setTags((w.tags || []).join(","));
+        const softwareValues = Array.isArray(w.software)
+          ? w.software.map((item: unknown) => (typeof item === "string" ? item.trim() : "")).filter(Boolean)
+          : [];
+        setSoftware(softwareValues.filter((item: string) => SOFTWARE_PRESETS.includes(item as (typeof SOFTWARE_PRESETS)[number])));
+        setSoftwareCustom(softwareValues.filter((item: string) => !SOFTWARE_PRESETS.includes(item as (typeof SOFTWARE_PRESETS)[number])).join(", "));
         setWorkDate(w.work_date || "");
         setSizeWeight(w.size_weight ?? 1);
         setBaseUpdatedAt(typeof w.updated_at === "string" ? w.updated_at : "");
@@ -647,6 +779,7 @@ function EditWorkForm({
     }
     load();
   }, [workId]);
+  const activePreviewIndex = allImages.length === 0 ? 0 : Math.min(previewIndex, allImages.length - 1);
 
   const uploadNewFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -686,6 +819,11 @@ function EditWorkForm({
     }
     setAllImages((prev) => prev.filter((_, idx) => idx !== i));
     if (i <= coverIndex && coverIndex > 0) setCoverIndex((c) => c - 1);
+    setPreviewIndex((current) => {
+      if (i === current) return Math.max(0, current - 1);
+      if (current > i) return current - 1;
+      return current;
+    });
   };
 
   const handleSave = async () => {
@@ -693,6 +831,7 @@ function EditWorkForm({
     setSaveStep("保存基础信息");
     const cover = allImages[coverIndex] || allImages[0];
     const tagArray = tags.split(",").map((t) => t.trim()).filter(Boolean);
+    const softwareArray = mergeSoftwareValues(software, softwareCustom);
 
     try {
       const updateRes = await fetch(`/api/works/${workId}`, {
@@ -701,6 +840,7 @@ function EditWorkForm({
           title,
           description,
           tags: tagArray,
+          software: softwareArray,
           workDate,
           imageUrl: cover?.image_url,
           thumbUrl: cover?.thumb_url,
@@ -772,6 +912,35 @@ function EditWorkForm({
         <input value={tags} onChange={(e) => setTags(e.target.value)} className="w-full bg-bg border border-border text-text px-4 py-2 text-sm focus:outline-none focus:border-accent-dim" />
       </div>
       <div>
+        <label className="block text-sm text-text-muted mb-2">使用软件（可多选）</label>
+        <div className="flex flex-wrap gap-2">
+          {SOFTWARE_PRESETS.map((name) => {
+            const checked = software.includes(name);
+            return (
+              <button
+                key={name}
+                type="button"
+                aria-pressed={checked}
+                onClick={() => setSoftware(checked ? software.filter((item) => item !== name) : [...software, name])}
+                className={`px-3 py-1.5 text-xs border transition-colors ${
+                  checked
+                    ? "border-accent text-accent bg-surface"
+                    : "border-border text-text-muted hover:text-text"
+                }`}
+              >
+                {name}
+              </button>
+            );
+          })}
+        </div>
+        <input
+          value={softwareCustom}
+          onChange={(e) => setSoftwareCustom(e.target.value)}
+          className="mt-2 w-full bg-bg border border-border text-text px-4 py-2 text-sm focus:outline-none focus:border-accent-dim"
+          placeholder="自定义软件（逗号分隔）"
+        />
+      </div>
+      <div>
         <label className="block text-sm text-text-muted mb-1">时间</label>
         <input value={workDate} onChange={(e) => setWorkDate(e.target.value)} className="w-full bg-bg border border-border text-text px-4 py-2 text-sm focus:outline-none focus:border-accent-dim" />
       </div>
@@ -790,40 +959,73 @@ function EditWorkForm({
         />
       </div>
       <div>
-        <label className="block text-sm text-text-muted mb-1">所有图片 · 拖拽排序 · 点击设封面（{allImages.length} 张）</label>
-        <div className="flex flex-wrap gap-2">
-          {allImages.map((img, i) => (
-            <div
-              key={img.id || `new_${i}`}
-              draggable
-              onDragStart={() => setDragIdx(i)}
-              onDragOver={(e) => e.preventDefault()}
-              onDrop={() => {
-                if (dragIdx === null || dragIdx === i) return;
-                const updated = [...allImages];
-                const [moved] = updated.splice(dragIdx, 1);
-                updated.splice(i, 0, moved);
-                if (dragIdx === coverIndex) setCoverIndex(i);
-                else if (dragIdx < coverIndex && i >= coverIndex) setCoverIndex(coverIndex - 1);
-                else if (dragIdx > coverIndex && i <= coverIndex) setCoverIndex(coverIndex + 1);
-                setAllImages(updated);
-                setDragIdx(null);
-              }}
-              onClick={() => setCoverIndex(i)}
-              className={`relative inline-block cursor-grab active:cursor-grabbing group ${i === coverIndex ? "ring-2 ring-accent" : ""}`}
-            >
-              <Image src={img.thumb_url} alt="" width={80} height={64} unoptimized className="w-20 h-16 object-cover border border-border" />
-              {i === coverIndex && <span className="absolute bottom-0.5 left-0.5 text-[9px] bg-accent text-bg px-1">封面</span>}
-              <button
-                onClick={(e) => { e.stopPropagation(); removeImage(i); }}
-                className="absolute -top-2 -right-2 bg-bg border border-border text-text-muted text-xs w-6 h-6 flex items-center justify-center hover:text-red-400"
-                aria-label={`删除第 ${i + 1} 张`}
+        <label className="block text-sm text-text-muted mb-1">所有图片 · 拖拽排序 · 单击缩略图预览原图（{allImages.length} 张）</label>
+        <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_18rem]">
+          <div className="flex flex-wrap gap-2">
+            {allImages.map((img, i) => (
+              <div
+                key={img.id || `new_${i}`}
+                draggable
+                onDragStart={() => setDragIdx(i)}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => {
+                  if (dragIdx === null || dragIdx === i) return;
+                  const updated = [...allImages];
+                  const [moved] = updated.splice(dragIdx, 1);
+                  updated.splice(i, 0, moved);
+                  if (dragIdx === coverIndex) setCoverIndex(i);
+                  else if (dragIdx < coverIndex && i >= coverIndex) setCoverIndex(coverIndex - 1);
+                  else if (dragIdx > coverIndex && i <= coverIndex) setCoverIndex(coverIndex + 1);
+                  if (dragIdx === activePreviewIndex) setPreviewIndex(i);
+                  else if (dragIdx < activePreviewIndex && i >= activePreviewIndex) setPreviewIndex(activePreviewIndex - 1);
+                  else if (dragIdx > activePreviewIndex && i <= activePreviewIndex) setPreviewIndex(activePreviewIndex + 1);
+                  setAllImages(updated);
+                  setDragIdx(null);
+                }}
+                onClick={() => setPreviewIndex(i)}
+                className={`relative inline-block cursor-grab active:cursor-grabbing group border ${
+                  i === activePreviewIndex ? "border-accent" : "border-border"
+                }`}
               >
-                ×
-              </button>
+                <Image src={img.thumb_url} alt="" width={80} height={64} unoptimized className="w-20 h-16 object-cover" />
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCoverIndex(i);
+                  }}
+                  className={`absolute bottom-0.5 left-0.5 text-[9px] px-1 border ${
+                    i === coverIndex
+                      ? "bg-accent text-bg border-accent"
+                      : "bg-bg/80 text-text-muted border-border/70 hover:text-text"
+                  }`}
+                >
+                  封面
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); removeImage(i); }}
+                  className="absolute -top-2 -right-2 bg-bg border border-border text-text-muted text-xs w-6 h-6 flex items-center justify-center hover:text-red-400"
+                  aria-label={`删除第 ${i + 1} 张`}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+            {allImages.length === 0 && <p className="text-text-muted text-xs">暂无图片</p>}
+          </div>
+          {allImages.length > 0 && (
+            <div className="hidden md:block border border-border/70 bg-surface/50 p-2">
+              <p className="mb-2 text-[11px] tracking-[0.12em] uppercase text-text-muted">原图预览</p>
+              <Image
+                src={(allImages[activePreviewIndex] || allImages[0]).image_url}
+                alt="原图预览"
+                width={840}
+                height={840}
+                unoptimized
+                className="w-full h-auto max-h-[18rem] object-contain bg-bg/70 border border-border/40"
+              />
             </div>
-          ))}
-          {allImages.length === 0 && <p className="text-text-muted text-xs">暂无图片</p>}
+          )}
         </div>
       </div>
       <div>

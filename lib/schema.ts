@@ -11,6 +11,7 @@ export const BASE_SCHEMA_SQL = `
     pinned INTEGER DEFAULT 0,
     sort_order INTEGER DEFAULT 0,
     work_date TEXT DEFAULT '',
+    software TEXT DEFAULT '',
     image_size INTEGER DEFAULT 0,
     size_weight REAL DEFAULT 1.0,
     created_at TEXT DEFAULT (datetime('now')),
@@ -30,9 +31,10 @@ export const BASE_SCHEMA_SQL = `
   CREATE TABLE IF NOT EXISTS intro (
     id INTEGER PRIMARY KEY DEFAULT 1 CHECK(id=1),
     content TEXT NOT NULL DEFAULT '',
+    tagline TEXT NOT NULL DEFAULT '',
     updated_at TEXT DEFAULT (datetime('now'))
   );
-  INSERT OR IGNORE INTO intro (id, content) VALUES (1, '');
+  INSERT OR IGNORE INTO intro (id, content, tagline) VALUES (1, '', '');
 
   CREATE TABLE IF NOT EXISTS details (
     id INTEGER PRIMARY KEY DEFAULT 1 CHECK(id=1),
@@ -87,8 +89,10 @@ export const BASE_SCHEMA_SQL = `
 
 export const COLUMN_PATCHES = [
   { table: "works", column: "work_date", definition: "TEXT DEFAULT ''" },
+  { table: "works", column: "software", definition: "TEXT DEFAULT ''" },
   { table: "works", column: "image_size", definition: "INTEGER DEFAULT 0" },
   { table: "works", column: "size_weight", definition: "REAL DEFAULT 1.0" },
+  { table: "intro", column: "tagline", definition: "TEXT NOT NULL DEFAULT ''" },
   { table: "work_images", column: "image_size", definition: "INTEGER DEFAULT 0" },
 ] as const;
 
@@ -97,6 +101,7 @@ export const RECORDED_MIGRATIONS = [
   "0002_work_metadata_columns",
   "0003_indexes_and_audit_logs",
   "0004_r2_delete_retry_jobs",
+  "0005_intro_tagline_and_work_software",
 ] as const;
 
 export async function addColumnIfMissing(

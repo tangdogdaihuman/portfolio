@@ -8,13 +8,15 @@ import { fail, ok } from "@/lib/api-response";
 
 const introSchema = z.object({
   content: z.string(),
+  tagline: z.string().default(""),
 });
 
 export async function GET() {
-  const result = await db.execute("SELECT content, updated_at FROM intro WHERE id = 1");
+  const result = await db.execute("SELECT content, tagline, updated_at FROM intro WHERE id = 1");
   const row = result.rows[0];
   return ok({
     content: row?.content || "",
+    tagline: row?.tagline || "",
     updatedAt: row?.updated_at || "",
   });
 }
@@ -33,8 +35,8 @@ export async function PUT(req: NextRequest) {
   }
 
   await db.execute({
-    sql: "UPDATE intro SET content = ?, updated_at = datetime('now') WHERE id = 1",
-    args: [parsed.data.content],
+    sql: "UPDATE intro SET content = ?, tagline = ?, updated_at = datetime('now') WHERE id = 1",
+    args: [parsed.data.content, parsed.data.tagline],
   });
 
   revalidatePath("/");

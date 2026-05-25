@@ -14,6 +14,7 @@ const workSchema = z.object({
   title: z.string().min(1),
   description: z.string().min(1),
   tags: z.array(z.string()).default([]),
+  software: z.array(z.string()).default([]),
   imageUrl: z.string().url(),
   thumbUrl: z.string().url(),
   pinned: z.boolean().default(false),
@@ -32,6 +33,7 @@ export async function GET() {
   const works = result.rows.map((row) => ({
     ...row,
     tags: tagsToArray(row.tags),
+    software: tagsToArray(row.software),
     pinned: Boolean(row.pinned),
     image_count: (row.image_count as number) ?? 0,
   }));
@@ -53,13 +55,13 @@ export async function POST(req: NextRequest) {
       return fail("BAD_REQUEST", "Invalid work payload", 400, parsed.error.flatten());
     }
 
-    const { title, description, tags, imageUrl, thumbUrl, pinned, sortOrder, workDate, imageSize, sizeWeight } = parsed.data;
+    const { title, description, tags, software, imageUrl, thumbUrl, pinned, sortOrder, workDate, imageSize, sizeWeight } = parsed.data;
     const id = createId();
 
     await db.execute({
-      sql: `INSERT INTO works (id, title, description, tags, image_url, thumb_url, pinned, sort_order, work_date, image_size, size_weight)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: [id, title, description, tagsToString(tags), imageUrl, thumbUrl, pinned ? 1 : 0, sortOrder, workDate, imageSize, sizeWeight],
+      sql: `INSERT INTO works (id, title, description, tags, software, image_url, thumb_url, pinned, sort_order, work_date, image_size, size_weight)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [id, title, description, tagsToString(tags), tagsToString(software), imageUrl, thumbUrl, pinned ? 1 : 0, sortOrder, workDate, imageSize, sizeWeight],
     });
 
     reportMetric({ scope: "audit.work.create", value: 1, path: req.nextUrl.pathname, meta: { id } });

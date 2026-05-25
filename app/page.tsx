@@ -8,7 +8,7 @@ export const revalidate = 30;
 const getData = unstable_cache(async () => {
   try {
     const [introRes, worksRes, sectionsRes] = await Promise.all([
-      db.execute("SELECT content FROM intro WHERE id = 1"),
+      db.execute("SELECT content, tagline FROM intro WHERE id = 1"),
       db.execute(
         `SELECT w.*, (SELECT COUNT(*) FROM work_images WHERE work_id = w.id) as image_count
          FROM works w ORDER BY w.pinned DESC, w.sort_order DESC, w.created_at DESC`
@@ -19,12 +19,14 @@ const getData = unstable_cache(async () => {
     const works = worksRes.rows.map((row) => ({
       ...row,
       tags: tagsToArray(row.tags),
+      software: tagsToArray(row.software),
       pinned: Boolean(row.pinned),
       image_count: (row.image_count as number) ?? 0,
     })) as unknown as Work[];
 
     return {
       intro: (introRes.rows[0]?.content as string) || "",
+      tagline: (introRes.rows[0]?.tagline as string) || "",
       works,
       sections: sectionsRes.rows.map((row) => ({
         id: row.id as string,
@@ -34,11 +36,11 @@ const getData = unstable_cache(async () => {
       loadError: false,
     };
   } catch {
-    return { intro: "", works: [], sections: [], loadError: true };
+    return { intro: "", tagline: "", works: [], sections: [], loadError: true };
   }
 }, ["home-data"], { revalidate: 30, tags: ["works", "intro", "detail-sections"] });
 
 export default async function HomePage() {
-  const { intro, works, sections, loadError } = await getData();
-  return <HomeClient initialIntro={intro} initialWorks={works} initialSections={sections} initialLoadError={loadError} />;
+  const { intro, tagline, works, sections, loadError } = await getData();
+  return <HomeClient initialIntro={intro} initialTagline={tagline} initialWorks={works} initialSections={sections} initialLoadError={loadError} />;
 }

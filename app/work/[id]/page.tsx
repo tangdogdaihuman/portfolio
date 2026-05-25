@@ -20,6 +20,7 @@ async function getWork(id: string): Promise<{ work: Work; images: WorkImage[] } 
     const work = {
       ...row,
       tags: tagsToArray(row.tags),
+      software: tagsToArray(row.software),
       pinned: Boolean(row.pinned),
     } as unknown as Work;
 
@@ -110,6 +111,19 @@ export default async function WorkDetailPage(
         </header>
 
         <WorkDetailGallery workTitle={work.title} images={galleryImages} />
+
+        {work.software.length > 0 && (
+          <section className="mt-10 md:mt-14 border-t border-border/40 pt-6 md:pt-8">
+            <h2 className="text-xs tracking-[0.2em] uppercase text-text-muted mb-3">使用软件：</h2>
+            <div className="flex flex-wrap gap-2.5">
+              {work.software.map((item) => (
+                <span key={item} className="border border-border/70 px-2.5 py-1 text-[0.7rem] tracking-[0.08em] text-text-muted">
+                  {item}
+                </span>
+              ))}
+            </div>
+          </section>
+        )}
       </section>
     </main>
   );

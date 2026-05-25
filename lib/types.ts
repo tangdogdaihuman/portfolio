@@ -5,6 +5,7 @@ export interface Work {
   image_url: string;
   thumb_url: string;
   tags: string[];
+  software: string[];
   work_date: string;
   pinned: boolean;
   image_size: number;

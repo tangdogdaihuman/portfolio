@@ -10,21 +10,25 @@ import AuroraCanvas from "@/components/aurora-canvas";
 
 const spring = { type: "spring" as const, damping: 28, stiffness: 200, mass: 0.8 };
 const springSlow = { type: "spring" as const, damping: 32, stiffness: 160, mass: 1 };
+const DEFAULT_TAGLINE = "Hard Surface / Stylized Character / Game Art";
 
 interface Section { id: string; title: string; content: string; }
 
 export default function HomeClient({
   initialIntro,
+  initialTagline,
   initialWorks,
   initialSections,
   initialLoadError,
 }: {
   initialIntro: string;
+  initialTagline: string;
   initialWorks: Work[];
   initialSections: Section[];
   initialLoadError: boolean;
 }) {
   const [intro, setIntro] = useState(initialIntro);
+  const [tagline, setTagline] = useState(initialTagline || DEFAULT_TAGLINE);
   const [detailSections, setDetailSections] = useState<Section[]>(initialSections);
   const [loadError, setLoadError] = useState(initialLoadError);
   const [loadingWorks, setLoadingWorks] = useState(initialWorks.length === 0 && !initialLoadError);
@@ -34,6 +38,7 @@ export default function HomeClient({
   const [sortMode, setSortMode] = useState<"default" | "newest" | "oldest">("default");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<"works" | "about" | "contact">("works");
+  const [showBackToTop, setShowBackToTop] = useState(false);
   const [thumbReady, setThumbReady] = useState<Record<string, true>>({});
   const cursorRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
@@ -45,7 +50,9 @@ export default function HomeClient({
       if (!introRes.ok || !sectionsRes.ok || !worksRes.ok) {
         throw new Error("refresh failed");
       }
-      setIntro((await introRes.json()).content || "");
+      const introData = await introRes.json() as { content?: string; tagline?: string };
+      setIntro(introData.content || "");
+      setTagline((introData.tagline || "").trim() || DEFAULT_TAGLINE);
       const nextSections = await sectionsRes.json() as Section[];
       setDetailSections(nextSections);
       setExpandedSection((current) => {
@@ -163,6 +170,19 @@ export default function HomeClient({
       window.removeEventListener("resize", onScroll);
     };
   }, [works.length, detailSections.length]);
+
+  useEffect(() => {
+    const updateVisibility = () => {
+      setShowBackToTop(window.scrollY > Math.max(280, window.innerHeight * 0.55));
+    };
+    updateVisibility();
+    window.addEventListener("scroll", updateVisibility, { passive: true });
+    window.addEventListener("resize", updateVisibility);
+    return () => {
+      window.removeEventListener("scroll", updateVisibility);
+      window.removeEventListener("resize", updateVisibility);
+    };
+  }, []);
 
   // Reveal
   useEffect(() => {
@@ -299,7 +319,7 @@ export default function HomeClient({
                 transition={{ duration: 0.7, delay: 0.22, ease: [0.2, 0.9, 0.3, 1] }}
                 className="mt-4 text-[0.7rem] uppercase tracking-[0.18em] text-text-muted"
               >
-                Hard Surface / Stylized Character / Game Art
+                {tagline}
               </motion.p>
             </motion.div>
 
@@ -592,6 +612,17 @@ export default function HomeClient({
         <div className="divider-line mx-auto mb-6" />
         <p className="text-[0.6rem] tracking-[0.3em] uppercase text-text-muted/30">&copy; {new Date().getFullYear()} · All Rights Reserved</p>
       </footer>
+
+      {showBackToTop && (
+        <button
+          type="button"
+          aria-label="回到顶部"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          className="fixed right-4 md:right-6 bottom-4 md:bottom-6 z-[80] w-11 h-11 inline-flex items-center justify-center border border-border/80 bg-bg/78 backdrop-blur-sm text-text-muted hover:text-accent hover:border-accent transition-colors"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><polyline points="18 15 12 9 6 15" /></svg>
+        </button>
+      )}
       </div>
     </>
   );

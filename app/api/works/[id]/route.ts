@@ -13,6 +13,7 @@ const updateSchema = z.object({
   title: z.string().min(1).optional(),
   description: z.string().min(1).optional(),
   tags: z.array(z.string()).optional(),
+  software: z.array(z.string()).optional(),
   imageUrl: z.string().url().optional(),
   thumbUrl: z.string().url().optional(),
   pinned: z.boolean().optional(),
@@ -40,6 +41,7 @@ export async function GET(
   const work = {
     ...row,
     tags: tagsToArray(row.tags),
+    software: tagsToArray(row.software),
     pinned: Boolean(row.pinned),
   };
   return ok(work);
@@ -71,8 +73,8 @@ export async function PUT(
     for (const [key, value] of Object.entries(parsed.data)) {
       if (value === undefined) continue;
       if (key === "expectedUpdatedAt") continue;
-      if (key === "tags") {
-        updates.push("tags = ?");
+      if (key === "tags" || key === "software") {
+        updates.push(`${key} = ?`);
         args.push(tagsToString(value as string[]));
       } else if (key === "pinned") {
         updates.push("pinned = ?");
