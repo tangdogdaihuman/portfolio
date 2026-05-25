@@ -158,11 +158,19 @@ export default function HomeClient({
       ring.style.left = rx + "px";
       ring.style.top = ry + "px";
     };
+    let scrollHideTimer = 0 as unknown as ReturnType<typeof setTimeout>;
     const onScroll = () => {
       if (!hasRingPosition) return;
+      clearTimeout(scrollHideTimer);
       setCursorVisibility(false);
+      scrollHideTimer = setTimeout(() => {
+        if (document.visibilityState === "visible") {
+          setCursorVisibility(true);
+        }
+      }, 150);
     };
     const onMove = (e: MouseEvent) => {
+      clearTimeout(scrollHideTimer);
       mx = e.clientX; my = e.clientY;
       cursor.style.left = mx + "px";
       cursor.style.top = my + "px";
@@ -194,6 +202,7 @@ export default function HomeClient({
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("scroll", onScroll);
       cancelAnimationFrame(raf);
+      clearTimeout(scrollHideTimer);
     };
   }, []);
 
