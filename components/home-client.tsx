@@ -34,7 +34,7 @@ function IntroLine({
         initial={{ opacity: 0, y: 18, filter: "blur(8px)" }}
         animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
         transition={{ duration: 0.7, delay: index * 0.08, ease: [0.2, 0.9, 0.3, 1] }}
-        className="text-[clamp(0.95rem,2vw,1.12rem)] text-text-muted leading-[1.85] mb-3.5"
+        className="text-[clamp(0.95rem,2vw,1.12rem)] text-text-muted leading-[1.85] mb-3.5 hero-copy-shadow"
       >
         {line}
       </motion.p>
@@ -306,7 +306,7 @@ export default function HomeClient({
               >
                 CG Artist Portfolio
               </motion.p>
-              <h1 className="font-display leading-[1.02] text-text">
+              <h1 className="font-display leading-[1.02] text-text hero-title-shadow">
                 <span className="block overflow-hidden pb-[0.06em]">
                   <motion.span
                     initial={{ y: "110%" }}
@@ -322,7 +322,7 @@ export default function HomeClient({
                     initial={{ y: "110%" }}
                     animate={{ y: 0 }}
                     transition={{ duration: 0.95, ease: [0.2, 0.9, 0.3, 1], delay: 0.12 }}
-                    className="inline-block text-[clamp(1.05rem,3.8vw,2.25rem)] text-accent"
+                    className="inline-block text-[clamp(1.05rem,3.8vw,2.25rem)] text-accent hero-subtitle-shadow"
                   >
                     Tang Zihang CG Portfolio
                   </motion.span>
@@ -332,7 +332,7 @@ export default function HomeClient({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.7, delay: 0.22, ease: [0.2, 0.9, 0.3, 1] }}
-                className="mt-4 text-[0.7rem] uppercase tracking-[0.18em] text-text-muted"
+                className="mt-4 text-[0.7rem] uppercase tracking-[0.18em] text-text-muted hero-copy-shadow"
               >
                 {tagline}
               </motion.p>
