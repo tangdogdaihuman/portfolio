@@ -290,7 +290,7 @@ export default function HomeClient({
         {/* Hero */}
         <section ref={heroRef} className="hero-noise min-h-svh md:min-h-screen relative flex flex-col items-center justify-center px-4 overflow-hidden">
           <AuroraCanvas />
-          <div className="hero-contrast-scrim absolute inset-0 z-[1] pointer-events-none" />
+          <div className="hero-contrast-scrim z-[1] pointer-events-none" />
 
           <div className="relative z-10 flex flex-col items-center justify-center w-full max-w-6xl mx-auto">
             {/* Portfolio title — fades out on scroll */}
