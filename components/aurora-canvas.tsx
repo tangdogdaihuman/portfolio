@@ -61,10 +61,10 @@ function getPerformanceProfile() {
     targetFps: reducedMotion ? 0 : lowEnd ? 30 : coarsePointer ? 45 : 60,
     mainBlur: lowEnd ? 9 : coarsePointer ? 10 : 12,
     bloomBlur: lowEnd ? 16 : coarsePointer ? 18 : 20,
-    bloomAlpha: lowEnd ? 0.18 : coarsePointer ? 0.22 : 0.26,
+    bloomAlpha: lowEnd ? 0.18 : coarsePointer ? 0.14 : 0.26,
     rayQuality: lowEnd ? 0.62 : coarsePointer ? 0.8 : 1,
     speedQuality: lowEnd ? 0.82 : coarsePointer ? 0.9 : 1,
-    alphaQuality: lowEnd ? 0.8 : coarsePointer ? 0.9 : 1,
+    alphaQuality: lowEnd ? 0.8 : coarsePointer ? 0.65 : 1,
   };
 }
 
