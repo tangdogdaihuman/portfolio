@@ -256,7 +256,12 @@ export default function BgCanvas() {
       heroObserver = new IntersectionObserver(
         (entries) => {
           heroVisible = entries[0]?.isIntersecting ?? true;
-          if (heroVisible) runIfNeeded();
+          if (heroVisible) {
+            runIfNeeded();
+          } else {
+            ctx.clearRect(0, 0, w, h);
+            ctx.drawImage(staticLayer, 0, 0, w, h);
+          }
         },
         { threshold: 0.06 }
       );
