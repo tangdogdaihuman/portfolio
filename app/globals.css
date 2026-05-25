@@ -353,17 +353,6 @@ body.home-vignette::after {
   .aurora-ribbon {
     top: -4%;
     bottom: -18%;
-    filter: blur(28px) saturate(1.18) brightness(1.22);
-    mix-blend-mode: screen;
-    background:
-      linear-gradient(
-        to bottom,
-        rgba(205, 177, 114, 0) 0%,
-        rgba(241, 217, 159, 0.88) 18%,
-        rgba(216, 187, 122, 0.62) 42%,
-        rgba(123, 92, 47, 0.24) 72%,
-        rgba(10, 9, 8, 0) 100%
-      );
   }
 
   .hero-contrast-scrim {
