@@ -39,13 +39,16 @@ npm run db:push
 ## 前端约定
 - 首页几乎所有展示逻辑都在 `components/home-client.tsx`：数据抓取、5 分钟轮询、`visibilitychange` 刷新、自定义光标、灯箱、筛选、排序都在那里，改首页先看这个文件。
 - 动画参数已形成风格基线：`spring` 常用 `damping: 28`、`stiffness: 200`，慢一点的变体在同文件里。
+- 自定义光标：纯 DOM 操作，不触发 React 渲染。
 - Tailwind v4 没有 `tailwind.config.*`；主题变量在 `app/globals.css`，PostCSS 只配了 `@tailwindcss/postcss`。
 - 这个仓库倾向少注释；新增代码保持英文命名、少解释性注释。
 - `app/admin/page.tsx` 中表单状态用对象整体替换，别改成函数式 `setState` 模式去和现有写法混用。
 
 ## 环境
 - 需要的关键变量见 `.env.example`：`DATABASE_URL`、`DATABASE_AUTH_TOKEN`、R2 一组、`ADMIN_SECRET_KEY`，以及可选的 `NEXT_PUBLIC_BASE_URL`。
-- `ADMIN_SECRET_KEY` 缺失时，`proxy.ts` 会直接放过管理路由；排查“本地后台没鉴权”先看这个。
+- `ADMIN_SECRET_KEY` 缺失时，`proxy.ts` 返回 503；排查"本地后台打不开"先查这个。
+- 部署在 Vercel，绑定 GitHub 自动部署；域名 `tangzihang.top` 走 Cloudflare 代理。
+- 部署命令：`vercel --prod --yes`，网络不稳时 `git push` 触发自动部署。
 
 ## Git 约定
 - 改动完成后自动 commit 并 push，无需确认。

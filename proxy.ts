@@ -20,10 +20,6 @@ function proxy(req: NextRequest) {
     return NextResponse.next();
   }
 
-  if (!pathname.startsWith("/admin")) {
-    return NextResponse.next();
-  }
-
   const keyParam = url.searchParams.get("key");
   if (keyParam) {
     const a = Buffer.from(keyParam);

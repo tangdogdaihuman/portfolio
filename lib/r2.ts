@@ -36,6 +36,8 @@ export async function deleteFromR2(urls: string[]): Promise<void> {
           Delete: { Objects: chunk.map((Key) => ({ Key })) },
         })
       );
-    } catch {}
+    } catch (e) {
+      console.error("R2 delete failed:", e);
+    }
   }
 }

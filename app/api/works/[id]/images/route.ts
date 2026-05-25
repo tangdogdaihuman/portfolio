@@ -189,11 +189,13 @@ export async function PUT(
     );
   }
 
-  const cover = valid.sort((a, b) => a.sortOrder - b.sortOrder)[0];
-  await db.execute({
-    sql: "UPDATE works SET image_url = ?, thumb_url = ?, updated_at = datetime('now') WHERE id = ?",
-    args: [cover?.imageUrl || "", cover?.thumbUrl || "", workId],
-  });
+  if (valid.length > 0) {
+    const cover = valid.sort((a, b) => a.sortOrder - b.sortOrder)[0];
+    await db.execute({
+      sql: "UPDATE works SET image_url = ?, thumb_url = ?, updated_at = datetime('now') WHERE id = ?",
+      args: [cover.imageUrl, cover.thumbUrl, workId],
+    });
+  }
 
   if (removedUrls.length > 0) {
     await enqueueR2Delete(removedUrls);

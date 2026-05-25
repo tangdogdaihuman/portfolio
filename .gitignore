@@ -35,7 +35,6 @@ yarn-error.log*
 !.env.example
 
 # vercel
-.vercel
 
 # playwright
 .playwright-mcp
@@ -47,5 +46,6 @@ tmp-e2e.db
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+handoff.md
 
 .vercel
