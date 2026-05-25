@@ -110,13 +110,19 @@ export async function PUT(
       return fail("BAD_REQUEST", "Not updated", 400);
     }
 
+    const updated = await db.execute({
+      sql: "SELECT updated_at FROM works WHERE id = ?",
+      args: [id],
+    });
+    const updatedAt = (updated.rows[0]?.updated_at as string) || "";
+
     reportMetric({ scope: "audit.work.update", value: 1, path: req.nextUrl.pathname, meta: { id } });
     await writeAuditLog(req, "work.update", { id, fields: Object.keys(parsed.data).filter((k) => k !== "expectedUpdatedAt") });
     revalidatePath("/");
     revalidatePath(`/work/${id}`);
     revalidateTag("works", "max");
     revalidateTag(`work:${id}`, "max");
-    return ok({ updated: true });
+    return ok({ updated: true, updatedAt });
   } catch (error) {
     reportApiError({
       scope: "works.update.exception",

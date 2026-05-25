@@ -67,45 +67,58 @@ export default function EditWorkForm({
   const [baseUpdatedAt, setBaseUpdatedAt] = useState("");
 
   useEffect(() => {
+    let cancelled = false;
+
     async function load() {
-      const [workRes, imagesRes] = await Promise.all([
-        fetch(`/api/works/${workId}`),
-        fetch(`/api/works/${workId}/images`),
-      ]);
+      try {
+        const [workRes, imagesRes] = await Promise.all([
+          fetch(`/api/works/${workId}`),
+          fetch(`/api/works/${workId}/images`),
+        ]);
 
-      if (workRes.ok) {
-        const work = await workRes.json();
-        setTitle(work.title || "");
-        setDescription(work.description || "");
-        setTags((work.tags || []).join(","));
-        const softwareValues = Array.isArray(work.software)
-          ? work.software.map((item: unknown) => (typeof item === "string" ? item.trim() : "")).filter(Boolean)
-          : [];
-        setSoftware(softwareValues.filter((item: string) => SOFTWARE_PRESETS.includes(item as (typeof SOFTWARE_PRESETS)[number])));
-        setSoftwareCustom(softwareValues.filter((item: string) => !SOFTWARE_PRESETS.includes(item as (typeof SOFTWARE_PRESETS)[number])).join(", "));
-        setWorkDate(work.work_date || "");
-        setSizeWeight(work.size_weight ?? 1);
-        setBaseUpdatedAt(typeof work.updated_at === "string" ? work.updated_at : "");
+        if (cancelled) return;
+
+        if (workRes.ok) {
+          const work = await workRes.json();
+          if (cancelled) return;
+          setTitle(work.title || "");
+          setDescription(work.description || "");
+          setTags((work.tags || []).join(","));
+          const softwareValues = Array.isArray(work.software)
+            ? work.software.map((item: unknown) => (typeof item === "string" ? item.trim() : "")).filter(Boolean)
+            : [];
+          setSoftware(softwareValues.filter((item: string) => SOFTWARE_PRESETS.includes(item as (typeof SOFTWARE_PRESETS)[number])));
+          setSoftwareCustom(softwareValues.filter((item: string) => !SOFTWARE_PRESETS.includes(item as (typeof SOFTWARE_PRESETS)[number])).join(", "));
+          setWorkDate(work.work_date || "");
+          setSizeWeight(work.size_weight ?? 1);
+          setBaseUpdatedAt(typeof work.updated_at === "string" ? work.updated_at : "");
+        }
+
+        if (imagesRes.ok) {
+          const images = await imagesRes.json();
+          if (cancelled) return;
+          setAllImages(
+            images.map((image: Record<string, unknown>) => ({
+              id: (image.id as string) || "",
+              image_url: image.image_url as string,
+              thumb_url: image.thumb_url as string,
+              source: "existing" as const,
+              size: (image.image_size as number) || 0,
+            }))
+          );
+        }
+      } catch {
+        if (!cancelled) showMsg("加载作品失败，请重试", false);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-
-      if (imagesRes.ok) {
-        const images = await imagesRes.json();
-        setAllImages(
-          images.map((image: Record<string, unknown>) => ({
-            id: (image.id as string) || "",
-            image_url: image.image_url as string,
-            thumb_url: image.thumb_url as string,
-            source: "existing" as const,
-            size: (image.image_size as number) || 0,
-          }))
-        );
-      }
-
-      setLoading(false);
     }
 
     load();
-  }, [workId]);
+    return () => {
+      cancelled = true;
+    };
+  }, [showMsg, workId]);
 
   const activePreviewIndex = allImages.length === 0 ? 0 : Math.min(previewIndex, allImages.length - 1);
 
@@ -119,6 +132,7 @@ export default function EditWorkForm({
     setUploadDone(0);
 
     const fileArray = Array.from(files);
+    event.target.value = "";
     const results: ({ imageUrl: string; thumbUrl: string; size: number } | null)[] = new Array(fileArray.length).fill(null);
     const failures: string[] = [];
     let done = 0;
@@ -162,6 +176,13 @@ export default function EditWorkForm({
   };
 
   const handleSave = async () => {
+    const cleanTitle = title.trim();
+    const cleanDescription = description.trim();
+    if (!cleanTitle || !cleanDescription || allImages.length === 0) {
+      showMsg("请保留标题、简介和至少一张图片", false);
+      return;
+    }
+
     setSaving(true);
     setSaveStep("保存基础信息");
 
@@ -171,13 +192,13 @@ export default function EditWorkForm({
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title,
-          description,
+          title: cleanTitle,
+          description: cleanDescription,
           tags: tags.split(",").map((item) => item.trim()).filter(Boolean),
           software: mergeSoftwareValues(software, softwareCustom),
           workDate,
-          imageUrl: cover?.image_url,
-          thumbUrl: cover?.thumb_url,
+          imageUrl: cover.image_url,
+          thumbUrl: cover.thumb_url,
           sizeWeight,
           expectedUpdatedAt: baseUpdatedAt,
         }),
@@ -192,6 +213,11 @@ export default function EditWorkForm({
         setSaving(false);
         setSaveStep("");
         return;
+      }
+
+      const updateBody = await updateRes.json().catch(() => null) as { updatedAt?: string } | null;
+      if (updateBody?.updatedAt) {
+        setBaseUpdatedAt(updateBody.updatedAt);
       }
 
       setSaveStep("同步图片列表");

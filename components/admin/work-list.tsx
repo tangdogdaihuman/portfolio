@@ -26,6 +26,9 @@ export default function WorkList({
       {works.map((work, i) => {
         const wgt = work.size_weight ?? 1;
         const wpct = totalWeight > 0 ? (wgt / totalWeight) * 100 : 0;
+        const canMoveUp = i > 0 && works[i - 1].pinned === work.pinned;
+        const canMoveDown = i < works.length - 1 && works[i + 1].pinned === work.pinned;
+
         return (
           <div
             key={work.id}
@@ -78,7 +81,8 @@ export default function WorkList({
                 <div className="inline-flex border border-border/80">
                   <button
                     onClick={() => onReorder(work, "up")}
-                    disabled={i === 0}
+                    disabled={!canMoveUp}
+                    title={i > 0 && !canMoveUp ? "置顶作品和普通作品分开排序" : undefined}
                     className="min-h-10 min-w-10 text-xs text-text-muted hover:text-accent disabled:opacity-30"
                     aria-label="上移排序"
                   >
@@ -86,7 +90,8 @@ export default function WorkList({
                   </button>
                   <button
                     onClick={() => onReorder(work, "down")}
-                    disabled={i === works.length - 1}
+                    disabled={!canMoveDown}
+                    title={i < works.length - 1 && !canMoveDown ? "置顶作品和普通作品分开排序" : undefined}
                     className="min-h-10 min-w-10 border-l border-border/80 text-xs text-text-muted hover:text-accent disabled:opacity-30"
                     aria-label="下移排序"
                   >

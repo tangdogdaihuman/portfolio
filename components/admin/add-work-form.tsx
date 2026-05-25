@@ -62,6 +62,7 @@ export default function AddWorkForm({
     updateForm({ uploading: true, uploadProgress: "上传中", uploadTotal: total, uploadDone: 0 });
 
     const fileArray = Array.from(files);
+    event.target.value = "";
     let completed = 0;
     const results: (Awaited<ReturnType<typeof uploadImageToR2>> | null)[] = new Array(fileArray.length).fill(null);
     const failures: string[] = [];
@@ -84,63 +85,70 @@ export default function AddWorkForm({
   };
 
   const createWork = async () => {
-    if (!title || uploadedFiles.length === 0) {
-      showMsg("请填写标题并上传至少一张图片", false);
+    const cleanTitle = title.trim();
+    const cleanDescription = description.trim();
+    if (!cleanTitle || !cleanDescription || uploadedFiles.length === 0) {
+      showMsg("请填写标题、简介，并上传至少一张图片", false);
       return;
     }
 
     setSubmitting(true);
     const cover = uploadedFiles[coverIndex] || uploadedFiles[0];
-    const res = await fetch("/api/works", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title,
-        description,
-        tags: tags.split(",").map((item) => item.trim()).filter(Boolean),
-        software: mergeSoftwareValues(software, softwareCustom),
-        imageUrl: cover.imageUrl,
-        thumbUrl: cover.thumbUrl,
-        pinned: false,
-        sortOrder: 0,
-        workDate,
-        imageSize: cover.size,
-        sizeWeight,
-      }),
-    });
 
-    if (!res.ok) {
-      await cleanupUploadedFiles(uploadedFiles);
-      showMsg("创建失败", false);
-      setSubmitting(false);
-      return;
-    }
+    try {
+      const res = await fetch("/api/works", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: cleanTitle,
+          description: cleanDescription,
+          tags: tags.split(",").map((item) => item.trim()).filter(Boolean),
+          software: mergeSoftwareValues(software, softwareCustom),
+          imageUrl: cover.imageUrl,
+          thumbUrl: cover.thumbUrl,
+          pinned: false,
+          sortOrder: 0,
+          workDate,
+          imageSize: cover.size,
+          sizeWeight,
+        }),
+      });
 
-    const { id: workId } = await res.json();
-    const imagesRes = await fetch(`/api/works/${workId}/images`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(
-        uploadedFiles.map((file, index) => ({
-          imageUrl: file.imageUrl,
-          thumbUrl: file.thumbUrl,
-          imageSize: file.size,
-          sortOrder: index,
-        }))
-      ),
-    });
+      if (!res.ok) {
+        await cleanupUploadedFiles(uploadedFiles);
+        setFormState((current) => patchWorkFormState(current, { uploadedFiles: [], coverIndex: 0 }));
+        showMsg("创建失败，已清理本次上传，请重新上传", false);
+        return;
+      }
 
-    if (!imagesRes.ok) {
-      showMsg("作品已创建，但图片列表保存失败，请进入编辑页检查", false);
+      const { id: workId } = await res.json();
+      const imagesRes = await fetch(`/api/works/${workId}/images`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          uploadedFiles.map((file, index) => ({
+            imageUrl: file.imageUrl,
+            thumbUrl: file.thumbUrl,
+            imageSize: file.size,
+            sortOrder: index,
+          }))
+        ),
+      });
+
+      if (!imagesRes.ok) {
+        showMsg("作品已创建，但图片列表保存失败，请进入编辑页检查", false);
+        onDone();
+        return;
+      }
+
+      showMsg("作品已发布", true);
+      setFormState(createEmptyWorkFormState());
       onDone();
+    } catch {
+      showMsg("发布失败，请检查网络后重试", false);
+    } finally {
       setSubmitting(false);
-      return;
     }
-
-    showMsg("作品已发布", true);
-    setFormState(createEmptyWorkFormState());
-    onDone();
-    setSubmitting(false);
   };
 
   return (
@@ -233,8 +241,10 @@ export default function AddWorkForm({
                       封面
                     </button>
                     <button
+                      type="button"
                       onClick={(event) => {
                         event.stopPropagation();
+                        void cleanupUploadedFiles([uploadedFiles[index]]);
                         setFormState((current) => removeUploadedFile(current, index));
                         setPreviewIndex((current) => getIndexAfterRemoval(current, index));
                       }}

@@ -6,7 +6,13 @@ function readString(value: unknown): string {
 }
 
 function readNumber(value: unknown, fallback = 0): number {
-  return typeof value === "number" ? value : fallback;
+  if (typeof value === "number") return value;
+  if (typeof value === "bigint") return Number(value);
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  }
+  return fallback;
 }
 
 export function rowToWork(row: Record<string, unknown>): Work {

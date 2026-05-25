@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence, useScroll, useTransform, type MotionValue } from "framer-motion";
 import type { Section, Work } from "@/lib/types";
 import BgCanvas from "@/components/particle-bg";
@@ -11,6 +11,7 @@ import AuroraCanvas from "@/components/aurora-canvas";
 const spring = { type: "spring" as const, damping: 28, stiffness: 200, mass: 0.8 };
 const springSlow = { type: "spring" as const, damping: 32, stiffness: 160, mass: 1 };
 const DEFAULT_TAGLINE = "Hard Surface / Stylized Character / Game Art";
+const VISIBLE_REFRESH_MIN_INTERVAL = 30000;
 
 function IntroLine({
   line,
@@ -71,33 +72,51 @@ export default function HomeClient({
   const cursorRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
+  const refreshInFlightRef = useRef(false);
+  const lastRefreshAtRef = useRef(0);
 
-  const refreshData = useCallback(async () => {
+  const refreshData = useCallback(async (options?: { force?: boolean }) => {
+    const now = Date.now();
+    if (refreshInFlightRef.current) return;
+    if (!options?.force && now - lastRefreshAtRef.current < VISIBLE_REFRESH_MIN_INTERVAL) return;
+    refreshInFlightRef.current = true;
+
     try {
       const [introRes, sectionsRes, worksRes] = await Promise.all([fetch("/api/intro"), fetch("/api/detail-sections"), fetch("/api/works")]);
       if (!introRes.ok || !sectionsRes.ok || !worksRes.ok) {
         throw new Error("refresh failed");
       }
-      const introData = await introRes.json() as { content?: string; tagline?: string };
+      const [introData, nextSections, nextWorks] = await Promise.all([
+        introRes.json() as Promise<{ content?: string; tagline?: string }>,
+        sectionsRes.json() as Promise<Section[]>,
+        worksRes.json() as Promise<Work[]>,
+      ]);
       setIntro(introData.content || "");
       setTagline((introData.tagline || "").trim() || DEFAULT_TAGLINE);
-      const nextSections = await sectionsRes.json() as Section[];
       setDetailSections(nextSections);
       setExpandedSection((current) => {
         if (nextSections.length === 0) return null;
         if (!current) return nextSections[0].id;
         return nextSections.some((section) => section.id === current) ? current : nextSections[0].id;
       });
-      setWorks(await worksRes.json());
+      setWorks(nextWorks);
       setLoadError(false);
     } catch {
       setLoadError(true);
     } finally {
+      lastRefreshAtRef.current = Date.now();
+      refreshInFlightRef.current = false;
       setLoadingWorks(false);
     }
   }, []);
 
   useEffect(() => { const iv = setInterval(refreshData, 300000); return () => clearInterval(iv); }, [refreshData]);
+
+  useEffect(() => {
+    if (!initialLoadError) {
+      lastRefreshAtRef.current = Date.now();
+    }
+  }, [initialLoadError]);
 
   useEffect(() => {
     const onVisible = () => { if (document.visibilityState === "visible") refreshData(); };
@@ -249,9 +268,12 @@ export default function HomeClient({
     return () => obs.disconnect();
   }, [works]);
 
-  const tags = [...new Set(works.flatMap((w) => w.tags))];
-  const filtered = activeTag ? works.filter((w) => w.tags.includes(activeTag)) : works;
-  const sorted = (() => {
+  const tags = useMemo(() => [...new Set(works.flatMap((w) => w.tags))], [works]);
+  const filtered = useMemo(
+    () => (activeTag ? works.filter((w) => w.tags.includes(activeTag)) : works),
+    [activeTag, works]
+  );
+  const sorted = useMemo(() => {
     if (sortMode === "default") return filtered;
     const byDate = [...filtered].sort((a, b) => {
       const da = a.work_date || "";
@@ -259,7 +281,7 @@ export default function HomeClient({
       return sortMode === "newest" ? db.localeCompare(da) : da.localeCompare(db);
     });
     return byDate;
-  })();
+  }, [filtered, sortMode]);
 
   const sortOptions: Array<{ value: "default" | "newest" | "oldest"; label: string }> = [
     { value: "default", label: "精选" },
@@ -273,11 +295,13 @@ export default function HomeClient({
   const portfolioFilter = useTransform(portfolioBlur, (v: number) => `blur(${v}px)`);
   const portfolioScale = useTransform(scrollYProgress, [0, 0.45], [1, 0.88]);
 
-  const introRows = intro.split("\n");
+  const introRows = useMemo(() => intro.split("\n"), [intro]);
 
   // Marquee items: repeat tags 6x to ensure infinite scroll
-  const marqueeItems = tags.length > 0 ? tags : ["Digital Art", "Character Design", "3D", "Illustration"];
-  const marqueeLabel = `${marqueeItems.join(" · ")} ·`;
+  const marqueeLabel = useMemo(() => {
+    const marqueeItems = tags.length > 0 ? tags : ["Digital Art", "Character Design", "3D", "Illustration"];
+    return `${marqueeItems.join(" · ")} ·`;
+  }, [tags]);
   const navClass = (id: "works" | "about" | "contact") => `nav-link ${activeSection === id ? "nav-link-active text-text" : ""}`;
 
   return (
@@ -486,7 +510,7 @@ export default function HomeClient({
             <p className="text-sm tracking-[0.08em] uppercase">{loadError ? "内容暂时加载失败，请稍后刷新" : "还没有作品"}</p>
             {loadError && (
               <button
-                onClick={refreshData}
+                onClick={() => refreshData({ force: true })}
                 className="mt-5 px-5 py-2 border border-border text-xs tracking-[0.16em] text-accent hover:bg-accent hover:text-bg transition-colors"
               >
                 重试加载

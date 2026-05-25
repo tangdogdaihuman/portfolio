@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Work } from "@/lib/types";
 import AddWorkForm from "@/components/admin/add-work-form";
@@ -48,29 +48,48 @@ export default function AdminPageClient() {
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Work | null>(null);
   const router = useRouter();
+  const messageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const showMsg = (text: string, ok: boolean) => {
+  const showMsg = useCallback((text: string, ok: boolean) => {
+    if (messageTimerRef.current) {
+      clearTimeout(messageTimerRef.current);
+    }
     setMessage({ text, ok });
-    setTimeout(() => setMessage(null), 3000);
-  };
-
-  const refresh = useCallback(() => {
-    fetch("/api/works").then((response) => {
-      if (!response.ok) return;
-      response.json().then((data: Work[]) => setWorks(data));
-    });
-    fetch("/api/intro").then((response) => {
-      if (!response.ok) return;
-      response.json().then((data: { content?: string; tagline?: string }) => {
-        setIntro(data.content || "");
-        setTagline(data.tagline || "");
-      });
-    });
+    messageTimerRef.current = setTimeout(() => setMessage(null), 3000);
   }, []);
 
+  const refresh = useCallback(async () => {
+    try {
+      const [worksResponse, introResponse] = await Promise.all([
+        fetch("/api/works"),
+        fetch("/api/intro"),
+      ]);
+
+      if (worksResponse.ok) {
+        setWorks(await worksResponse.json() as Work[]);
+      }
+
+      if (introResponse.ok) {
+        const data = await introResponse.json() as { content?: string; tagline?: string };
+        setIntro(data.content || "");
+        setTagline(data.tagline || "");
+      }
+    } catch {
+      showMsg("刷新数据失败，请检查网络后重试", false);
+    }
+  }, [showMsg]);
+
   useEffect(() => {
-    refresh();
+    void Promise.resolve().then(refresh);
   }, [refresh]);
+
+  useEffect(() => {
+    return () => {
+      if (messageTimerRef.current) {
+        clearTimeout(messageTimerRef.current);
+      }
+    };
+  }, []);
 
   const setMainTab = (nextTab: MainTab) => {
     setTab(nextTab);
@@ -79,13 +98,18 @@ export default function AdminPageClient() {
 
   const saveIntro = async () => {
     setLoading(true);
-    const response = await fetch("/api/intro", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: intro, tagline }),
-    });
-    showMsg(response.ok ? "已保存" : "保存失败", response.ok);
-    setLoading(false);
+    try {
+      const response = await fetch("/api/intro", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: intro, tagline }),
+      });
+      showMsg(response.ok ? "已保存" : "保存失败", response.ok);
+    } catch {
+      showMsg("保存失败，请检查网络后重试", false);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const moveWork = async (work: Work, direction: "up" | "down") => {
@@ -94,6 +118,11 @@ export default function AdminPageClient() {
     if (index < 0 || swapIndex < 0 || swapIndex >= works.length) return;
 
     const other = works[swapIndex];
+    if (work.pinned !== other.pinned) {
+      showMsg("置顶作品和普通作品分开排序，请先切换置顶状态", false);
+      return;
+    }
+
     const nextWorkSortOrder = direction === "up" ? (other.sort_order ?? 0) + 1 : (other.sort_order ?? 0) - 1;
     const nextOtherSortOrder = work.sort_order ?? 0;
     const updatedWorks = [...works];
@@ -144,7 +173,9 @@ export default function AdminPageClient() {
     if (response.status === 409) {
       refresh();
       showMsg("置顶状态冲突，已刷新", false);
+      return;
     }
+    showMsg("置顶状态更新失败", false);
   };
 
   return (
