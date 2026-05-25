@@ -353,6 +353,7 @@ body.home-vignette::after {
   .aurora-ribbon {
     top: -4%;
     bottom: -18%;
+    mix-blend-mode: screen;
   }
 
   .hero-contrast-scrim {
