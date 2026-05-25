@@ -3,6 +3,11 @@ import { expect, request, test } from "@playwright/test";
 const ADMIN_SECRET = "e2e-admin-secret";
 const WORK_IMAGE = "https://placehold.co/1400x1800.png";
 const WORK_THUMB = "https://placehold.co/700x900.webp";
+const GALLERY_IMAGES = [
+  { imageUrl: "https://placehold.co/1400x1800/101010/f5f1e8.png?text=1", thumbUrl: "https://placehold.co/700x900/101010/f5f1e8.webp?text=1" },
+  { imageUrl: "https://placehold.co/1400x1800/1a2435/f5f1e8.png?text=2", thumbUrl: "https://placehold.co/700x900/1a2435/f5f1e8.webp?text=2" },
+  { imageUrl: "https://placehold.co/1400x1800/352018/f5f1e8.png?text=3", thumbUrl: "https://placehold.co/700x900/352018/f5f1e8.webp?text=3" },
+];
 
 let createdWorkId = "";
 let createdWorkTitle = "";
@@ -32,6 +37,16 @@ async function loginAndCreateWork(baseURL: string) {
   expect(created.status()).toBe(201);
   const createdBody = await created.json();
   createdWorkId = createdBody.id as string;
+
+  const imagesRes = await api.post(`/api/works/${createdWorkId}/images`, {
+    data: GALLERY_IMAGES.map((image, index) => ({
+      imageUrl: image.imageUrl,
+      thumbUrl: image.thumbUrl,
+      imageSize: 1024 + index,
+      sortOrder: index,
+    })),
+  });
+  expect(imagesRes.status()).toBe(201);
 
   return api;
 }
@@ -68,7 +83,7 @@ test("详情页支持放大和拖拽大图", async ({ page, baseURL }) => {
   await page.goto(`${baseURL}/work/${createdWorkId}`);
 
   await page.locator("button.cursor-zoom-in").first().click();
-  const viewerImage = page.locator(`img[alt="${createdWorkTitle}"]`);
+  const viewerImage = page.locator('[data-gallery-slide="0"] img').first();
   await expect(viewerImage).toBeVisible();
 
   await viewerImage.dblclick();
@@ -111,4 +126,38 @@ test("作品更新冲突会返回 409 CONFLICT", async ({ baseURL }) => {
   expect(staleBody.code).toBe("CONFLICT");
 
   await api.dispose();
+});
+
+test.describe("手机端相册式滑动预览", () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+
+  test("横向拖拽到中途时会同时露出当前图和下一张", async ({ page, baseURL }) => {
+    await page.goto(`${baseURL}/work/${createdWorkId}`);
+    await page.locator("button.cursor-zoom-in").first().click();
+
+    const viewer = page.locator("[data-gallery-viewer]");
+    const track = page.locator("[data-gallery-track]");
+    const currentSlide = page.locator('[data-gallery-slide="0"]');
+    const nextSlide = page.locator('[data-gallery-slide="1"]');
+
+    await expect(track).toBeVisible();
+
+    const box = await viewer.boundingBox();
+    if (!box) throw new Error("viewer box not found");
+
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2 - box.width * 0.42, box.y + box.height / 2, { steps: 12 });
+
+    const currentBox = await currentSlide.boundingBox();
+    const nextBox = await nextSlide.boundingBox();
+    if (!currentBox || !nextBox) throw new Error("gallery slide boxes not found");
+
+    expect(currentBox.x).toBeLessThan(box.x);
+    expect(nextBox.x).toBeLessThan(box.x + box.width);
+    expect(nextBox.x + nextBox.width).toBeGreaterThan(box.x + box.width * 0.55);
+
+    await page.mouse.up();
+    await expect(page.locator("text=2 / 3")).toBeVisible();
+  });
 });
