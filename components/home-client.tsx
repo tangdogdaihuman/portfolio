@@ -141,7 +141,7 @@ export default function HomeClient({
       for (const id of sections) {
         const el = document.getElementById(id);
         if (!el) continue;
-        if (el.offsetTop <= marker) nextActive = id;
+        if (el.getBoundingClientRect().top + window.scrollY <= marker) nextActive = id;
       }
 
       setActiveSection((current) => (current === nextActive ? current : nextActive));
