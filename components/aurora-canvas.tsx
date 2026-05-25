@@ -56,7 +56,8 @@ function getPerformanceProfile() {
     reducedMotion,
     coarsePointer,
     lowEnd,
-    renderScale: lowEnd ? 0.74 : coarsePointer ? 0.88 : 1,
+    baseScale: lowEnd ? 0.9 : coarsePointer ? 0.96 : 1,
+    dynamicScale: lowEnd ? 0.62 : coarsePointer ? 0.74 : 0.88,
     targetFps: reducedMotion ? 0 : lowEnd ? 30 : coarsePointer ? 45 : 60,
     firstBlur: lowEnd ? 18 : coarsePointer ? 22 : 24,
     secondBlur: lowEnd ? 34 : coarsePointer ? 40 : 48,
@@ -111,7 +112,8 @@ export default function AuroraCanvas() {
 
     let w = Math.max(1, visible.offsetWidth);
     let h = Math.max(1, visible.offsetHeight);
-    let ratio = 1;
+    let baseRatio = 1;
+    let effectRatio = 1;
     let rayCount = 0;
     let total = 0;
     let props = new Float32Array(0);
@@ -127,20 +129,25 @@ export default function AuroraCanvas() {
     }
 
     const setCanvasResolution = () => {
-      ratio = Math.max(1, Math.min((window.devicePixelRatio || 1) * profile.renderScale, 2));
-      const pw = Math.max(1, Math.floor(w * ratio));
-      const ph = Math.max(1, Math.floor(h * ratio));
+      const dpr = window.devicePixelRatio || 1;
+      baseRatio = Math.max(1, Math.min(dpr * profile.baseScale, 2));
+      effectRatio = Math.max(0.72, Math.min(baseRatio * profile.dynamicScale, baseRatio));
+
+      const pw = Math.max(1, Math.floor(w * baseRatio));
+      const ph = Math.max(1, Math.floor(h * baseRatio));
+      const ew = Math.max(1, Math.floor(w * effectRatio));
+      const eh = Math.max(1, Math.floor(h * effectRatio));
 
       visible.width = pw;
       visible.height = ph;
-      raysLayer.width = pw;
-      raysLayer.height = ph;
+      raysLayer.width = ew;
+      raysLayer.height = eh;
       staticLayer.width = pw;
       staticLayer.height = ph;
 
-      ctxB.setTransform(ratio, 0, 0, ratio, 0, 0);
-      ctxA.setTransform(ratio, 0, 0, ratio, 0, 0);
-      ctxS.setTransform(ratio, 0, 0, ratio, 0, 0);
+      ctxB.setTransform(baseRatio, 0, 0, baseRatio, 0, 0);
+      ctxA.setTransform(effectRatio, 0, 0, effectRatio, 0, 0);
+      ctxS.setTransform(baseRatio, 0, 0, baseRatio, 0, 0);
     };
 
     const drawStaticBackground = () => {

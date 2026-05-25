@@ -195,8 +195,9 @@ export default function BgCanvas() {
     };
 
     const onMove = (e: MouseEvent) => {
-      mouse.x = e.clientX;
-      mouse.y = e.clientY;
+      const rect = canvas.getBoundingClientRect();
+      mouse.x = e.clientX - rect.left;
+      mouse.y = e.clientY - rect.top;
       target.x = mouse.x;
       target.y = mouse.y;
       runIfNeeded();
@@ -205,10 +206,13 @@ export default function BgCanvas() {
     const onTouchStart = (e: TouchEvent) => {
       const touch = e.touches[0];
       if (!touch) return;
-      target.x = touch.clientX;
-      target.y = touch.clientY;
+      const rect = canvas.getBoundingClientRect();
+      const x = touch.clientX - rect.left;
+      const y = touch.clientY - rect.top;
+      target.x = x;
+      target.y = y;
       if (profile.coarsePointer) {
-        ripples.push({ x: touch.clientX, y: touch.clientY, birth: performance.now() });
+        ripples.push({ x, y, birth: performance.now() });
       }
       runIfNeeded();
     };
