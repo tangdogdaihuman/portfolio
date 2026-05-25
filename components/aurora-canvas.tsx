@@ -16,6 +16,7 @@ const RANGE_TTL = 100;
 const NOISE_STRENGTH = 100;
 const BASE_HUE = 34;
 const RANGE_HUE = 22;
+const AURORA_SATURATION = 72;
 const X_OFF = 0.0015;
 const Y_OFF = 0.0015;
 const Z_OFF = 0.0015;
@@ -212,9 +213,9 @@ export default function AuroraCanvas() {
       const a = fadeInOut(life, ttl) * 0.56 * profile.alphaQuality;
 
       const gradient = ctxA.createLinearGradient(x, y1, x, y2);
-      gradient.addColorStop(0, `hsla(${hue}, 100%, 66%, 0)`);
-      gradient.addColorStop(0.5, `hsla(${hue}, 100%, 66%, ${a})`);
-      gradient.addColorStop(1, `hsla(${hue}, 100%, 66%, 0)`);
+      gradient.addColorStop(0, `hsla(${hue}, ${AURORA_SATURATION}%, 66%, 0)`);
+      gradient.addColorStop(0.5, `hsla(${hue}, ${AURORA_SATURATION}%, 66%, ${a})`);
+      gradient.addColorStop(1, `hsla(${hue}, ${AURORA_SATURATION}%, 66%, 0)`);
 
       ctxA.beginPath();
       ctxA.strokeStyle = gradient;
