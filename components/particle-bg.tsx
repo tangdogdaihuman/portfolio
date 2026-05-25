@@ -5,12 +5,16 @@ import { useEffect, useRef } from "react";
 const ACCENT = "201, 169, 97";
 const VP_Y_RATIO = 0.38;
 const RIPPLE_LIFETIME = 560;
-const TAP_RING_MAX = 220;
+const TAP_RING_MAX = 180;
 
 interface Ripple {
   x: number;
   y: number;
   birth: number;
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
 }
 
 function getViewportSize() {
@@ -111,14 +115,14 @@ export default function BgCanvas() {
       }
     };
 
-    const drawDynamicGlow = (ts: number) => {
-      if (!profile.finePointer) {
-        target.x = w * 0.5 + Math.sin(ts * 0.00038) * w * 0.12;
-        target.y = h * 0.55 + Math.cos(ts * 0.00031) * h * 0.07;
+    const drawDynamicGlow = () => {
+      if (profile.coarsePointer) {
+        focus.x = w / 2;
+        focus.y = h * 0.54;
+      } else {
+        focus.x += (target.x - focus.x) * 0.12;
+        focus.y += (target.y - focus.y) * 0.12;
       }
-
-      focus.x += (target.x - focus.x) * 0.12;
-      focus.y += (target.y - focus.y) * 0.12;
 
       const radius = profile.lowEnd ? 250 : profile.coarsePointer ? 280 : 320;
       const offset = profile.lowEnd ? 2.8 : 4;
@@ -136,6 +140,8 @@ export default function BgCanvas() {
         ctx.fillStyle = g;
         ctx.fillRect(0, 0, w, h);
       }
+
+      return !profile.coarsePointer && (Math.abs(target.x - focus.x) > 0.6 || Math.abs(target.y - focus.y) > 0.6);
     };
 
     const drawRipples = (ts: number) => {
@@ -152,11 +158,18 @@ export default function BgCanvas() {
 
         hasActive = true;
         const eased = 1 - Math.pow(1 - p, 2);
-        const radius = 24 + TAP_RING_MAX * eased;
-        const alpha = (1 - p) * 0.24;
+        const radius = 18 + TAP_RING_MAX * eased;
+        const alpha = (1 - p) * 0.22;
 
-        const halo = ctx.createRadialGradient(ripple.x, ripple.y, 0, ripple.x, ripple.y, radius * 1.2);
-        halo.addColorStop(0, `rgba(${ACCENT},${alpha * 0.42})`);
+        const core = ctx.createRadialGradient(ripple.x, ripple.y, 0, ripple.x, ripple.y, Math.max(18, radius * 0.26));
+        core.addColorStop(0, `rgba(${ACCENT},${alpha * 0.58})`);
+        core.addColorStop(0.68, `rgba(${ACCENT},${alpha * 0.22})`);
+        core.addColorStop(1, "transparent");
+        ctx.fillStyle = core;
+        ctx.fillRect(0, 0, w, h);
+
+        const halo = ctx.createRadialGradient(ripple.x, ripple.y, 0, ripple.x, ripple.y, radius * 0.78);
+        halo.addColorStop(0, `rgba(${ACCENT},${alpha * 0.16})`);
         halo.addColorStop(1, "transparent");
         ctx.fillStyle = halo;
         ctx.fillRect(0, 0, w, h);
@@ -164,7 +177,7 @@ export default function BgCanvas() {
         ctx.beginPath();
         ctx.arc(ripple.x, ripple.y, radius, 0, Math.PI * 2);
         ctx.strokeStyle = `rgba(${ACCENT},${alpha})`;
-        ctx.lineWidth = 1.4 + (1 - p) * 2;
+        ctx.lineWidth = 1.2 + (1 - p) * 1.6;
         ctx.stroke();
       }
 
@@ -185,10 +198,10 @@ export default function BgCanvas() {
 
       ctx.clearRect(0, 0, w, h);
       ctx.drawImage(staticLayer, 0, 0, w, h);
-      drawDynamicGlow(ts);
+      const glowActive = drawDynamicGlow();
       const hasRipple = drawRipples(ts);
 
-      if (profile.reducedMotion && !hasRipple) {
+      if ((profile.reducedMotion || profile.coarsePointer) && !hasRipple && !glowActive) {
         running = false;
         return;
       }
@@ -212,17 +225,12 @@ export default function BgCanvas() {
       runIfNeeded();
     };
 
-    const onTouchStart = (e: TouchEvent) => {
-      const touch = e.touches[0];
-      if (!touch) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (e.pointerType === "mouse") return;
       const rect = canvas.getBoundingClientRect();
-      const x = touch.clientX - rect.left;
-      const y = touch.clientY - rect.top;
-      target.x = x;
-      target.y = y;
-      if (profile.coarsePointer) {
-        ripples.push({ x, y, birth: performance.now() });
-      }
+      const x = clamp(e.clientX - rect.left, 0, w);
+      const y = clamp(e.clientY - rect.top, 0, h);
+      ripples.push({ x, y, birth: performance.now() });
       runIfNeeded();
     };
 
@@ -242,7 +250,7 @@ export default function BgCanvas() {
       runIfNeeded();
     };
 
-    const heroEl = document.querySelector(".hero-noise");
+    const heroEl = document.querySelector<HTMLElement>(".hero-noise");
     let heroObserver: IntersectionObserver | null = null;
     if (heroEl) {
       heroObserver = new IntersectionObserver(
@@ -257,7 +265,7 @@ export default function BgCanvas() {
 
     setCanvasResolution();
     drawStaticLayer();
-    if (!profile.reducedMotion) {
+    if (!profile.reducedMotion && !profile.coarsePointer) {
       runIfNeeded();
     } else {
       drawFrame(performance.now());
@@ -267,7 +275,9 @@ export default function BgCanvas() {
       window.addEventListener("mousemove", onMove, { passive: true });
     }
     const viewport = window.visualViewport;
-    window.addEventListener("touchstart", onTouchStart, { passive: true });
+    if (profile.coarsePointer && heroEl) {
+      heroEl.addEventListener("pointerdown", onPointerDown, { passive: true });
+    }
     window.addEventListener("resize", onResize);
     viewport?.addEventListener("resize", onResize);
     document.addEventListener("visibilitychange", onVisibilityChange);
@@ -276,7 +286,7 @@ export default function BgCanvas() {
       cancelAnimationFrame(raf);
       heroObserver?.disconnect();
       window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("touchstart", onTouchStart);
+      heroEl?.removeEventListener("pointerdown", onPointerDown);
       window.removeEventListener("resize", onResize);
       viewport?.removeEventListener("resize", onResize);
       document.removeEventListener("visibilitychange", onVisibilityChange);
