@@ -36,9 +36,6 @@ const cssRibbons = [
 ];
 
 function shouldUseCssFallback() {
-  if (typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches) {
-    return true;
-  }
   if (typeof navigator === "undefined") return false;
   const ua = navigator.userAgent;
   return /AppleWebKit/i.test(ua) && !/(Chrome|Chromium|Edg|OPR|Firefox)/i.test(ua);
@@ -46,6 +43,26 @@ function shouldUseCssFallback() {
 
 function subscribeToNothing() {
   return () => {};
+}
+
+function getPerformanceProfile() {
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
+  const cores = navigator.hardwareConcurrency || 4;
+  const memory = ((navigator as Navigator & { deviceMemory?: number }).deviceMemory) ?? 4;
+  const lowEnd = coarsePointer && (cores <= 4 || memory <= 4);
+
+  return {
+    reducedMotion,
+    coarsePointer,
+    lowEnd,
+    renderScale: lowEnd ? 0.74 : coarsePointer ? 0.88 : 1,
+    targetFps: reducedMotion ? 0 : lowEnd ? 30 : coarsePointer ? 45 : 60,
+    firstBlur: lowEnd ? 18 : coarsePointer ? 22 : 24,
+    secondBlur: lowEnd ? 34 : coarsePointer ? 40 : 48,
+    secondAlpha: lowEnd ? 0.48 : coarsePointer ? 0.54 : 0.58,
+    rayQuality: lowEnd ? 0.78 : coarsePointer ? 0.9 : 1,
+  };
 }
 
 function CssAurora() {
@@ -82,31 +99,78 @@ export default function AuroraCanvas() {
     if (!visible) return;
     const ctxB = visible.getContext("2d");
     if (!ctxB) return;
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    const offscreen = document.createElement("canvas");
-    const ctxA = offscreen.getContext("2d");
-    if (!ctxA) return;
-
-    const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, 2));
-    let w = Math.max(1, visible.offsetWidth);
-    let h = Math.max(1, visible.offsetHeight);
-    let rayCount = Math.min(RAY_COUNT, Math.floor(w / 2.8));
-    visible.width = Math.floor(w * dpr);
-    visible.height = Math.floor(h * dpr);
-    offscreen.width = Math.floor(w * dpr);
-    offscreen.height = Math.floor(h * dpr);
-    ctxB.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctxA.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const profile = getPerformanceProfile();
+    const raysLayer = document.createElement("canvas");
+    const staticLayer = document.createElement("canvas");
+    const ctxA = raysLayer.getContext("2d");
+    const ctxS = staticLayer.getContext("2d");
+    if (!ctxA || !ctxS) return;
 
     const noise3D = createNoise3D();
-    let total = rayCount * RAY_PROPS;
-    let props = new Float32Array(total);
+
+    let w = Math.max(1, visible.offsetWidth);
+    let h = Math.max(1, visible.offsetHeight);
+    let ratio = 1;
+    let rayCount = 0;
+    let total = 0;
+    let props = new Float32Array(0);
     let tick = 0;
+    let raf = 0;
+    let running = false;
+    let heroVisible = true;
+    let lastFrameTs = 0;
+    const frameBudget = profile.targetFps > 0 ? 1000 / profile.targetFps : 1000 / 60;
 
-    function rand(r: number) { return Math.random() * r; }
+    function rand(r: number) {
+      return Math.random() * r;
+    }
 
-    function initRay(i: number) {
+    const setCanvasResolution = () => {
+      ratio = Math.max(1, Math.min((window.devicePixelRatio || 1) * profile.renderScale, 2));
+      const pw = Math.max(1, Math.floor(w * ratio));
+      const ph = Math.max(1, Math.floor(h * ratio));
+
+      visible.width = pw;
+      visible.height = ph;
+      raysLayer.width = pw;
+      raysLayer.height = ph;
+      staticLayer.width = pw;
+      staticLayer.height = ph;
+
+      ctxB.setTransform(ratio, 0, 0, ratio, 0, 0);
+      ctxA.setTransform(ratio, 0, 0, ratio, 0, 0);
+      ctxS.setTransform(ratio, 0, 0, ratio, 0, 0);
+    };
+
+    const drawStaticBackground = () => {
+      ctxS.clearRect(0, 0, w, h);
+
+      const bgGradient = ctxS.createLinearGradient(0, 0, 0, h);
+      bgGradient.addColorStop(0, "rgba(10,9,8,0.9)");
+      bgGradient.addColorStop(0.45, "rgba(10,9,8,0.72)");
+      bgGradient.addColorStop(0.9, "rgba(10,9,8,0.42)");
+      bgGradient.addColorStop(0.97, "rgba(10,9,8,0.12)");
+      bgGradient.addColorStop(1, "rgba(10,9,8,0)");
+      ctxS.fillStyle = bgGradient;
+      ctxS.fillRect(0, 0, w, h);
+
+      const focusGlow = ctxS.createRadialGradient(w * 0.5, h * 0.44, 0, w * 0.5, h * 0.44, Math.max(w * 0.3, 280));
+      focusGlow.addColorStop(0, "rgba(201,169,97,0.09)");
+      focusGlow.addColorStop(0.45, "rgba(201,169,97,0.028)");
+      focusGlow.addColorStop(1, "rgba(201,169,97,0)");
+      ctxS.fillStyle = focusGlow;
+      ctxS.fillRect(0, 0, w, h);
+
+      const bottomVignette = ctxS.createLinearGradient(0, h * 0.72, 0, h);
+      bottomVignette.addColorStop(0, "rgba(10,9,8,0)");
+      bottomVignette.addColorStop(0.7, "rgba(10,9,8,0.26)");
+      bottomVignette.addColorStop(1, "rgba(10,9,8,0.56)");
+      ctxS.fillStyle = bottomVignette;
+      ctxS.fillRect(0, 0, w, h);
+    };
+
+    const initRay = (i: number) => {
       const x = rand(w);
       const mid = h * 0.52;
       const len = BASE_LEN + rand(RANGE_LEN);
@@ -116,133 +180,147 @@ export default function AuroraCanvas() {
       const speed = BASE_SPEED + rand(RANGE_SPEED) * (Math.round(rand(1)) ? 1 : -1);
       const colorIdx = Math.floor(rand(COLORS.length));
       props.set([x, y1 + n, y2 + n, 0, BASE_TTL + rand(RANGE_TTL), BASE_WIDTH + rand(RANGE_WIDTH), speed, colorIdx], i);
-    }
+    };
 
-    function rebuild() {
-      rayCount = Math.min(RAY_COUNT, Math.floor(w / 2.8));
+    const rebuildRays = () => {
+      rayCount = Math.max(96, Math.floor(Math.min(RAY_COUNT, (w / 2.8) * profile.rayQuality)));
       total = rayCount * RAY_PROPS;
       props = new Float32Array(total);
       for (let i = 0; i < total; i += RAY_PROPS) initRay(i);
-    }
-    rebuild();
+    };
 
-    function fadeInOut(life: number, ttl: number) {
-      return Math.sin((life / ttl) * Math.PI);
-    }
-
-    function drawRay(i: number) {
-      const x = props[i], y1 = props[i + 1], y2 = props[i + 2];
-      const life = props[i + 3], ttl = props[i + 4], width = props[i + 5];
+    const drawRay = (i: number) => {
+      const x = props[i];
+      const y1 = props[i + 1];
+      const y2 = props[i + 2];
+      const life = props[i + 3];
+      const ttl = props[i + 4];
+      const width = props[i + 5];
       const colorIdx = props[i + 7];
       const [r, g, b] = COLORS[colorIdx] ?? COLORS[0];
-      const a = fadeInOut(life, ttl);
+      const a = Math.sin((life / ttl) * Math.PI);
 
-      const gradient = ctxA!.createLinearGradient(x, y1, x, y2);
+      const gradient = ctxA.createLinearGradient(x, y1, x, y2);
       gradient.addColorStop(0, `rgba(${r},${g},${b},0)`);
       gradient.addColorStop(0.5, `rgba(${r},${g},${b},${a * 0.42})`);
       gradient.addColorStop(1, `rgba(${r},${g},${b},0)`);
 
-      ctxA!.beginPath();
-      ctxA!.strokeStyle = gradient;
-      ctxA!.lineWidth = width;
-      ctxA!.moveTo(x, y1);
-      ctxA!.lineTo(x, y2);
-      ctxA!.stroke();
-    }
+      ctxA.beginPath();
+      ctxA.strokeStyle = gradient;
+      ctxA.lineWidth = width;
+      ctxA.moveTo(x, y1);
+      ctxA.lineTo(x, y2);
+      ctxA.stroke();
+    };
 
-    function updateRay(i: number) {
+    const updateRay = (i: number) => {
       drawRay(i);
       const oldX = props[i];
       const life = props[i + 3] + 1;
       props[i] = oldX + props[i + 6];
       props[i + 3] = life;
-      if (oldX < -50 || oldX > w + 50 || life > props[i + 4]) initRay(i);
-    }
-
-    const draw = () => {
-      if (w <= 0 || h <= 0) return;
-      tick++;
-      ctxA.clearRect(0, 0, w, h);
-
-      ctxB.save();
-      ctxB.globalCompositeOperation = "source-over";
-      const bgGradient = ctxB.createLinearGradient(0, 0, 0, h);
-      bgGradient.addColorStop(0, "rgba(10,9,8,0.9)");
-      bgGradient.addColorStop(0.45, "rgba(10,9,8,0.72)");
-      bgGradient.addColorStop(0.9, "rgba(10,9,8,0.42)");
-      bgGradient.addColorStop(0.97, "rgba(10,9,8,0.12)");
-      bgGradient.addColorStop(1, "rgba(10,9,8,0)");
-      ctxB.fillStyle = bgGradient;
-      ctxB.fillRect(0, 0, w, h);
-
-      const focusGlow = ctxB.createRadialGradient(w * 0.5, h * 0.44, 0, w * 0.5, h * 0.44, Math.max(w * 0.3, 280));
-      focusGlow.addColorStop(0, "rgba(201,169,97,0.09)");
-      focusGlow.addColorStop(0.45, "rgba(201,169,97,0.028)");
-      focusGlow.addColorStop(1, "rgba(201,169,97,0)");
-      ctxB.fillStyle = focusGlow;
-      ctxB.fillRect(0, 0, w, h);
-
-      const bottomVignette = ctxB.createLinearGradient(0, h * 0.72, 0, h);
-      bottomVignette.addColorStop(0, "rgba(10,9,8,0)");
-      bottomVignette.addColorStop(0.7, "rgba(10,9,8,0.26)");
-      bottomVignette.addColorStop(1, "rgba(10,9,8,0.56)");
-      ctxB.fillStyle = bottomVignette;
-      ctxB.fillRect(0, 0, w, h);
-      ctxB.restore();
-
-      for (let i = 0; i < total; i += RAY_PROPS) updateRay(i);
-
-      ctxB.save();
-      ctxB.filter = "blur(24px)";
-      ctxB.globalCompositeOperation = "screen";
-      ctxB.drawImage(offscreen, 0, 0, w, h);
-      ctxB.restore();
-
-      ctxB.save();
-      ctxB.globalAlpha = 0.58;
-      ctxB.filter = "blur(48px)";
-      ctxB.globalCompositeOperation = "screen";
-      ctxB.drawImage(offscreen, 0, 0, w, h);
-      ctxB.restore();
-
-      if (!reducedMotion && !document.hidden) {
-        raf = requestAnimationFrame(draw);
+      if (oldX < -50 || oldX > w + 50 || life > props[i + 4]) {
+        initRay(i);
       }
     };
 
-    let raf = requestAnimationFrame(draw);
+    const drawFrame = (ts: number) => {
+      if (!heroVisible || document.hidden) {
+        running = false;
+        return;
+      }
+
+      if (!profile.reducedMotion && ts - lastFrameTs < frameBudget) {
+        raf = requestAnimationFrame(drawFrame);
+        return;
+      }
+      lastFrameTs = ts;
+
+      tick++;
+      ctxA.clearRect(0, 0, w, h);
+      for (let i = 0; i < total; i += RAY_PROPS) {
+        updateRay(i);
+      }
+
+      ctxB.clearRect(0, 0, w, h);
+      ctxB.drawImage(staticLayer, 0, 0, w, h);
+
+      ctxB.save();
+      ctxB.filter = `blur(${profile.firstBlur}px)`;
+      ctxB.globalCompositeOperation = "screen";
+      ctxB.drawImage(raysLayer, 0, 0, w, h);
+      ctxB.restore();
+
+      ctxB.save();
+      ctxB.globalAlpha = profile.secondAlpha;
+      ctxB.filter = `blur(${profile.secondBlur}px)`;
+      ctxB.globalCompositeOperation = "screen";
+      ctxB.drawImage(raysLayer, 0, 0, w, h);
+      ctxB.restore();
+
+      if (profile.reducedMotion) {
+        running = false;
+        return;
+      }
+
+      raf = requestAnimationFrame(drawFrame);
+      running = true;
+    };
+
+    const runIfNeeded = () => {
+      if (running || document.hidden || !heroVisible) return;
+      running = true;
+      raf = requestAnimationFrame(drawFrame);
+    };
 
     const onResize = () => {
       w = Math.max(1, visible.offsetWidth);
       h = Math.max(1, visible.offsetHeight);
-      visible.width = Math.floor(w * dpr);
-      visible.height = Math.floor(h * dpr);
-      offscreen.width = Math.floor(w * dpr);
-      offscreen.height = Math.floor(h * dpr);
-      ctxB.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctxA.setTransform(dpr, 0, 0, dpr, 0, 0);
-      rebuild();
-      draw();
+      setCanvasResolution();
+      drawStaticBackground();
+      rebuildRays();
+      drawFrame(performance.now());
     };
+
     const onVisibilityChange = () => {
-      if (reducedMotion) return;
       if (document.hidden) {
         cancelAnimationFrame(raf);
+        running = false;
         return;
       }
-      raf = requestAnimationFrame(draw);
+      runIfNeeded();
     };
-    const observer = new ResizeObserver(onResize);
-    observer.observe(visible);
-    if (reducedMotion) {
-      cancelAnimationFrame(raf);
-      draw();
-    } else {
-      document.addEventListener("visibilitychange", onVisibilityChange);
+
+    const heroEl = (visible.closest(".hero-noise") || document.querySelector(".hero-noise")) as Element | null;
+    let heroObserver: IntersectionObserver | null = null;
+    if (heroEl) {
+      heroObserver = new IntersectionObserver(
+        (entries) => {
+          heroVisible = entries[0]?.isIntersecting ?? true;
+          if (heroVisible) runIfNeeded();
+        },
+        { threshold: 0.06 }
+      );
+      heroObserver.observe(heroEl);
     }
+
+    setCanvasResolution();
+    drawStaticBackground();
+    rebuildRays();
+    if (profile.reducedMotion) {
+      drawFrame(performance.now());
+    } else {
+      runIfNeeded();
+    }
+
+    const resizeObserver = new ResizeObserver(onResize);
+    resizeObserver.observe(visible);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
     return () => {
       cancelAnimationFrame(raf);
-      observer.disconnect();
+      heroObserver?.disconnect();
+      resizeObserver.disconnect();
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [useCssFallback]);
