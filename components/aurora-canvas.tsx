@@ -3,26 +3,22 @@
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import { createNoise3D } from "simplex-noise";
 
-const RAY_COUNT = 280;
+const RAY_COUNT = 500;
 const RAY_PROPS = 8;
-const BASE_LEN = 260;
-const RANGE_LEN = 210;
-const BASE_SPEED = 0.008;
-const RANGE_SPEED = 0.04;
-const BASE_WIDTH = 8;
-const RANGE_WIDTH = 18;
-const BASE_TTL = 90;
-const RANGE_TTL = 120;
-const X_OFF = 0.0009;
-const Y_OFF = 0.0007;
-const Z_OFF = 0.0007;
-
-const COLORS = [
-  [208, 171, 101],
-  [199, 163, 96],
-  [186, 149, 87],
-  [172, 137, 79],
-];
+const BASE_LEN = 200;
+const RANGE_LEN = 200;
+const BASE_SPEED = 0.05;
+const RANGE_SPEED = 0.1;
+const BASE_WIDTH = 10;
+const RANGE_WIDTH = 20;
+const BASE_TTL = 50;
+const RANGE_TTL = 100;
+const NOISE_STRENGTH = 100;
+const BASE_HUE = 34;
+const RANGE_HUE = 22;
+const X_OFF = 0.0015;
+const Y_OFF = 0.0015;
+const Z_OFF = 0.0015;
 
 const cssRibbons = [
   { left: "3%", width: "9%", opacity: 0.44, delay: "0s", duration: "18s" },
@@ -36,9 +32,12 @@ const cssRibbons = [
 ];
 
 function shouldUseCssFallback() {
-  if (typeof navigator === "undefined") return false;
-  const ua = navigator.userAgent;
-  return /AppleWebKit/i.test(ua) && !/(Chrome|Chromium|Edg|OPR|Firefox)/i.test(ua);
+  if (typeof window === "undefined" || typeof document === "undefined") return false;
+  const probe = document.createElement("canvas").getContext("2d");
+  if (!probe) return true;
+  const supportsFilter = "filter" in probe;
+  const supportsComposite = typeof probe.globalCompositeOperation === "string";
+  return !supportsFilter || !supportsComposite;
 }
 
 function subscribeToNothing() {
@@ -56,14 +55,21 @@ function getPerformanceProfile() {
     reducedMotion,
     coarsePointer,
     lowEnd,
-    baseScale: lowEnd ? 0.9 : coarsePointer ? 0.96 : 1,
-    dynamicScale: lowEnd ? 0.62 : coarsePointer ? 0.74 : 0.88,
+    baseScale: lowEnd ? 0.86 : coarsePointer ? 0.94 : 1,
+    dynamicScale: lowEnd ? 0.72 : coarsePointer ? 0.84 : 0.96,
     targetFps: reducedMotion ? 0 : lowEnd ? 30 : coarsePointer ? 45 : 60,
-    firstBlur: lowEnd ? 18 : coarsePointer ? 22 : 24,
-    secondBlur: lowEnd ? 34 : coarsePointer ? 40 : 48,
-    secondAlpha: lowEnd ? 0.48 : coarsePointer ? 0.54 : 0.58,
-    rayQuality: lowEnd ? 0.78 : coarsePointer ? 0.9 : 1,
+    mainBlur: lowEnd ? 9 : coarsePointer ? 10 : 12,
+    bloomBlur: lowEnd ? 16 : coarsePointer ? 18 : 20,
+    bloomAlpha: lowEnd ? 0.24 : coarsePointer ? 0.28 : 0.34,
+    rayQuality: lowEnd ? 0.62 : coarsePointer ? 0.8 : 1,
+    speedQuality: lowEnd ? 0.82 : coarsePointer ? 0.9 : 1,
+    alphaQuality: lowEnd ? 0.8 : coarsePointer ? 0.9 : 1,
   };
+}
+
+function fadeInOut(t: number, m: number) {
+  const hm = 0.5 * m;
+  return Math.abs(((t + hm) % m) - hm) / hm;
 }
 
 function CssAurora() {
@@ -179,14 +185,13 @@ export default function AuroraCanvas() {
 
     const initRay = (i: number) => {
       const x = rand(w);
-      const mid = h * 0.52;
       const len = BASE_LEN + rand(RANGE_LEN);
-      const y1 = mid + 60 + rand(42);
-      const y2 = y1 - len - rand(90);
-      const n = noise3D(x * X_OFF, y1 * Y_OFF, tick * Z_OFF) * 72;
-      const speed = BASE_SPEED + rand(RANGE_SPEED) * (Math.round(rand(1)) ? 1 : -1);
-      const colorIdx = Math.floor(rand(COLORS.length));
-      props.set([x, y1 + n, y2 + n, 0, BASE_TTL + rand(RANGE_TTL), BASE_WIDTH + rand(RANGE_WIDTH), speed, colorIdx], i);
+      const yBase = h * 0.5 + NOISE_STRENGTH;
+      const y2Base = yBase - len;
+      const n = noise3D(x * X_OFF, yBase * Y_OFF, tick * Z_OFF) * NOISE_STRENGTH;
+      const speed = (BASE_SPEED + rand(RANGE_SPEED)) * profile.speedQuality * (Math.round(rand(1)) ? 1 : -1);
+      const hue = BASE_HUE + rand(RANGE_HUE);
+      props.set([x, yBase + n, y2Base + n, 0, BASE_TTL + rand(RANGE_TTL), BASE_WIDTH + rand(RANGE_WIDTH), speed, hue], i);
     };
 
     const rebuildRays = () => {
@@ -203,14 +208,13 @@ export default function AuroraCanvas() {
       const life = props[i + 3];
       const ttl = props[i + 4];
       const width = props[i + 5];
-      const colorIdx = props[i + 7];
-      const [r, g, b] = COLORS[colorIdx] ?? COLORS[0];
-      const a = Math.sin((life / ttl) * Math.PI);
+      const hue = props[i + 7];
+      const a = fadeInOut(life, ttl) * 0.56 * profile.alphaQuality;
 
       const gradient = ctxA.createLinearGradient(x, y1, x, y2);
-      gradient.addColorStop(0, `rgba(${r},${g},${b},0)`);
-      gradient.addColorStop(0.5, `rgba(${r},${g},${b},${a * 0.42})`);
-      gradient.addColorStop(1, `rgba(${r},${g},${b},0)`);
+      gradient.addColorStop(0, `hsla(${hue}, 100%, 66%, 0)`);
+      gradient.addColorStop(0.5, `hsla(${hue}, 100%, 66%, ${a})`);
+      gradient.addColorStop(1, `hsla(${hue}, 100%, 66%, 0)`);
 
       ctxA.beginPath();
       ctxA.strokeStyle = gradient;
@@ -245,22 +249,24 @@ export default function AuroraCanvas() {
 
       tick++;
       ctxA.clearRect(0, 0, w, h);
+      ctxA.globalCompositeOperation = "lighter";
       for (let i = 0; i < total; i += RAY_PROPS) {
         updateRay(i);
       }
+      ctxA.globalCompositeOperation = "source-over";
 
       ctxB.clearRect(0, 0, w, h);
       ctxB.drawImage(staticLayer, 0, 0, w, h);
 
       ctxB.save();
-      ctxB.filter = `blur(${profile.firstBlur}px)`;
-      ctxB.globalCompositeOperation = "screen";
+      ctxB.filter = `blur(${profile.mainBlur}px)`;
+      ctxB.globalCompositeOperation = "lighter";
       ctxB.drawImage(raysLayer, 0, 0, w, h);
       ctxB.restore();
 
       ctxB.save();
-      ctxB.globalAlpha = profile.secondAlpha;
-      ctxB.filter = `blur(${profile.secondBlur}px)`;
+      ctxB.globalAlpha = profile.bloomAlpha;
+      ctxB.filter = `blur(${profile.bloomBlur}px)`;
       ctxB.globalCompositeOperation = "screen";
       ctxB.drawImage(raysLayer, 0, 0, w, h);
       ctxB.restore();
