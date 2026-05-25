@@ -185,7 +185,7 @@ export default function BgCanvas() {
     };
 
     const drawFrame = (ts: number) => {
-      if (!heroVisible || document.hidden) {
+      if (document.hidden) {
         running = false;
         return;
       }
@@ -201,7 +201,7 @@ export default function BgCanvas() {
       const glowActive = drawDynamicGlow();
       const hasRipple = drawRipples(ts);
 
-      if ((profile.reducedMotion || profile.coarsePointer) && !hasRipple && !glowActive) {
+      if (!glowActive && !hasRipple) {
         running = false;
         return;
       }
@@ -211,7 +211,7 @@ export default function BgCanvas() {
     };
 
     const runIfNeeded = () => {
-      if (running || document.hidden || !heroVisible) return;
+      if (running || document.hidden) return;
       running = true;
       raf = requestAnimationFrame(drawFrame);
     };
@@ -256,12 +256,7 @@ export default function BgCanvas() {
       heroObserver = new IntersectionObserver(
         (entries) => {
           heroVisible = entries[0]?.isIntersecting ?? true;
-          if (heroVisible) {
-            runIfNeeded();
-          } else {
-            ctx.clearRect(0, 0, w, h);
-            ctx.drawImage(staticLayer, 0, 0, w, h);
-          }
+          if (heroVisible) runIfNeeded();
         },
         { threshold: 0.06 }
       );
