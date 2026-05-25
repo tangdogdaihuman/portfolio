@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { createNoise3D } from "simplex-noise";
 
 const RAY_COUNT = 280;
@@ -41,6 +41,10 @@ function shouldUseCssFallback() {
   return /AppleWebKit/i.test(ua) && !/(Chrome|Chromium|Edg|OPR|Firefox)/i.test(ua);
 }
 
+function subscribeToNothing() {
+  return () => {};
+}
+
 function CssAurora() {
   return (
     <div className="aurora-shell absolute inset-0 w-full h-full pointer-events-none" aria-hidden="true">
@@ -66,11 +70,7 @@ function CssAurora() {
 
 export default function AuroraCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [useCssFallback, setUseCssFallback] = useState(false);
-
-  useEffect(() => {
-    setUseCssFallback(shouldUseCssFallback());
-  }, []);
+  const useCssFallback = useSyncExternalStore(subscribeToNothing, shouldUseCssFallback, () => false);
 
   useEffect(() => {
     if (useCssFallback) return;
