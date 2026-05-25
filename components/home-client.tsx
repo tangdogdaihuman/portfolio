@@ -128,15 +128,29 @@ export default function HomeClient({
     const cursor = cursorRef.current, ring = ringRef.current;
     if (!cursor || !ring) return;
     let mx = 0, my = 0, rx = 0, ry = 0;
+    let hasRingPosition = false;
+    const syncRing = (x: number, y: number) => {
+      rx = x; ry = y;
+      ring.style.left = rx + "px";
+      ring.style.top = ry + "px";
+    };
     const onMove = (e: MouseEvent) => {
       mx = e.clientX; my = e.clientY;
       cursor.style.left = mx + "px";
       cursor.style.top = my + "px";
+      if (!hasRingPosition || Math.hypot(mx - rx, my - ry) > 180) {
+        hasRingPosition = true;
+        syncRing(mx, my);
+      }
       const hovering = (e.target as HTMLElement).closest(".work-card, a, button, [data-hover]");
       if (hovering) { cursor.classList.add("hover"); ring.classList.add("hover"); }
       else { cursor.classList.remove("hover"); ring.classList.remove("hover"); }
     };
     const animate = () => {
+      if (!hasRingPosition) {
+        raf = requestAnimationFrame(animate);
+        return;
+      }
       rx += (mx - rx) * 0.15;
       ry += (my - ry) * 0.15;
       ring.style.left = rx + "px";
