@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence, useScroll, useTransform, type MotionValue } from "framer-motion";
-import type { Work } from "@/lib/types";
+import type { Section, Work } from "@/lib/types";
 import BgCanvas from "@/components/particle-bg";
 import AuroraCanvas from "@/components/aurora-canvas";
 
@@ -12,7 +12,35 @@ const spring = { type: "spring" as const, damping: 28, stiffness: 200, mass: 0.8
 const springSlow = { type: "spring" as const, damping: 32, stiffness: 160, mass: 1 };
 const DEFAULT_TAGLINE = "Hard Surface / Stylized Character / Game Art";
 
-interface Section { id: string; title: string; content: string; }
+function IntroLine({
+  line,
+  index,
+  scrollYProgress,
+}: {
+  line: string;
+  index: number;
+  scrollYProgress: MotionValue<number>;
+}) {
+  const exitStart = 0.4 + index * 0.04;
+  const exitEnd = exitStart + 0.12;
+  const opacity = useTransform(scrollYProgress, [0, exitStart, exitEnd], [1, 1, 0]);
+  const blur = useTransform(scrollYProgress, [0, exitStart, exitEnd], [0, 0, 8]);
+  const scale = useTransform(scrollYProgress, [0, exitStart, exitEnd], [1, 1, 0.9]);
+  const filter = useTransform(blur, (value: number) => `blur(${value}px)`);
+
+  return (
+    <motion.div style={{ opacity, scale, filter }}>
+      <motion.p
+        initial={{ opacity: 0, y: 18, filter: "blur(8px)" }}
+        animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+        transition={{ duration: 0.7, delay: index * 0.08, ease: [0.2, 0.9, 0.3, 1] }}
+        className="text-[clamp(0.95rem,2vw,1.12rem)] text-text-muted leading-[1.85] mb-3.5"
+      >
+        {line}
+      </motion.p>
+    </motion.div>
+  );
+}
 
 export default function HomeClient({
   initialIntro,
@@ -215,20 +243,7 @@ export default function HomeClient({
   const portfolioFilter = useTransform(portfolioBlur, (v: number) => `blur(${v}px)`);
   const portfolioScale = useTransform(scrollYProgress, [0, 0.45], [1, 0.88]);
 
-  const MAX_INTRO = 10;
-  const exitOps: MotionValue<number>[] = [];
-  const exitScales: MotionValue<number>[] = [];
-  const exitFilters: MotionValue<string>[] = [];
-  /* eslint-disable react-hooks/rules-of-hooks */
-  for (let i = 0; i < MAX_INTRO; i++) {
-    const exitStart = 0.4 + i * 0.04;
-    const exitEnd = exitStart + 0.12;
-    exitOps.push(useTransform(scrollYProgress, [0, exitStart, exitEnd], [1, 1, 0]));
-    const b = useTransform(scrollYProgress, [0, exitStart, exitEnd], [0, 0, 8]);
-    exitScales.push(useTransform(scrollYProgress, [0, exitStart, exitEnd], [1, 1, 0.9]));
-    exitFilters.push(useTransform(b, (v: number) => `blur(${v}px)`));
-  }
-  /* eslint-enable react-hooks/rules-of-hooks */
+  const introRows = intro.split("\n");
 
   // Marquee items: repeat tags 6x to ensure infinite scroll
   const marqueeItems = tags.length > 0 ? tags : ["Digital Art", "Character Design", "3D", "Illustration"];
@@ -327,27 +342,12 @@ export default function HomeClient({
             {intro && (
                <div className="mt-6 max-w-[46rem] mx-auto text-center px-3">
                 {(() => {
-                  let idx = 0;
-                  return intro.split("\n").map((line, i) => {
-                    if (!line.trim()) return <br key={i} />;
-                    const delay = idx * 0.08;
-                    const exitIdx = Math.min(idx, MAX_INTRO - 1);
-                    idx++;
-                    return (
-                      <motion.div
-                        key={i}
-                        style={{ opacity: exitOps[exitIdx], scale: exitScales[exitIdx], filter: exitFilters[exitIdx] }}
-                      >
-                        <motion.p
-                          initial={{ opacity: 0, y: 18, filter: "blur(8px)" }}
-                          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                          transition={{ duration: 0.7, delay, ease: [0.2, 0.9, 0.3, 1] }}
-                          className="text-[clamp(0.95rem,2vw,1.12rem)] text-text-muted leading-[1.85] mb-3.5"
-                        >
-                          {line.trim()}
-                        </motion.p>
-                      </motion.div>
-                    );
+                  let visibleIndex = 0;
+                  return introRows.map((line, rowIndex) => {
+                    if (!line.trim()) return <div key={`intro-space-${rowIndex}`} className="h-3.5" aria-hidden="true" />;
+                    const currentIndex = Math.min(visibleIndex, 9);
+                    visibleIndex += 1;
+                    return <IntroLine key={`${rowIndex}-${line}`} line={line.trim()} index={currentIndex} scrollYProgress={scrollYProgress} />;
                   });
                 })()}
               </div>

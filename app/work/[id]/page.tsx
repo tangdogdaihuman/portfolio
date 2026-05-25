@@ -2,10 +2,11 @@ import { unstable_cache } from "next/cache";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import db, { tagsToArray } from "@/lib/db";
+import db from "@/lib/db";
 import type { Work, WorkImage } from "@/lib/types";
 import WorkDetailGallery from "@/components/work-detail-gallery";
 import BackToTopButton from "@/components/back-to-top-button";
+import { rowToWork, rowToWorkImage } from "@/lib/work-mappers";
 
 export const revalidate = 30;
 
@@ -17,13 +18,7 @@ async function getWork(id: string): Promise<{ work: Work; images: WorkImage[] } 
     });
 
     if (result.rows.length === 0) return null;
-    const row = result.rows[0];
-    const work = {
-      ...row,
-      tags: tagsToArray(row.tags),
-      software: tagsToArray(row.software),
-      pinned: Boolean(row.pinned),
-    } as unknown as Work;
+    const work = rowToWork(result.rows[0] as Record<string, unknown>);
 
     const imageResult = await db.execute({
       sql: "SELECT * FROM work_images WHERE work_id = ? ORDER BY sort_order ASC, created_at ASC",
@@ -31,7 +26,7 @@ async function getWork(id: string): Promise<{ work: Work; images: WorkImage[] } 
     });
 
     const images = imageResult.rows.length > 0
-      ? imageResult.rows as unknown as WorkImage[]
+      ? imageResult.rows.map((row) => rowToWorkImage(row as Record<string, unknown>))
       : [{
           id: "",
           work_id: id,

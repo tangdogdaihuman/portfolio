@@ -40,7 +40,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="zh-CN" className={`${bodoni.variable} ${zcoolXiaoWei.variable} ${inter.variable} dark`}>
+    <html lang="zh-CN" data-scroll-behavior="smooth" className={`${bodoni.variable} ${zcoolXiaoWei.variable} ${inter.variable} dark`}>
       <body className="min-h-screen bg-bg text-text antialiased">{children}</body>
     </html>
   );

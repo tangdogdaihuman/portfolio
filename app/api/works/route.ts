@@ -2,13 +2,14 @@ import { NextRequest } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { createId } from "@paralleldrive/cuid2";
 import { z } from "zod";
-import db, { tagsToArray, tagsToString } from "@/lib/db";
+import db, { tagsToString } from "@/lib/db";
 import { requireSameOrigin } from "@/lib/api-security";
 import { requireAuth } from "@/lib/auth";
 import { reportApiError, reportMetric } from "@/lib/monitoring";
 import { writeAuditLog } from "@/lib/audit-log";
 import { fail, ok } from "@/lib/api-response";
 import { processR2DeleteJobs } from "@/lib/r2-delete-jobs";
+import { rowToWork } from "@/lib/work-mappers";
 
 const workSchema = z.object({
   title: z.string().min(1),
@@ -30,13 +31,7 @@ export async function GET() {
      COALESCE((SELECT SUM(image_size) FROM work_images WHERE work_id = w.id), w.image_size) as total_size
      FROM works w ORDER BY w.pinned DESC, w.sort_order DESC, w.created_at DESC`
   );
-  const works = result.rows.map((row) => ({
-    ...row,
-    tags: tagsToArray(row.tags),
-    software: tagsToArray(row.software),
-    pinned: Boolean(row.pinned),
-    image_count: (row.image_count as number) ?? 0,
-  }));
+  const works = result.rows.map((row) => rowToWork(row as Record<string, unknown>));
   return ok(works);
 }
 

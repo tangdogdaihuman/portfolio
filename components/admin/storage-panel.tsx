@@ -10,7 +10,7 @@ function formatSize(bytes: number): string {
 }
 
 export default function StoragePanel({ works }: { works: Work[] }) {
-  const getSize = (w: Work) => ((w as unknown as Record<string, unknown>).total_size as number) || w.image_size || 0;
+  const getSize = (work: Work) => work.total_size || work.image_size || 0;
   const totalBytes = works.reduce((sum, w) => sum + getSize(w), 0);
   const maxGB = 10;
   const usedGB = totalBytes / (1024 * 1024 * 1024);
@@ -65,11 +65,10 @@ export default function StoragePanel({ works }: { works: Work[] }) {
               </div>
             );
           })}
-        {works.every((w) => !w.image_size) && (
+        {works.every((work) => getSize(work) === 0) && (
           <p className="text-text-muted text-sm">暂无数据，上传作品后显示</p>
         )}
       </div>
     </div>
   );
 }
-

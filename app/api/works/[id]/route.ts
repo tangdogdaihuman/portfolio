@@ -1,13 +1,14 @@
 import { NextRequest } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
-import db, { tagsToArray, tagsToString } from "@/lib/db";
+import db, { tagsToString } from "@/lib/db";
 import { requireSameOrigin } from "@/lib/api-security";
 import { requireAuth } from "@/lib/auth";
 import { reportApiError, reportMetric } from "@/lib/monitoring";
 import { writeAuditLog } from "@/lib/audit-log";
 import { fail, ok } from "@/lib/api-response";
 import { enqueueR2Delete, processR2DeleteJobs } from "@/lib/r2-delete-jobs";
+import { rowToWork } from "@/lib/work-mappers";
 
 const updateSchema = z.object({
   title: z.string().min(1).optional(),
@@ -37,13 +38,7 @@ export async function GET(
     return fail("NOT_FOUND", "Work not found", 404);
   }
 
-  const row = result.rows[0];
-  const work = {
-    ...row,
-    tags: tagsToArray(row.tags),
-    software: tagsToArray(row.software),
-    pinned: Boolean(row.pinned),
-  };
+  const work = rowToWork(result.rows[0] as Record<string, unknown>);
   return ok(work);
 }
 

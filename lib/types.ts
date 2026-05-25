@@ -12,7 +12,9 @@ export interface Work {
   sort_order: number;
   size_weight: number;
   created_at: string;
+  updated_at: string;
   image_count?: number;
+  total_size?: number;
 }
 
 export interface WorkImage {

@@ -13,6 +13,14 @@ interface Ripple {
   birth: number;
 }
 
+function getViewportSize() {
+  const viewport = window.visualViewport;
+  return {
+    width: viewport ? Math.round(viewport.width) : window.innerWidth,
+    height: viewport ? Math.round(viewport.height) : window.innerHeight,
+  };
+}
+
 function getPerformanceProfile() {
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const finePointer = window.matchMedia("(pointer: fine)").matches;
@@ -42,8 +50,7 @@ export default function BgCanvas() {
     const staticCtx = staticLayer.getContext("2d");
     if (!staticCtx) return;
 
-    let w = window.innerWidth;
-    let h = window.innerHeight;
+    let { width: w, height: h } = getViewportSize();
     let ratio = 1;
 
     const mouse = { x: w / 2, y: h * 0.54 };
@@ -64,6 +71,8 @@ export default function BgCanvas() {
 
       canvas.width = pw;
       canvas.height = ph;
+      canvas.style.width = `${w}px`;
+      canvas.style.height = `${h}px`;
       staticLayer.width = pw;
       staticLayer.height = ph;
 
@@ -218,8 +227,7 @@ export default function BgCanvas() {
     };
 
     const onResize = () => {
-      w = window.innerWidth;
-      h = window.innerHeight;
+      ({ width: w, height: h } = getViewportSize());
       setCanvasResolution();
       drawStaticLayer();
       drawFrame(performance.now());
@@ -258,8 +266,10 @@ export default function BgCanvas() {
     if (profile.finePointer) {
       window.addEventListener("mousemove", onMove, { passive: true });
     }
+    const viewport = window.visualViewport;
     window.addEventListener("touchstart", onTouchStart, { passive: true });
     window.addEventListener("resize", onResize);
+    viewport?.addEventListener("resize", onResize);
     document.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
@@ -268,6 +278,7 @@ export default function BgCanvas() {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("touchstart", onTouchStart);
       window.removeEventListener("resize", onResize);
+      viewport?.removeEventListener("resize", onResize);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, []);

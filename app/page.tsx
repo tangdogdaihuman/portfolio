@@ -1,7 +1,8 @@
 import { unstable_cache } from "next/cache";
-import type { Work, Section } from "@/lib/types";
-import db, { tagsToArray } from "@/lib/db";
+import type { Section } from "@/lib/types";
+import db from "@/lib/db";
 import HomeClient from "@/components/home-client";
+import { rowToWork } from "@/lib/work-mappers";
 
 export const revalidate = 30;
 
@@ -16,13 +17,7 @@ const getData = unstable_cache(async () => {
       db.execute("SELECT id, title, content, sort_order, updated_at FROM detail_sections ORDER BY sort_order ASC, created_at ASC"),
     ]);
 
-    const works = worksRes.rows.map((row) => ({
-      ...row,
-      tags: tagsToArray(row.tags),
-      software: tagsToArray(row.software),
-      pinned: Boolean(row.pinned),
-      image_count: (row.image_count as number) ?? 0,
-    })) as unknown as Work[];
+    const works = worksRes.rows.map((row) => rowToWork(row as Record<string, unknown>));
 
     return {
       intro: (introRes.rows[0]?.content as string) || "",
