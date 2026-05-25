@@ -270,8 +270,9 @@ body.home-vignette::after {
 
 .hero-contrast-scrim {
   background:
-    radial-gradient(ellipse at 50% 38%, rgba(10, 9, 8, 0.66) 0%, rgba(10, 9, 8, 0.5) 42%, rgba(10, 9, 8, 0.16) 74%, rgba(10, 9, 8, 0) 100%),
-    linear-gradient(to bottom, rgba(10, 9, 8, 0.4) 0%, rgba(10, 9, 8, 0.14) 52%, rgba(10, 9, 8, 0) 100%);
+    radial-gradient(ellipse 74% 54% at 50% 38%, rgba(10, 9, 8, 0.62) 0%, rgba(10, 9, 8, 0.48) 22%, rgba(10, 9, 8, 0.3) 44%, rgba(10, 9, 8, 0.16) 64%, rgba(10, 9, 8, 0.06) 82%, rgba(10, 9, 8, 0) 100%),
+    radial-gradient(ellipse 96% 72% at 50% 44%, rgba(10, 9, 8, 0.16) 0%, rgba(10, 9, 8, 0.08) 38%, rgba(10, 9, 8, 0.03) 62%, rgba(10, 9, 8, 0) 100%),
+    linear-gradient(to bottom, rgba(10, 9, 8, 0.34) 0%, rgba(10, 9, 8, 0.14) 46%, rgba(10, 9, 8, 0.04) 72%, rgba(10, 9, 8, 0) 100%);
 }
 
 .hero-title-shadow {
@@ -321,7 +322,8 @@ body.home-vignette::after {
 @media (max-width: 768px) {
   .hero-contrast-scrim {
     background:
-      radial-gradient(ellipse at 50% 36%, rgba(10, 9, 8, 0.78) 0%, rgba(10, 9, 8, 0.6) 42%, rgba(10, 9, 8, 0.24) 76%, rgba(10, 9, 8, 0) 100%),
-      linear-gradient(to bottom, rgba(10, 9, 8, 0.52) 0%, rgba(10, 9, 8, 0.18) 52%, rgba(10, 9, 8, 0) 100%);
+      radial-gradient(ellipse 92% 58% at 50% 36%, rgba(10, 9, 8, 0.72) 0%, rgba(10, 9, 8, 0.58) 24%, rgba(10, 9, 8, 0.38) 46%, rgba(10, 9, 8, 0.22) 66%, rgba(10, 9, 8, 0.08) 84%, rgba(10, 9, 8, 0) 100%),
+      radial-gradient(ellipse 118% 82% at 50% 44%, rgba(10, 9, 8, 0.18) 0%, rgba(10, 9, 8, 0.1) 40%, rgba(10, 9, 8, 0.04) 66%, rgba(10, 9, 8, 0) 100%),
+      linear-gradient(to bottom, rgba(10, 9, 8, 0.44) 0%, rgba(10, 9, 8, 0.18) 48%, rgba(10, 9, 8, 0.05) 74%, rgba(10, 9, 8, 0) 100%);
   }
 }
