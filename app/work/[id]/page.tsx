@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import db, { tagsToArray } from "@/lib/db";
 import type { Work, WorkImage } from "@/lib/types";
 import WorkDetailGallery from "@/components/work-detail-gallery";
+import BackToTopButton from "@/components/back-to-top-button";
 
 export const revalidate = 30;
 
@@ -125,6 +126,7 @@ export default async function WorkDetailPage(
           </section>
         )}
       </section>
+      <BackToTopButton />
     </main>
   );
 }
