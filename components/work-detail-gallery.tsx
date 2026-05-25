@@ -2,12 +2,15 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, type PanInfo } from "framer-motion";
 
 interface GalleryImage {
   id: string;
   image_url: string;
 }
+
+const SWIPE_OFFSET_THRESHOLD = 68;
+const SWIPE_VELOCITY_THRESHOLD = 520;
 
 export default function WorkDetailGallery({
   workTitle,
@@ -22,7 +25,6 @@ export default function WorkDetailGallery({
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [readyMap, setReadyMap] = useState<Record<string, true>>({});
   const dragRef = useRef<{ sx: number; sy: number; px: number; py: number } | null>(null);
-  const swipeRef = useRef<{ x: number; y: number } | null>(null);
   const touchPanRef = useRef<{ x: number; y: number } | null>(null);
   const pinchRef = useRef<{
     distance: number;
@@ -74,6 +76,21 @@ export default function WorkDetailGallery({
     });
     resetView();
   }, [resetView]);
+
+  const handleSwipeByDrag = useCallback((info: PanInfo) => {
+    if (zoom > 1) return;
+    const offsetX = info.offset.x;
+    const velocityX = info.velocity.x;
+    const hitOffset = Math.abs(offsetX) >= SWIPE_OFFSET_THRESHOLD;
+    const hitVelocity = Math.abs(velocityX) >= SWIPE_VELOCITY_THRESHOLD;
+    if (!hitOffset && !hitVelocity) return;
+
+    if (offsetX < 0 || velocityX < -SWIPE_VELOCITY_THRESHOLD) {
+      goNext();
+      return;
+    }
+    goPrev();
+  }, [goNext, goPrev, zoom]);
 
   const closeViewer = useCallback(() => {
     const restoreIndex = lastOpenIndexRef.current;
@@ -201,7 +218,12 @@ export default function WorkDetailGallery({
               initial={{ x: slideDirection === 0 ? 0 : slideDirection * 86 }}
               animate={{ x: 0 }}
               exit={{ x: slideDirection === 0 ? 0 : slideDirection * -86 }}
-              transition={{ duration: 0.2, ease: "easeOut" }}
+              transition={{ type: "spring", stiffness: 320, damping: 32, mass: 0.7 }}
+              drag={zoom > 1 ? false : "x"}
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={0.14}
+              dragMomentum
+              onDragEnd={(_, info) => handleSwipeByDrag(info)}
               className="max-w-[97vw] max-h-[97vh] flex items-center justify-center"
               onClick={(event) => event.stopPropagation()}
             >
@@ -264,12 +286,14 @@ export default function WorkDetailGallery({
                       startPanX: pan.x,
                       startPanY: pan.y,
                     };
-                    swipeRef.current = null;
+                    touchPanRef.current = null;
+                    return;
+                  }
+                  if (event.touches.length !== 1 || zoom <= 1) {
                     touchPanRef.current = null;
                     return;
                   }
                   const touch = event.touches[0];
-                  swipeRef.current = { x: touch.clientX, y: touch.clientY };
                   touchPanRef.current = { x: touch.clientX, y: touch.clientY };
                 }}
                 onTouchMove={(event) => {
@@ -302,20 +326,9 @@ export default function WorkDetailGallery({
                     if (zoom > 1) return;
                     setPan({ x: 0, y: 0 });
                   }
-
-                  touchPanRef.current = null;
-                  if (!swipeRef.current || zoom > 1) {
-                    swipeRef.current = null;
-                    return;
+                  if (event.touches.length === 0) {
+                    touchPanRef.current = null;
                   }
-                  const touch = event.changedTouches[0];
-                  const dx = touch.clientX - swipeRef.current.x;
-                  const dy = touch.clientY - swipeRef.current.y;
-                  swipeRef.current = null;
-                  if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy)) return;
-                  event.stopPropagation();
-                  if (dx < 0 && openIndex !== null && openIndex < images.length - 1) goNext();
-                  if (dx > 0 && openIndex !== null && openIndex > 0) goPrev();
                 }}
                 onClick={(event) => event.stopPropagation()}
               />

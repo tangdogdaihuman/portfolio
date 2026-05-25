@@ -36,6 +36,9 @@ const cssRibbons = [
 ];
 
 function shouldUseCssFallback() {
+  if (typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches) {
+    return true;
+  }
   if (typeof navigator === "undefined") return false;
   const ua = navigator.userAgent;
   return /AppleWebKit/i.test(ua) && !/(Chrome|Chromium|Edg|OPR|Firefox)/i.test(ua);
