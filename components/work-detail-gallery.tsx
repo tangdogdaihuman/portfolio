@@ -71,21 +71,27 @@ export default function WorkDetailGallery({
     b: { clientX: number; clientY: number }
   ) => ({ x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 });
 
-  const goNext = useCallback(() => {
+  const goNext = useCallback(async () => {
+    if (viewerWidth > 0 && nextImage) {
+      await animate(trackX, trackBaseX - viewerWidth, SWIPE_SPRING);
+    }
     setOpenIndex((index) => {
       if (index === null || index >= images.length - 1) return index;
       return index + 1;
     });
     resetView();
-  }, [images.length, resetView]);
+  }, [images.length, nextImage, resetView, trackBaseX, trackX, viewerWidth]);
 
-  const goPrev = useCallback(() => {
+  const goPrev = useCallback(async () => {
+    if (viewerWidth > 0 && prevImage) {
+      await animate(trackX, trackBaseX + viewerWidth, SWIPE_SPRING);
+    }
     setOpenIndex((index) => {
       if (index === null || index <= 0) return index;
       return index - 1;
     });
     resetView();
-  }, [resetView]);
+  }, [prevImage, resetView, trackBaseX, trackX, viewerWidth]);
 
   const handleSwipeByDrag = useCallback(async (info: PanInfo) => {
     if (zoom > 1 || viewerWidth === 0) return;
