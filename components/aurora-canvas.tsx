@@ -34,7 +34,6 @@ const cssRibbons = [
 
 function shouldUseCssFallback() {
   if (typeof window === "undefined" || typeof document === "undefined") return false;
-  if (window.matchMedia("(pointer: coarse)").matches) return true;
   const probe = document.createElement("canvas").getContext("2d");
   if (!probe) return true;
   const supportsFilter = "filter" in probe;
