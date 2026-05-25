@@ -370,7 +370,7 @@ export default function HomeClient({
                 CG Artist Portfolio
               </motion.p>
               <h1 className="font-display leading-[1.02] text-text hero-title-shadow">
-                <span className="block overflow-hidden pb-[0.06em]">
+                <span className="block overflow-hidden px-[6px] pt-[4px] pb-[0.06em]">
                   <motion.span
                     initial={{ y: "110%" }}
                     animate={{ y: 0 }}
@@ -380,7 +380,7 @@ export default function HomeClient({
                     唐子航
                   </motion.span>
                 </span>
-                <span className="block overflow-hidden mt-1.5 pb-[0.14em]">
+                <span className="block overflow-hidden px-[6px] pt-[4px] mt-1.5 pb-[0.14em]">
                   <motion.span
                     initial={{ y: "110%" }}
                     animate={{ y: 0 }}
