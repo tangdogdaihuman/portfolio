@@ -34,7 +34,7 @@ export const BASE_SCHEMA_SQL = `
     tagline TEXT NOT NULL DEFAULT '',
     updated_at TEXT DEFAULT (datetime('now'))
   );
-  INSERT OR IGNORE INTO intro (id, content, tagline) VALUES (1, '', '');
+  INSERT OR IGNORE INTO intro (id, content) VALUES (1, '');
 
   CREATE TABLE IF NOT EXISTS details (
     id INTEGER PRIMARY KEY DEFAULT 1 CHECK(id=1),
