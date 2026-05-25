@@ -34,7 +34,7 @@ function getPerformanceProfile() {
 
   const lowEnd = coarsePointer && (cores <= 4 || memory <= 4);
   const renderScale = lowEnd ? 0.78 : coarsePointer ? 0.9 : 1;
-  const targetFps = reducedMotion ? 0 : lowEnd ? 30 : coarsePointer ? 45 : 60;
+  const targetFps = reducedMotion ? 0 : lowEnd ? 30 : coarsePointer ? 60 : 60;
 
   return { reducedMotion, finePointer, coarsePointer, lowEnd, renderScale, targetFps };
 }
@@ -275,8 +275,8 @@ export default function BgCanvas() {
       window.addEventListener("mousemove", onMove, { passive: true });
     }
     const viewport = window.visualViewport;
-    if (profile.coarsePointer && heroEl) {
-      heroEl.addEventListener("pointerdown", onPointerDown, { passive: true });
+    if (profile.coarsePointer) {
+      window.addEventListener("pointerdown", onPointerDown, { passive: true });
     }
     window.addEventListener("resize", onResize);
     viewport?.addEventListener("resize", onResize);
@@ -286,7 +286,7 @@ export default function BgCanvas() {
       cancelAnimationFrame(raf);
       heroObserver?.disconnect();
       window.removeEventListener("mousemove", onMove);
-      heroEl?.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("pointerdown", onPointerDown);
       window.removeEventListener("resize", onResize);
       viewport?.removeEventListener("resize", onResize);
       document.removeEventListener("visibilitychange", onVisibilityChange);
