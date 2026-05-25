@@ -129,10 +129,19 @@ export default function HomeClient({
     if (!cursor || !ring) return;
     let mx = 0, my = 0, rx = 0, ry = 0;
     let hasRingPosition = false;
+    const setCursorVisibility = (visible: boolean) => {
+      const opacity = visible ? "1" : "0";
+      cursor.style.opacity = opacity;
+      ring.style.opacity = opacity;
+    };
     const syncRing = (x: number, y: number) => {
       rx = x; ry = y;
       ring.style.left = rx + "px";
       ring.style.top = ry + "px";
+    };
+    const onScroll = () => {
+      if (!hasRingPosition) return;
+      setCursorVisibility(false);
     };
     const onMove = (e: MouseEvent) => {
       mx = e.clientX; my = e.clientY;
@@ -142,10 +151,12 @@ export default function HomeClient({
         hasRingPosition = true;
         syncRing(mx, my);
       }
+      setCursorVisibility(true);
       const hovering = (e.target as HTMLElement).closest(".work-card, a, button, [data-hover]");
       if (hovering) { cursor.classList.add("hover"); ring.classList.add("hover"); }
       else { cursor.classList.remove("hover"); ring.classList.remove("hover"); }
     };
+    setCursorVisibility(false);
     const animate = () => {
       if (!hasRingPosition) {
         raf = requestAnimationFrame(animate);
@@ -159,7 +170,12 @@ export default function HomeClient({
     };
     let raf = requestAnimationFrame(animate);
     window.addEventListener("mousemove", onMove, { passive: true });
-    return () => { window.removeEventListener("mousemove", onMove); cancelAnimationFrame(raf); };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("scroll", onScroll);
+      cancelAnimationFrame(raf);
+    };
   }, []);
 
   useEffect(() => {

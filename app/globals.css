@@ -183,13 +183,15 @@ body.home-vignette::after {
 .cursor {
   position: fixed; width: 8px; height: 8px; background: var(--color-accent);
   border-radius: 50%; pointer-events: none; z-index: 9999;
-  transform: translate(-50%, -50%); transition: transform 0.15s, width 0.3s, height 0.3s;
+  opacity: 0;
+  transform: translate(-50%, -50%); transition: transform 0.15s, width 0.3s, height 0.3s, opacity 0.16s ease;
   mix-blend-mode: difference;
 }
 .cursor-ring {
   position: fixed; width: 40px; height: 40px; border: 1px solid var(--color-accent);
   border-radius: 50%; pointer-events: none; z-index: 9998;
-  transform: translate(-50%, -50%); transition: transform 0.4s cubic-bezier(.2,.9,.3,1), width 0.3s, height 0.3s, border-color 0.3s;
+  opacity: 0;
+  transform: translate(-50%, -50%); transition: transform 0.4s cubic-bezier(.2,.9,.3,1), width 0.3s, height 0.3s, border-color 0.3s, opacity 0.16s ease;
 }
 .cursor.hover { width: 0; height: 0; }
 .cursor-ring.hover { width: 80px; height: 80px; border-color: var(--color-text); }
@@ -349,9 +351,19 @@ body.home-vignette::after {
   }
 
   .aurora-ribbon {
-    top: -2%;
-    bottom: -14%;
-    filter: blur(42px);
+    top: -4%;
+    bottom: -18%;
+    filter: blur(28px) saturate(1.18) brightness(1.22);
+    mix-blend-mode: screen;
+    background:
+      linear-gradient(
+        to bottom,
+        rgba(205, 177, 114, 0) 0%,
+        rgba(241, 217, 159, 0.88) 18%,
+        rgba(216, 187, 122, 0.62) 42%,
+        rgba(123, 92, 47, 0.24) 72%,
+        rgba(10, 9, 8, 0) 100%
+      );
   }
 
   .hero-contrast-scrim {
