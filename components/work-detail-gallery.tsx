@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion, type PanInfo } from "framer-motion";
+import { motion, type PanInfo } from "framer-motion";
 
 interface GalleryImage {
   id: string;
@@ -20,7 +20,6 @@ export default function WorkDetailGallery({
   images: GalleryImage[];
 }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
-  const [slideDirection, setSlideDirection] = useState<0 | 1 | -1>(0);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [readyMap, setReadyMap] = useState<Record<string, true>>({});
@@ -39,6 +38,8 @@ export default function WorkDetailGallery({
   const lastOpenIndexRef = useRef<number | null>(null);
 
   const activeImage = openIndex !== null ? images[openIndex] : null;
+  const prevImage = openIndex !== null && openIndex > 0 ? images[openIndex - 1] : null;
+  const nextImage = openIndex !== null && openIndex < images.length - 1 ? images[openIndex + 1] : null;
 
   const resetView = useCallback(() => {
     setZoom(1);
@@ -62,7 +63,6 @@ export default function WorkDetailGallery({
   const goNext = useCallback(() => {
     setOpenIndex((index) => {
       if (index === null || index >= images.length - 1) return index;
-      setSlideDirection(1);
       return index + 1;
     });
     resetView();
@@ -71,7 +71,6 @@ export default function WorkDetailGallery({
   const goPrev = useCallback(() => {
     setOpenIndex((index) => {
       if (index === null || index <= 0) return index;
-      setSlideDirection(-1);
       return index - 1;
     });
     resetView();
@@ -105,7 +104,6 @@ export default function WorkDetailGallery({
 
   const openViewer = useCallback((index: number) => {
     lastOpenIndexRef.current = index;
-    setSlideDirection(0);
     setOpenIndex(index);
     resetView();
   }, [resetView]);
@@ -211,22 +209,33 @@ export default function WorkDetailGallery({
             双指缩放/平移 · 单指滑动切图
           </div>
 
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              key={activeImage.id || String(openIndex)}
-              custom={slideDirection}
-              initial={{ x: slideDirection === 0 ? 0 : slideDirection * 86 }}
-              animate={{ x: 0 }}
-              exit={{ x: slideDirection === 0 ? 0 : slideDirection * -86 }}
-              transition={{ type: "spring", stiffness: 320, damping: 32, mass: 0.7 }}
-              drag={zoom > 1 ? false : "x"}
-              dragConstraints={{ left: 0, right: 0 }}
-              dragElastic={0.14}
-              dragMomentum
-              onDragEnd={(_, info) => handleSwipeByDrag(info)}
-              className="max-w-[97vw] max-h-[97vh] flex items-center justify-center"
-              onClick={(event) => event.stopPropagation()}
-            >
+          <motion.div
+            drag={zoom > 1 ? false : "x"}
+            dragConstraints={{ left: nextImage ? -280 : 0, right: prevImage ? 280 : 0 }}
+            dragElastic={0.14}
+            dragMomentum
+            onDragEnd={(_, info) => handleSwipeByDrag(info)}
+            transition={{ type: "spring", stiffness: 320, damping: 32, mass: 0.7 }}
+            className="relative w-[97vw] h-[97vh] overflow-hidden"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {prevImage && (
+              <div className="absolute inset-y-0 -left-full w-full flex items-center justify-center">
+                <Image
+                  src={prevImage.image_url}
+                  alt={workTitle}
+                  width={2400}
+                  height={3000}
+                  unoptimized
+                  sizes="97vw"
+                  draggable={false}
+                  className="max-w-[97vw] max-h-[97vh] object-contain select-none"
+                  style={{ touchAction: "none" }}
+                />
+              </div>
+            )}
+
+            <div className="absolute inset-y-0 left-0 w-full flex items-center justify-center">
               <Image
                 src={activeImage.image_url}
                 alt={workTitle}
@@ -332,8 +341,24 @@ export default function WorkDetailGallery({
                 }}
                 onClick={(event) => event.stopPropagation()}
               />
-            </motion.div>
-          </AnimatePresence>
+            </div>
+
+            {nextImage && (
+              <div className="absolute inset-y-0 left-full w-full flex items-center justify-center">
+                <Image
+                  src={nextImage.image_url}
+                  alt={workTitle}
+                  width={2400}
+                  height={3000}
+                  unoptimized
+                  sizes="97vw"
+                  draggable={false}
+                  className="max-w-[97vw] max-h-[97vh] object-contain select-none"
+                  style={{ touchAction: "none" }}
+                />
+              </div>
+            )}
+          </motion.div>
 
           <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-bg/78 border border-border/55 px-2 py-1.5">
             <button
