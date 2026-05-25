@@ -45,17 +45,15 @@ export default function HomeClient({
       if (!introRes.ok || !sectionsRes.ok || !worksRes.ok) {
         throw new Error("refresh failed");
       }
-      if (introRes.ok) setIntro((await introRes.json()).content || "");
-      if (sectionsRes.ok) {
-        const nextSections = await sectionsRes.json() as Section[];
-        setDetailSections(nextSections);
-        setExpandedSection((current) => {
-          if (nextSections.length === 0) return null;
-          if (!current) return nextSections[0].id;
-          return nextSections.some((section) => section.id === current) ? current : nextSections[0].id;
-        });
-      }
-      if (worksRes.ok) setWorks(await worksRes.json());
+      setIntro((await introRes.json()).content || "");
+      const nextSections = await sectionsRes.json() as Section[];
+      setDetailSections(nextSections);
+      setExpandedSection((current) => {
+        if (nextSections.length === 0) return null;
+        if (!current) return nextSections[0].id;
+        return nextSections.some((section) => section.id === current) ? current : nextSections[0].id;
+      });
+      setWorks(await worksRes.json());
       setLoadError(false);
     } catch {
       setLoadError(true);
