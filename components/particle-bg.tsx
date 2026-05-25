@@ -116,15 +116,12 @@ export default function BgCanvas() {
     };
 
     const drawDynamicGlow = () => {
-      if (profile.coarsePointer) {
-        focus.x = w / 2;
-        focus.y = h * 0.54;
-      } else {
-        focus.x += (target.x - focus.x) * 0.12;
-        focus.y += (target.y - focus.y) * 0.12;
-      }
+      if (profile.coarsePointer) return false;
 
-      const radius = profile.lowEnd ? 250 : profile.coarsePointer ? 280 : 320;
+      focus.x += (target.x - focus.x) * 0.12;
+      focus.y += (target.y - focus.y) * 0.12;
+
+      const radius = profile.lowEnd ? 250 : 320;
       const offset = profile.lowEnd ? 2.8 : 4;
       const channels = [
         { x: focus.x - offset, y: focus.y, rgb: "255, 169, 97" },
@@ -141,7 +138,7 @@ export default function BgCanvas() {
         ctx.fillRect(0, 0, w, h);
       }
 
-      return !profile.coarsePointer && (Math.abs(target.x - focus.x) > 0.6 || Math.abs(target.y - focus.y) > 0.6);
+      return Math.abs(target.x - focus.x) > 0.6 || Math.abs(target.y - focus.y) > 0.6;
     };
 
     const drawRipples = (ts: number) => {
