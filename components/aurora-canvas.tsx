@@ -169,9 +169,11 @@ export default function AuroraCanvas() {
       ctxS.fillStyle = bgGradient;
       ctxS.fillRect(0, 0, w, h);
 
-      const focusGlow = ctxS.createRadialGradient(w * 0.5, h * 0.44, 0, w * 0.5, h * 0.44, Math.max(w * 0.3, 280));
-      focusGlow.addColorStop(0, "rgba(201,169,97,0.09)");
-      focusGlow.addColorStop(0.45, "rgba(201,169,97,0.028)");
+      const focusGlow = ctxS.createRadialGradient(w * 0.5, h * 0.42, 0, w * 0.5, h * 0.42, Math.max(w * 0.58, h * 0.72, 520));
+      focusGlow.addColorStop(0, "rgba(201,169,97,0.04)");
+      focusGlow.addColorStop(0.24, "rgba(201,169,97,0.026)");
+      focusGlow.addColorStop(0.52, "rgba(201,169,97,0.012)");
+      focusGlow.addColorStop(0.78, "rgba(201,169,97,0.004)");
       focusGlow.addColorStop(1, "rgba(201,169,97,0)");
       ctxS.fillStyle = focusGlow;
       ctxS.fillRect(0, 0, w, h);
