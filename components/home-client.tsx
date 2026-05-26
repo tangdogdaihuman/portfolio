@@ -57,6 +57,47 @@ function IntroLine({
   );
 }
 
+function WorkThumbImage({
+  work,
+  priority,
+  ready,
+  onReady,
+}: {
+  work: Work;
+  priority: boolean;
+  ready: boolean;
+  onReady: (id: string) => void;
+}) {
+  const imageRef = useRef<HTMLImageElement>(null);
+
+  useEffect(() => {
+    const image = imageRef.current;
+    if (image?.complete && image.naturalWidth > 0) {
+      onReady(work.id);
+    }
+  }, [onReady, work.id, work.thumb_url]);
+
+  return (
+    <Image
+      ref={imageRef}
+      src={work.thumb_url}
+      alt={work.title}
+      width={1200}
+      height={1600}
+      unoptimized
+      className={`work-thumb ${ready ? "work-thumb-ready" : ""} block mx-auto w-full h-auto max-h-[32rem] object-contain object-center`}
+      sizes="(max-width: 768px) 92vw, (max-width: 1280px) 50vw, 36vw"
+      priority={priority}
+      loading={priority ? "eager" : "lazy"}
+      onLoad={(event) => {
+        if (event.currentTarget.naturalWidth > 0) {
+          onReady(work.id);
+        }
+      }}
+    />
+  );
+}
+
 export default function HomeClient({
   initialIntro,
   initialTagline,
@@ -305,6 +346,9 @@ export default function HomeClient({
     });
     return byDate;
   }, [filtered, sortMode]);
+  const markThumbReady = useCallback((id: string) => {
+    setThumbReady((current) => (current[id] ? current : { ...current, [id]: true }));
+  }, []);
 
   const sortOptions: Array<{ value: "default" | "newest" | "oldest"; label: string }> = [
     { value: "default", label: "精选" },
@@ -560,18 +604,7 @@ export default function HomeClient({
                 >
                   <Link href={`/work/${work.id}`} className="block" data-hover>
                     <div className="overflow-hidden">
-                      <Image
-                        src={work.thumb_url}
-                        alt={work.title}
-                        width={1200}
-                        height={1600}
-                        unoptimized
-                        className={`work-thumb ${thumbReady[work.id] ? "work-thumb-ready" : ""} block mx-auto w-full h-auto max-h-[32rem] object-contain object-center`}
-                        sizes="(max-width: 768px) 92vw, (max-width: 1280px) 50vw, 36vw"
-                        priority={i < 2}
-                        loading={i < 2 ? "eager" : "lazy"}
-                        onLoad={() => setThumbReady((current) => (current[work.id] ? current : { ...current, [work.id]: true }))}
-                      />
+                      <WorkThumbImage work={work} priority={i < 2} ready={Boolean(thumbReady[work.id])} onReady={markThumbReady} />
                     </div>
                     <div className="card-meta">
                       <div className="flex items-center gap-2.5 text-[0.58rem] tracking-[0.28em] uppercase text-accent-dim">

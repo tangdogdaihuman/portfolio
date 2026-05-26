@@ -30,7 +30,7 @@ function applyTheme(theme: ThemeName, persist = true) {
   }
 }
 
-function subscribe(onStoreChange: () => void) {
+export function subscribeResolvedTheme(onStoreChange: () => void) {
   if (typeof window === "undefined") return () => {};
 
   const media = window.matchMedia(DARK_QUERY);
@@ -69,7 +69,7 @@ function subscribe(onStoreChange: () => void) {
 }
 
 export function useResolvedTheme() {
-  return useSyncExternalStore(subscribe, getResolvedTheme, () => "light");
+  return useSyncExternalStore(subscribeResolvedTheme, getResolvedTheme, () => "light");
 }
 
 export function setResolvedTheme(theme: ThemeName) {

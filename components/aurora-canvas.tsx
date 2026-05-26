@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import { createNoise3D } from "simplex-noise";
-import { useResolvedTheme } from "@/lib/theme-client";
+import { subscribeResolvedTheme } from "@/lib/theme-client";
 
 const RAY_COUNT = 500;
 const RAY_PROPS = 8;
@@ -138,7 +138,6 @@ function CssAurora() {
 export default function AuroraCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const useCssFallback = useSyncExternalStore(subscribeToNothing, shouldUseCssFallback, () => false);
-  const theme = useResolvedTheme();
 
   useEffect(() => {
     if (useCssFallback) return;
@@ -279,6 +278,24 @@ export default function AuroraCanvas() {
       }
     };
 
+    const composeFrame = () => {
+      ctxB.clearRect(0, 0, w, h);
+      ctxB.drawImage(staticLayer, 0, 0, w, h);
+
+      ctxB.save();
+      ctxB.filter = `blur(${profile.mainBlur}px)`;
+      ctxB.globalCompositeOperation = "lighter";
+      ctxB.drawImage(raysLayer, 0, 0, w, h);
+      ctxB.restore();
+
+      ctxB.save();
+      ctxB.globalAlpha = profile.bloomAlpha;
+      ctxB.filter = `blur(${profile.bloomBlur}px)`;
+      ctxB.globalCompositeOperation = "screen";
+      ctxB.drawImage(raysLayer, 0, 0, w, h);
+      ctxB.restore();
+    };
+
     const drawFrame = (ts: number) => {
       if (!heroVisible || document.hidden) {
         running = false;
@@ -298,22 +315,7 @@ export default function AuroraCanvas() {
         updateRay(i);
       }
       ctxA.globalCompositeOperation = "source-over";
-
-      ctxB.clearRect(0, 0, w, h);
-      ctxB.drawImage(staticLayer, 0, 0, w, h);
-
-      ctxB.save();
-      ctxB.filter = `blur(${profile.mainBlur}px)`;
-      ctxB.globalCompositeOperation = "lighter";
-      ctxB.drawImage(raysLayer, 0, 0, w, h);
-      ctxB.restore();
-
-      ctxB.save();
-      ctxB.globalAlpha = profile.bloomAlpha;
-      ctxB.filter = `blur(${profile.bloomBlur}px)`;
-      ctxB.globalCompositeOperation = "screen";
-      ctxB.drawImage(raysLayer, 0, 0, w, h);
-      ctxB.restore();
+      composeFrame();
 
       if (profile.reducedMotion) {
         running = false;
@@ -348,6 +350,11 @@ export default function AuroraCanvas() {
       runIfNeeded();
     };
 
+    const onThemeChange = () => {
+      drawStaticBackground();
+      composeFrame();
+    };
+
     const heroEl = (visible.closest(".hero-noise") || document.querySelector(".hero-noise")) as Element | null;
     let heroObserver: IntersectionObserver | null = null;
     if (heroEl) {
@@ -373,14 +380,16 @@ export default function AuroraCanvas() {
     const resizeObserver = new ResizeObserver(onResize);
     resizeObserver.observe(visible);
     document.addEventListener("visibilitychange", onVisibilityChange);
+    const unsubscribeTheme = subscribeResolvedTheme(onThemeChange);
 
     return () => {
       cancelAnimationFrame(raf);
       heroObserver?.disconnect();
       resizeObserver.disconnect();
       document.removeEventListener("visibilitychange", onVisibilityChange);
+      unsubscribeTheme();
     };
-  }, [theme, useCssFallback]);
+  }, [useCssFallback]);
 
   if (useCssFallback) return <CssAurora />;
 
