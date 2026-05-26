@@ -7,6 +7,7 @@ import { motion, AnimatePresence, useScroll, useTransform, type MotionValue } fr
 import type { Section, Work } from "@/lib/types";
 import BgCanvas from "@/components/particle-bg";
 import AuroraCanvas from "@/components/aurora-canvas";
+import ThemeToggle from "@/components/theme-toggle";
 
 const spring = { type: "spring" as const, damping: 28, stiffness: 200, mass: 0.8 };
 const springSlow = { type: "spring" as const, damping: 32, stiffness: 160, mass: 1 };
@@ -334,17 +335,20 @@ export default function HomeClient({
       {/* Nav */}
       <nav className="fixed top-0 left-0 right-0 z-[70] px-4 md:px-10 py-3.5 md:py-4.5 flex justify-between items-center bg-bg/70 backdrop-blur-md border-b border-border/30">
           <a href="#" className="font-display text-lg tracking-wider text-text">Portfolio</a>
-          <div className="hidden md:flex gap-7 text-[0.67rem] tracking-[0.22em] uppercase text-text-muted">
+          <div className="hidden md:flex items-center gap-7 text-[0.67rem] tracking-[0.22em] uppercase text-text-muted">
             <a href="#works" className={navClass("works")}>作品</a>
             <a href="#about" className={navClass("about")}>关于</a>
             <a href="#contact" className={navClass("contact")}>联系</a>
+            <ThemeToggle />
           </div>
-          <button
-            type="button"
-            aria-label={mobileNavOpen ? "关闭导航菜单" : "打开导航菜单"}
-            onClick={() => setMobileNavOpen((open) => !open)}
-            className="md:hidden inline-flex items-center justify-center w-11 h-11 border border-border text-text-muted hover:text-text transition-colors"
-          >
+          <div className="flex items-center gap-3 md:hidden">
+            <ThemeToggle />
+            <button
+              type="button"
+              aria-label={mobileNavOpen ? "关闭导航菜单" : "打开导航菜单"}
+              onClick={() => setMobileNavOpen((open) => !open)}
+              className="md:hidden inline-flex items-center justify-center w-11 h-11 border border-border text-text-muted hover:text-text transition-colors"
+            >
             {mobileNavOpen ? (
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
             ) : (
@@ -358,6 +362,7 @@ export default function HomeClient({
               <a href="#contact" onClick={() => setMobileNavOpen(false)} className={`block px-3 py-3 text-xs tracking-[0.2em] uppercase transition-colors ${activeSection === "contact" ? "text-text" : "text-text-muted hover:text-accent"}`}>联系</a>
             </div>
           )}
+          </div>
         </nav>
 
       <BgCanvas />
