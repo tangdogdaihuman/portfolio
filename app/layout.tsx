@@ -44,7 +44,7 @@ export default function RootLayout({
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(()=>{try{var t=localStorage.getItem("theme"),c=document.documentElement.classList;c.remove("light");c.remove("dark");c.add(t==="light"?"light":"dark")}catch(e){document.documentElement.className+=" dark"}})()`,
+            __html: `(()=>{try{var t=localStorage.getItem("theme"),d=t==="light",el=document.documentElement,s=el.style,c=el.classList;c.remove("light");c.remove("dark");c.add(d?"light":"dark");var m=d?["#f8f6f0","#ede8dd","#d5cfc2","#1a1815","#6b655b","#8b6914","#a68b3c","rgba(245,240,230,0.95)","245,240,230"]:["#0a0908","#171411","#322c26","#e8e4dc","#9a9185","#c9a961","#8b7340","rgba(10,9,8,0.95)","10,9,8"],k=["--theme-bg","--theme-surface","--theme-border","--theme-text","--theme-text-muted","--theme-accent","--theme-accent-dim","--theme-overlay","--atmosphere"];for(var i=0;i<k.length;i++)s.setProperty(k[i],m[i])}catch(e){document.documentElement.className+=" dark"}})()`,
           }}
         />
       </head>

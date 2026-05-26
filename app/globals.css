@@ -1,13 +1,13 @@
 @import "tailwindcss";
 
-@theme inline {
-  --color-bg: #0a0908;
-  --color-surface: #171411;
-  --color-border: #322c26;
-  --color-text: #e8e4dc;
-  --color-text-muted: #9a9185;
-  --color-accent: #c9a961;
-  --color-accent-dim: #8b7340;
+@theme {
+  --color-bg: var(--theme-bg);
+  --color-surface: var(--theme-surface);
+  --color-border: var(--theme-border);
+  --color-text: var(--theme-text);
+  --color-text-muted: var(--theme-text-muted);
+  --color-accent: var(--theme-accent);
+  --color-accent-dim: var(--theme-accent-dim);
   --font-display: var(--font-display-en);
   --font-display-sc: var(--font-display-cn);
   --font-body: var(--font-inter);
@@ -17,42 +17,14 @@
 :root,
 .dark {
   color-scheme: dark;
-  --theme-bg: #0a0908;
-  --theme-surface: #171411;
-  --theme-border: #322c26;
-  --theme-text: #e8e4dc;
-  --theme-text-muted: #9a9185;
-  --theme-accent: #c9a961;
-  --theme-accent-dim: #8b7340;
   --theme-overlay: rgba(10, 9, 8, 0.95);
   --atmosphere: 10, 9, 8;
-  --color-bg: #0a0908;
-  --color-surface: #171411;
-  --color-border: #322c26;
-  --color-text: #e8e4dc;
-  --color-text-muted: #9a9185;
-  --color-accent: #c9a961;
-  --color-accent-dim: #8b7340;
 }
 
 .light {
   color-scheme: light;
-  --theme-bg: #f8f6f0;
-  --theme-surface: #ede8dd;
-  --theme-border: #d5cfc2;
-  --theme-text: #1a1815;
-  --theme-text-muted: #6b655b;
-  --theme-accent: #8b6914;
-  --theme-accent-dim: #a68b3c;
   --theme-overlay: rgba(245, 240, 230, 0.95);
   --atmosphere: 245, 240, 230;
-  --color-bg: #f8f6f0;
-  --color-surface: #ede8dd;
-  --color-border: #d5cfc2;
-  --color-text: #1a1815;
-  --color-text-muted: #6b655b;
-  --color-accent: #8b6914;
-  --color-accent-dim: #a68b3c;
 }
 
 @keyframes fade-up {
@@ -85,7 +57,7 @@
   100% { transform: translate3d(-8%, 1%, 0) scaleY(0.98); }
 }
 
-* { scrollbar-width: thin; scrollbar-color: #2a2622 transparent; }
+* { scrollbar-width: thin; scrollbar-color: var(--theme-border) transparent; }
 
 html {
   scroll-behavior: smooth;
@@ -192,8 +164,8 @@ body.home-vignette::after {
 }
 
 .status-surface {
-  border: 1px solid color-mix(in srgb, var(--color-border) 85%, black);
-  background: color-mix(in srgb, var(--color-surface) 88%, black);
+  border: 1px solid color-mix(in srgb, var(--color-border) 85%, transparent);
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
 }
 
 .scroll-line {
