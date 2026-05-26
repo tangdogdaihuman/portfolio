@@ -5,7 +5,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 function LoginForm() {
   const [key, setKey] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("error") === "invalid_key") return "密钥无效";
+    }
+    return "";
+  });
   const router = useRouter();
   const searchParams = useSearchParams();
 

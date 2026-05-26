@@ -4,7 +4,12 @@ import { fail } from "@/lib/api-response";
 
 export function requireSameOrigin(req: NextRequest): NextResponse | null {
   const origin = req.headers.get("origin");
-  if (!origin) return null;
+  if (!origin) {
+    if (["POST", "PUT", "DELETE", "PATCH"].includes(req.method)) {
+      return fail("FORBIDDEN", "Origin missing", 403);
+    }
+    return null;
+  }
 
   if (origin !== new URL(req.url).origin) {
     return fail("FORBIDDEN", "Origin mismatch", 403);

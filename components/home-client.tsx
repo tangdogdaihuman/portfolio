@@ -14,10 +14,21 @@ const springSlow = { type: "spring" as const, damping: 32, stiffness: 160, mass:
 const DEFAULT_TAGLINE = "Hard Surface / Stylized Character / Game Art";
 const VISIBLE_REFRESH_MIN_INTERVAL = 30000;
 
+function sanitizeHtml(html: string): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<iframe[\s\S]*?<\/iframe>/gi, "")
+    .replace(/<object[\s\S]*?<\/object>/gi, "")
+    .replace(/<embed[\s\S]*?\/?>/gi, "")
+    .replace(/<form[\s\S]*?<\/form>/gi, "")
+    .replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
+    .replace(/href\s*=\s*(?:"javascript:[^"]*"|'javascript:[^']*')/gi, "");
+}
+
 function renderBoldContent(text: string) {
   if (!text) return null;
   if (/<[a-z][\s\S]*>/i.test(text)) {
-    return <span dangerouslySetInnerHTML={{ __html: text }} />;
+    return <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(text) }} />;
   }
   return text.split(/(\*\*.*?\*\*)/g).map((part, i) => {
     if (part.startsWith("**") && part.endsWith("**")) {

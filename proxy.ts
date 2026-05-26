@@ -36,6 +36,7 @@ function proxy(req: NextRequest) {
       });
       return response;
     }
+    return NextResponse.redirect(new URL("/admin/login?error=invalid_key", req.url));
   }
 
   const token = req.cookies.get(COOKIE_NAME);
