@@ -214,6 +214,7 @@ body.home-vignette::after {
   transform: translate(-50%, -50%); transition: transform 0.15s, width 0.3s, height 0.3s, opacity 0.16s ease;
   mix-blend-mode: difference;
 }
+.light .cursor { mix-blend-mode: normal; }
 .cursor-ring {
   position: fixed; width: 40px; height: 40px; border: 1px solid var(--color-accent);
   border-radius: 50%; pointer-events: none; z-index: 9998;
