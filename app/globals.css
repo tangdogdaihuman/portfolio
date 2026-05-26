@@ -15,19 +15,6 @@
 }
 
 :root,
-.light {
-  color-scheme: light;
-  --theme-bg: #f8f6f0;
-  --theme-surface: #ede8dd;
-  --theme-border: #d5cfc2;
-  --theme-text: #1a1815;
-  --theme-text-muted: #6b655b;
-  --theme-accent: #8b6914;
-  --theme-accent-dim: #a68b3c;
-  --theme-overlay: rgba(245, 240, 230, 0.95);
-  --atmosphere: 245, 240, 230;
-}
-
 .dark {
   color-scheme: dark;
   --theme-bg: #0a0908;
@@ -39,6 +26,19 @@
   --theme-accent-dim: #8b7340;
   --theme-overlay: rgba(10, 9, 8, 0.95);
   --atmosphere: 10, 9, 8;
+}
+
+.light {
+  color-scheme: light;
+  --theme-bg: #f8f6f0;
+  --theme-surface: #ede8dd;
+  --theme-border: #d5cfc2;
+  --theme-text: #1a1815;
+  --theme-text-muted: #6b655b;
+  --theme-accent: #8b6914;
+  --theme-accent-dim: #a68b3c;
+  --theme-overlay: rgba(245, 240, 230, 0.95);
+  --atmosphere: 245, 240, 230;
 }
 
 @keyframes fade-up {
