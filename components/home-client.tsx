@@ -13,6 +13,15 @@ const springSlow = { type: "spring" as const, damping: 32, stiffness: 160, mass:
 const DEFAULT_TAGLINE = "Hard Surface / Stylized Character / Game Art";
 const VISIBLE_REFRESH_MIN_INTERVAL = 30000;
 
+function renderBoldContent(text: string) {
+  return text.split(/(\*\*.*?\*\*)/g).map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return <strong key={i}>{part.slice(2, -2)}</strong>;
+    }
+    return part;
+  });
+}
+
 function IntroLine({
   line,
   index,
@@ -625,7 +634,7 @@ export default function HomeClient({
                         className="overflow-hidden"
                       >
                         <div className="pb-5 text-sm text-text-muted leading-relaxed whitespace-pre-wrap">
-                          {s.content}
+                          {renderBoldContent(s.content)}
                         </div>
                       </motion.div>
                     )}

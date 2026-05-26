@@ -113,13 +113,46 @@ export default function DetailSectionsEditor({ showMsg }: { showMsg: (text: stri
             />
             <button onClick={() => setPendingDelete(s)} className="px-2 py-1.5 text-xs text-red-400/70 hover:text-red-400">删除</button>
           </div>
-          <textarea
-            value={s.content}
-            onChange={(e) => updateSection(s.id, "content", e.target.value)}
-            rows={4}
-            className="w-full bg-bg border border-border text-text px-3 py-2 text-sm focus:outline-none focus:border-accent-dim resize-y"
-            placeholder="栏目内容"
-          />
+          <div className="flex items-start gap-2">
+            <textarea
+              value={s.content}
+              onChange={(e) => updateSection(s.id, "content", e.target.value)}
+              rows={4}
+              className="w-full bg-bg border border-border text-text px-3 py-2 text-sm focus:outline-none focus:border-accent-dim resize-y"
+              placeholder="栏目内容"
+              id={`section-content-${s.id}`}
+            />
+            <button
+              type="button"
+              title="加粗"
+              onClick={() => {
+                const ta = document.getElementById(`section-content-${s.id}`) as HTMLTextAreaElement | null;
+                if (!ta) return;
+                const start = ta.selectionStart;
+                const end = ta.selectionEnd;
+                const text = s.content;
+                const selected = text.slice(start, end);
+                const before = text.slice(0, start);
+                const after = text.slice(end);
+                if (selected) {
+                  updateSection(s.id, "content", before + "**" + selected + "**" + after);
+                } else {
+                  updateSection(s.id, "content", before + "**粗体**" + after);
+                }
+                requestAnimationFrame(() => {
+                  ta.focus();
+                  if (selected) {
+                    ta.setSelectionRange(start + 2, end + 2);
+                  } else {
+                    ta.setSelectionRange(start + 2, start + 4);
+                  }
+                });
+              }}
+              className="shrink-0 w-8 h-8 border border-border text-text-muted text-xs font-bold hover:text-accent hover:border-accent-dim transition-colors"
+            >
+              B
+            </button>
+          </div>
         </div>
       ))}
       {sections.length === 0 && (
