@@ -1,21 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { subscribeResolvedTheme } from "@/lib/theme-client";
 
-function getThemeAccent() {
-  if (typeof document === "undefined") return "201, 169, 97";
-  const raw = getComputedStyle(document.documentElement).getPropertyValue("--theme-accent").trim();
-  if (!raw) return "201, 169, 97";
-  if (raw.startsWith("#")) {
-    const hex = raw.slice(1);
-    const n = hex.length === 3 ? hex.split("").map((c) => c + c).join("") : hex;
-    if (n.length !== 6) return "201, 169, 97";
-    return `${parseInt(n.slice(0, 2), 16)}, ${parseInt(n.slice(2, 4), 16)}, ${parseInt(n.slice(4, 6), 16)}`;
-  }
-  const match = raw.match(/rgba?\(([^)]+)\)/);
-  return match ? match[1].trim() : "201, 169, 97";
-}
+const ACCENT = "201, 169, 97";
 const VP_Y_RATIO = 0.38;
 const RIPPLE_LIFETIME = 560;
 const TAP_RING_MAX = 180;
@@ -103,7 +90,6 @@ export default function BgCanvas() {
       const vpY = h * VP_Y_RATIO;
       const vLines = profile.lowEnd ? 18 : profile.coarsePointer ? 21 : 24;
       const hLines = profile.lowEnd ? 11 : profile.coarsePointer ? 13 : 16;
-      const accent = getThemeAccent();
 
       for (let i = 0; i <= vLines; i++) {
         const t = i / vLines;
@@ -112,7 +98,7 @@ export default function BgCanvas() {
         staticCtx.beginPath();
         staticCtx.moveTo(x0, h);
         staticCtx.lineTo(x1, vpY);
-        staticCtx.strokeStyle = `rgba(${accent},${0.024 + 0.018 * Math.abs(t - 0.5) * 2})`;
+        staticCtx.strokeStyle = `rgba(${ACCENT},${0.024 + 0.018 * Math.abs(t - 0.5) * 2})`;
         staticCtx.lineWidth = profile.lowEnd ? 0.42 : 0.5;
         staticCtx.stroke();
       }
@@ -123,7 +109,7 @@ export default function BgCanvas() {
         staticCtx.beginPath();
         staticCtx.moveTo(0, y);
         staticCtx.lineTo(w, y);
-        staticCtx.strokeStyle = `rgba(${accent},${0.012 + 0.018 * t * t})`;
+        staticCtx.strokeStyle = `rgba(${ACCENT},${0.012 + 0.018 * t * t})`;
         staticCtx.lineWidth = profile.lowEnd ? 0.42 : 0.5;
         staticCtx.stroke();
       }
@@ -158,7 +144,6 @@ export default function BgCanvas() {
     const drawRipples = (ts: number) => {
       if (!profile.coarsePointer || ripples.length === 0) return false;
       let hasActive = false;
-      const accent = getThemeAccent();
 
       for (let i = ripples.length - 1; i >= 0; i--) {
         const ripple = ripples[i];
@@ -174,21 +159,21 @@ export default function BgCanvas() {
         const alpha = (1 - p) * 0.22;
 
         const core = ctx.createRadialGradient(ripple.x, ripple.y, 0, ripple.x, ripple.y, Math.max(18, radius * 0.26));
-        core.addColorStop(0, `rgba(${accent},${alpha * 0.58})`);
-        core.addColorStop(0.68, `rgba(${accent},${alpha * 0.22})`);
+        core.addColorStop(0, `rgba(${ACCENT},${alpha * 0.58})`);
+        core.addColorStop(0.68, `rgba(${ACCENT},${alpha * 0.22})`);
         core.addColorStop(1, "transparent");
         ctx.fillStyle = core;
         ctx.fillRect(0, 0, w, h);
 
         const halo = ctx.createRadialGradient(ripple.x, ripple.y, 0, ripple.x, ripple.y, radius * 0.78);
-        halo.addColorStop(0, `rgba(${accent},${alpha * 0.16})`);
+        halo.addColorStop(0, `rgba(${ACCENT},${alpha * 0.16})`);
         halo.addColorStop(1, "transparent");
         ctx.fillStyle = halo;
         ctx.fillRect(0, 0, w, h);
 
         ctx.beginPath();
         ctx.arc(ripple.x, ripple.y, radius, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(${accent},${alpha})`;
+        ctx.strokeStyle = `rgba(${ACCENT},${alpha})`;
         ctx.lineWidth = 1.2 + (1 - p) * 1.6;
         ctx.stroke();
       }
@@ -293,10 +278,6 @@ export default function BgCanvas() {
     window.addEventListener("resize", onResize);
     viewport?.addEventListener("resize", onResize);
     document.addEventListener("visibilitychange", onVisibilityChange);
-    const unsubscribeTheme = subscribeResolvedTheme(() => {
-      drawStaticLayer();
-      runIfNeeded();
-    });
 
     return () => {
       cancelAnimationFrame(raf);
@@ -306,7 +287,6 @@ export default function BgCanvas() {
       window.removeEventListener("resize", onResize);
       viewport?.removeEventListener("resize", onResize);
       document.removeEventListener("visibilitychange", onVisibilityChange);
-      unsubscribeTheme();
     };
   }, []);
 
