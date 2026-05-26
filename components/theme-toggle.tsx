@@ -1,25 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { toggleResolvedTheme, useResolvedTheme } from "@/lib/theme-client";
 
 export default function ThemeToggle() {
-  const [dark, setDark] = useState(() => {
-    if (typeof document === "undefined") return false;
-    return document.documentElement.classList.contains("dark");
-  });
-
-  const toggle = () => {
-    const next = !dark;
-    setDark(next);
-    document.documentElement.classList.toggle("dark", next);
-    localStorage.setItem("theme", next ? "dark" : "light");
-  };
+  const theme = useResolvedTheme();
+  const dark = theme === "dark";
 
   return (
     <button
       type="button"
-      onClick={toggle}
-      title={dark ? "浅色模式" : "深色模式"}
+      onClick={toggleResolvedTheme}
+      aria-label={dark ? "切换到浅色模式" : "切换到深色模式"}
+      aria-pressed={dark}
+      data-theme-toggle
+      title={dark ? "切换到浅色模式" : "切换到深色模式"}
       className="w-8 h-8 inline-flex items-center justify-center border border-border text-text-muted hover:text-accent hover:border-accent-dim transition-colors"
     >
       {dark ? (

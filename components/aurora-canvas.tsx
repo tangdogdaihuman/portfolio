@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import { createNoise3D } from "simplex-noise";
+import { useResolvedTheme } from "@/lib/theme-client";
 
 const RAY_COUNT = 500;
 const RAY_PROPS = 8;
@@ -73,6 +74,44 @@ function fadeInOut(t: number, m: number) {
   return Math.abs(((t + hm) % m) - hm) / hm;
 }
 
+function normalizeRgbChannels(value: string, fallback: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return fallback;
+
+  if (trimmed.startsWith("#")) {
+    const hex = trimmed.slice(1);
+    const normalized = hex.length === 3 ? hex.split("").map((char) => char + char).join("") : hex;
+    if (normalized.length !== 6) return fallback;
+    const channels = [
+      parseInt(normalized.slice(0, 2), 16),
+      parseInt(normalized.slice(2, 4), 16),
+      parseInt(normalized.slice(4, 6), 16),
+    ];
+    if (channels.some((channel) => Number.isNaN(channel))) return fallback;
+    return channels.join(",");
+  }
+
+  const match = trimmed.match(/rgba?\(([^)]+)\)/i);
+  if (!match) return trimmed.replace(/\s+/g, ",");
+  return match[1]
+    .split(",")
+    .slice(0, 3)
+    .map((part) => part.trim())
+    .join(",");
+}
+
+function getThemePalette() {
+  if (typeof document === "undefined") {
+    return { atmosphere: "10,9,8", accent: "201,169,97" };
+  }
+
+  const styles = getComputedStyle(document.documentElement);
+  return {
+    atmosphere: normalizeRgbChannels(styles.getPropertyValue("--atmosphere"), "10,9,8"),
+    accent: normalizeRgbChannels(styles.getPropertyValue("--theme-accent"), "201,169,97"),
+  };
+}
+
 function CssAurora() {
   return (
     <div className="aurora-shell absolute inset-0 w-full h-full pointer-events-none" aria-hidden="true">
@@ -99,6 +138,7 @@ function CssAurora() {
 export default function AuroraCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const useCssFallback = useSyncExternalStore(subscribeToNothing, shouldUseCssFallback, () => false);
+  const theme = useResolvedTheme();
 
   useEffect(() => {
     if (useCssFallback) return;
@@ -159,29 +199,30 @@ export default function AuroraCanvas() {
 
     const drawStaticBackground = () => {
       ctxS.clearRect(0, 0, w, h);
+      const { atmosphere, accent } = getThemePalette();
 
       const bgGradient = ctxS.createLinearGradient(0, 0, 0, h);
-      bgGradient.addColorStop(0, "rgba(10,9,8,0.9)");
-      bgGradient.addColorStop(0.45, "rgba(10,9,8,0.72)");
-      bgGradient.addColorStop(0.9, "rgba(10,9,8,0.42)");
-      bgGradient.addColorStop(0.97, "rgba(10,9,8,0.12)");
-      bgGradient.addColorStop(1, "rgba(10,9,8,0)");
+      bgGradient.addColorStop(0, `rgba(${atmosphere},0.9)`);
+      bgGradient.addColorStop(0.45, `rgba(${atmosphere},0.72)`);
+      bgGradient.addColorStop(0.9, `rgba(${atmosphere},0.42)`);
+      bgGradient.addColorStop(0.97, `rgba(${atmosphere},0.12)`);
+      bgGradient.addColorStop(1, `rgba(${atmosphere},0)`);
       ctxS.fillStyle = bgGradient;
       ctxS.fillRect(0, 0, w, h);
 
       const focusGlow = ctxS.createRadialGradient(w * 0.5, h * 0.42, 0, w * 0.5, h * 0.42, Math.max(w * 0.58, h * 0.72, 520));
-      focusGlow.addColorStop(0, "rgba(201,169,97,0.04)");
-      focusGlow.addColorStop(0.24, "rgba(201,169,97,0.026)");
-      focusGlow.addColorStop(0.52, "rgba(201,169,97,0.012)");
-      focusGlow.addColorStop(0.78, "rgba(201,169,97,0.004)");
-      focusGlow.addColorStop(1, "rgba(201,169,97,0)");
+      focusGlow.addColorStop(0, `rgba(${accent},0.04)`);
+      focusGlow.addColorStop(0.24, `rgba(${accent},0.026)`);
+      focusGlow.addColorStop(0.52, `rgba(${accent},0.012)`);
+      focusGlow.addColorStop(0.78, `rgba(${accent},0.004)`);
+      focusGlow.addColorStop(1, `rgba(${accent},0)`);
       ctxS.fillStyle = focusGlow;
       ctxS.fillRect(0, 0, w, h);
 
       const bottomVignette = ctxS.createLinearGradient(0, h * 0.72, 0, h);
-      bottomVignette.addColorStop(0, "rgba(10,9,8,0)");
-      bottomVignette.addColorStop(0.7, "rgba(10,9,8,0.26)");
-      bottomVignette.addColorStop(1, "rgba(10,9,8,0.56)");
+      bottomVignette.addColorStop(0, `rgba(${atmosphere},0)`);
+      bottomVignette.addColorStop(0.7, `rgba(${atmosphere},0.26)`);
+      bottomVignette.addColorStop(1, `rgba(${atmosphere},0.56)`);
       ctxS.fillStyle = bottomVignette;
       ctxS.fillRect(0, 0, w, h);
     };
@@ -339,7 +380,7 @@ export default function AuroraCanvas() {
       resizeObserver.disconnect();
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [useCssFallback]);
+  }, [theme, useCssFallback]);
 
   if (useCssFallback) return <CssAurora />;
 

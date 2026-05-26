@@ -382,9 +382,13 @@ body.home-vignette::after {
 
   .hero-title-shadow {
     text-shadow: 0 1px 4px color-mix(in srgb, var(--theme-bg) 92%, transparent);
+  }
 
+  .hero-subtitle-shadow {
     text-shadow: 0 1px 3px color-mix(in srgb, var(--theme-bg) 88%, transparent);
+  }
 
+  .hero-copy-shadow {
     text-shadow: 0 1px 2px color-mix(in srgb, var(--theme-bg) 84%, transparent);
   }
 
