@@ -14,6 +14,10 @@ const DEFAULT_TAGLINE = "Hard Surface / Stylized Character / Game Art";
 const VISIBLE_REFRESH_MIN_INTERVAL = 30000;
 
 function renderBoldContent(text: string) {
+  if (!text) return null;
+  if (/<[a-z][\s\S]*>/i.test(text)) {
+    return <span dangerouslySetInnerHTML={{ __html: text }} />;
+  }
   return text.split(/(\*\*.*?\*\*)/g).map((part, i) => {
     if (part.startsWith("**") && part.endsWith("**")) {
       return <strong key={i}>{part.slice(2, -2)}</strong>;
