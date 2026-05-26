@@ -16,7 +16,6 @@ const RANGE_TTL = 100;
 const NOISE_STRENGTH = 100;
 const BASE_HUE = 34;
 const RANGE_HUE = 22;
-const AURORA_SATURATION = 58;
 const X_OFF = 0.0015;
 const Y_OFF = 0.0015;
 const Z_OFF = 0.0015;
@@ -61,10 +60,11 @@ function getPerformanceProfile() {
     targetFps: reducedMotion ? 0 : lowEnd ? 30 : coarsePointer ? 30 : 60,
     mainBlur: lowEnd ? 9 : coarsePointer ? 12 : 12,
     bloomBlur: lowEnd ? 16 : coarsePointer ? 18 : 20,
-    bloomAlpha: lowEnd ? 0.18 : coarsePointer ? 0.07 : 0.26,
+    bloomAlpha: lowEnd ? 0.18 : coarsePointer ? 0.12 : 0.26,
     rayQuality: lowEnd ? 0.62 : coarsePointer ? 0.35 : 1,
     speedQuality: lowEnd ? 0.82 : coarsePointer ? 0.9 : 1,
-    alphaQuality: lowEnd ? 0.8 : coarsePointer ? 0.45 : 1,
+    alphaQuality: lowEnd ? 0.8 : coarsePointer ? 0.7 : 1,
+    saturation: lowEnd ? 42 : coarsePointer ? 34 : 58,
   };
 }
 
@@ -215,9 +215,9 @@ export default function AuroraCanvas() {
       const a = fadeInOut(life, ttl) * 0.44 * profile.alphaQuality;
 
       const gradient = ctxA.createLinearGradient(x, y1, x, y2);
-      gradient.addColorStop(0, `hsla(${hue}, ${AURORA_SATURATION}%, 66%, 0)`);
-      gradient.addColorStop(0.5, `hsla(${hue}, ${AURORA_SATURATION}%, 66%, ${a})`);
-      gradient.addColorStop(1, `hsla(${hue}, ${AURORA_SATURATION}%, 66%, 0)`);
+      gradient.addColorStop(0, `hsla(${hue}, ${profile.saturation}%, 66%, 0)`);
+      gradient.addColorStop(0.5, `hsla(${hue}, ${profile.saturation}%, 66%, ${a})`);
+      gradient.addColorStop(1, `hsla(${hue}, ${profile.saturation}%, 66%, 0)`);
 
       ctxA.beginPath();
       ctxA.strokeStyle = gradient;
