@@ -59,12 +59,12 @@ function getPerformanceProfile() {
     baseScale: lowEnd ? 0.86 : coarsePointer ? 0.6 : 1,
     dynamicScale: lowEnd ? 0.72 : coarsePointer ? 0.5 : 0.96,
     targetFps: reducedMotion ? 0 : lowEnd ? 30 : coarsePointer ? 30 : 60,
-    mainBlur: lowEnd ? 9 : coarsePointer ? 10 : 12,
-    bloomBlur: lowEnd ? 16 : coarsePointer ? 14 : 20,
-    bloomAlpha: lowEnd ? 0.18 : coarsePointer ? 0.10 : 0.26,
+    mainBlur: lowEnd ? 9 : coarsePointer ? 12 : 12,
+    bloomBlur: lowEnd ? 16 : coarsePointer ? 18 : 20,
+    bloomAlpha: lowEnd ? 0.18 : coarsePointer ? 0.07 : 0.26,
     rayQuality: lowEnd ? 0.62 : coarsePointer ? 0.35 : 1,
     speedQuality: lowEnd ? 0.82 : coarsePointer ? 0.9 : 1,
-    alphaQuality: lowEnd ? 0.8 : coarsePointer ? 0.55 : 1,
+    alphaQuality: lowEnd ? 0.8 : coarsePointer ? 0.45 : 1,
   };
 }
 
