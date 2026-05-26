@@ -92,12 +92,10 @@ function normalizeRgbChannels(value: string, fallback: string) {
   }
 
   const match = trimmed.match(/rgba?\(([^)]+)\)/i);
-  if (!match) return trimmed.replace(/\s+/g, ",");
-  return match[1]
-    .split(",")
-    .slice(0, 3)
-    .map((part) => part.trim())
-    .join(",");
+  const source = match ? match[1] : trimmed;
+  const channels = source.match(/-?\d*\.?\d+%?/g)?.slice(0, 3);
+  if (channels?.length === 3) return channels.join(", ");
+  return fallback;
 }
 
 function getThemePalette() {

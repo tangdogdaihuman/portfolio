@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { expect, test } from "@playwright/test";
 
 const ADMIN_SECRET = "e2e-admin-secret";
@@ -14,6 +16,21 @@ declare global {
 }
 
 test.describe("theme toggle", () => {
+  test("没有本地偏好时默认使用深色主题", async ({ page, baseURL }) => {
+    await page.emulateMedia({ colorScheme: "light" });
+    await page.goto(baseURL ?? "/");
+
+    await expect(page.locator("html")).toHaveClass(/dark/);
+    expect(await page.locator("[data-theme-toggle]:visible").getAttribute("aria-pressed")).toBe("true");
+  });
+
+  test("主题样式避免旧浏览器不稳定的二级颜色变量", () => {
+    const css = readFileSync(join(process.cwd(), "app", "globals.css"), "utf8");
+
+    expect(css).not.toMatch(/--color-(bg|surface|border|text|text-muted|accent|accent-dim):\s*var\(--theme-/);
+    expect(css).not.toContain("rgb(var(--atmosphere) /");
+  });
+
   test("切换主题后作品缩略图保持加载状态", async ({ page, request, baseURL }) => {
     await page.route("https://placehold.co/**", async (route) => {
       await route.fulfill({
@@ -102,6 +119,7 @@ test.describe("theme toggle", () => {
   });
 
   test("桌面和移动端切换按钮共享同一主题状态", async ({ page, baseURL }) => {
+    await page.addInitScript(() => localStorage.setItem("theme", "light"));
     await page.goto(baseURL ?? "/");
 
     const html = page.locator("html");
@@ -111,6 +129,7 @@ test.describe("theme toggle", () => {
 
     await desktopToggle.click();
     await expect(html).toHaveClass(/dark/);
+    await expect(html).not.toHaveClass(/light/);
     await expect(desktopToggle).toHaveAttribute("aria-pressed", "true");
 
     await page.setViewportSize({ width: 390, height: 844 });
@@ -120,6 +139,7 @@ test.describe("theme toggle", () => {
 
     await mobileToggle.click();
     await expect(html).not.toHaveClass(/dark/);
+    await expect(html).toHaveClass(/light/);
     await expect(mobileToggle).toHaveAttribute("aria-pressed", "false");
 
     await page.setViewportSize({ width: 1280, height: 900 });
