@@ -378,7 +378,7 @@ export default function HomeClient({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.7, ease: [0.2, 0.9, 0.3, 1] }}
-                className="text-xs text-accent-dim uppercase mb-6 tracking-[0.2em]"
+                className="text-xs text-accent-dim uppercase mb-6 tracking-[0.2em] hero-copy-shadow"
               >
                 CG Artist Portfolio
               </motion.p>
