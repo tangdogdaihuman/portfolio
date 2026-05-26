@@ -48,7 +48,7 @@ function IntroLine({
         initial={{ opacity: 0, y: 18, filter: "blur(8px)" }}
         animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
         transition={{ duration: 0.7, delay: index * 0.08, ease: [0.2, 0.9, 0.3, 1] }}
-        className="text-[clamp(0.95rem,2vw,1.12rem)] text-text-muted leading-[1.85] mb-3.5 hero-copy-shadow"
+        className="text-[clamp(0.95rem,2vw,1.12rem)] text-text/75 leading-[1.85] mb-3.5 hero-copy-shadow"
       >
         {line}
       </motion.p>
@@ -408,7 +408,7 @@ export default function HomeClient({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.7, delay: 0.22, ease: [0.2, 0.9, 0.3, 1] }}
-                className="mt-4 text-[0.7rem] uppercase tracking-[0.18em] text-text-muted hero-copy-shadow"
+                className="mt-4 text-[0.7rem] uppercase tracking-[0.18em] text-text/70 hero-copy-shadow"
               >
                 {tagline}
               </motion.p>
