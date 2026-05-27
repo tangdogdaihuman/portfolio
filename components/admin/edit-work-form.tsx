@@ -105,7 +105,7 @@ export default function EditWorkForm({
               thumb_url: image.thumb_url as string,
               source: "existing" as const,
               size: (image.image_size as number) || 0,
-              media_type: (image.media_type as string) || "image",
+              media_type: (image.media_type as string) || (/\.(mp4|webm|mov|avi|mkv)$/i.test((image.image_url as string) || "") ? "video" : "image"),
             }))
           );
         }
@@ -135,7 +135,7 @@ export default function EditWorkForm({
 
     const fileArray = Array.from(files);
     event.target.value = "";
-    const results: ({ imageUrl: string; thumbUrl: string; size: number } | null)[] = new Array(fileArray.length).fill(null);
+    const results: (Awaited<ReturnType<typeof uploadImageToR2>> | null)[] = new Array(fileArray.length).fill(null);
     const failures: string[] = [];
     let done = 0;
 
@@ -143,7 +143,7 @@ export default function EditWorkForm({
       fileArray.map(async (file, index) => {
         try {
           const result = await uploadImageToR2(file);
-          results[index] = { imageUrl: result.imageUrl, thumbUrl: result.thumbUrl, size: result.size };
+          results[index] = result;
         } catch (error) {
           failures.push(`${file.name}: ${error instanceof Error ? error.message : "上传失败"}`);
         }
@@ -153,6 +153,7 @@ export default function EditWorkForm({
     );
 
     const ordered = results.filter((result): result is NonNullable<(typeof results)[number]> => result !== null);
+    const videoExt = /\.(mp4|webm|mov|avi|mkv)$/i;
     setAllImages((current) => [
       ...current,
       ...ordered.map((result) => ({
@@ -161,7 +162,7 @@ export default function EditWorkForm({
         thumb_url: result.thumbUrl,
         source: "new" as const,
         size: result.size,
-        media_type: "image",
+        media_type: videoExt.test(result.originalFileName) ? "video" : "image",
       })),
     ]);
     setUploading(false);

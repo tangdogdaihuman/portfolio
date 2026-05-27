@@ -82,7 +82,10 @@ export default function AddWorkForm({
 
     const ordered = results.filter((file): file is Awaited<ReturnType<typeof uploadImageToR2>> => file !== null);
     setFormState((current) => appendUploadedFiles(current, ordered));
-    setMediaTypes((current) => [...current, ...ordered.map(() => "image")]);
+    setMediaTypes((current) => [...current, ...ordered.map((result) => {
+      const originalFile = fileArray.find((f) => f.name === result.originalFileName);
+      return originalFile && /\.(mp4|webm|mov|avi|mkv)$/i.test(originalFile.name) ? "video" : "image";
+    })]);
     showMsg(formatUploadResult(ordered.length, total, failures, "个文件"), ordered.length > 0);
   };
 
