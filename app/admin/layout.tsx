@@ -1,4 +1,5 @@
 import Link from "next/link";
+import VersionBadge from "@/components/admin/version-badge";
 
 export default function AdminLayout({
   children,
@@ -17,6 +18,7 @@ export default function AdminLayout({
         </Link>
       </div>
       {children}
+      <VersionBadge />
     </div>
   );
 }
