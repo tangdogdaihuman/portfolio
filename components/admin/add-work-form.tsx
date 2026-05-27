@@ -30,6 +30,7 @@ export default function AddWorkForm({
 }) {
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [previewIndex, setPreviewIndex] = useState(0);
+  const [mediaTypes, setMediaTypes] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   const {
@@ -81,6 +82,7 @@ export default function AddWorkForm({
 
     const ordered = results.filter((file): file is Awaited<ReturnType<typeof uploadImageToR2>> => file !== null);
     setFormState((current) => appendUploadedFiles(current, ordered));
+    setMediaTypes((current) => [...current, ...ordered.map(() => "image")]);
     showMsg(formatUploadResult(ordered.length, total, failures, "个文件"), ordered.length > 0);
   };
 
@@ -129,6 +131,7 @@ export default function AddWorkForm({
           uploadedFiles.map((file, index) => ({
             imageUrl: file.imageUrl,
             thumbUrl: file.thumbUrl,
+            mediaType: mediaTypes[index] || "image",
             imageSize: file.size,
             sortOrder: index,
           }))
@@ -244,9 +247,28 @@ export default function AddWorkForm({
                       type="button"
                       onClick={(event) => {
                         event.stopPropagation();
+                        setMediaTypes((current) => {
+                          const next = [...current];
+                          next[index] = next[index] === "video" ? "image" : "video";
+                          return next;
+                        });
+                      }}
+                      className={`absolute top-0.5 right-0.5 text-[9px] px-1 border ${
+                        mediaTypes[index] === "video"
+                          ? "bg-accent text-bg border-accent"
+                          : "bg-bg/80 text-text-muted border-border/70 hover:text-text"
+                      }`}
+                    >
+                      {mediaTypes[index] === "video" ? "视频" : "图片"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
                         void cleanupUploadedFiles([uploadedFiles[index]]);
                         setFormState((current) => removeUploadedFile(current, index));
                         setPreviewIndex((current) => getIndexAfterRemoval(current, index));
+                        setMediaTypes((current) => current.filter((_, i) => i !== index));
                       }}
                       className="absolute -top-2 -right-2 bg-bg border border-border text-text-muted text-xs w-6 h-6 flex items-center justify-center hover:text-red-400"
                       aria-label={`删除第 ${index + 1} 张`}

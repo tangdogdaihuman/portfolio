@@ -32,6 +32,7 @@ async function getWork(id: string): Promise<{ work: Work; images: WorkImage[] } 
           work_id: id,
           image_url: work.image_url,
           thumb_url: work.thumb_url,
+          media_type: "image",
           sort_order: 0,
           image_size: work.image_size || 0,
           created_at: work.created_at,

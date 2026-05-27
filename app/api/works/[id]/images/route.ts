@@ -12,6 +12,7 @@ import { enqueueR2Delete, processR2DeleteJobs } from "@/lib/r2-delete-jobs";
 const addImageSchema = z.object({
   imageUrl: z.string().url(),
   thumbUrl: z.string().url(),
+  mediaType: z.enum(["image", "video"]).default("image"),
   imageSize: z.number().int().default(0),
   sortOrder: z.number().int().optional(),
 });
@@ -37,6 +38,7 @@ export async function GET(
       work_id: id,
       image_url: work.rows[0].image_url,
       thumb_url: work.rows[0].thumb_url,
+      media_type: "image",
       sort_order: 0,
       image_size: 0,
       created_at: "",
@@ -60,7 +62,7 @@ export async function POST(
   const body = await req.json();
 
   const items = Array.isArray(body) ? body : [body];
-  const valid: { id: string; imageUrl: string; thumbUrl: string; imageSize: number }[] = [];
+  const valid: { id: string; imageUrl: string; thumbUrl: string; mediaType: string; imageSize: number }[] = [];
   for (const item of items) {
     const parsed = addImageSchema.safeParse(item);
     if (!parsed.success) continue;
@@ -68,6 +70,7 @@ export async function POST(
       id: createId(),
       imageUrl: parsed.data.imageUrl,
       thumbUrl: parsed.data.thumbUrl,
+      mediaType: parsed.data.mediaType,
       imageSize: parsed.data.imageSize,
     });
   }
@@ -75,9 +78,9 @@ export async function POST(
   if (valid.length > 0) {
     await db.batch(
       valid.map((it, i) => ({
-        sql: `INSERT INTO work_images (id, work_id, image_url, thumb_url, sort_order, image_size)
-              VALUES (?, ?, ?, ?, ?, ?)`,
-        args: [it.id, workId, it.imageUrl, it.thumbUrl, i, it.imageSize],
+        sql: `INSERT INTO work_images (id, work_id, image_url, thumb_url, media_type, sort_order, image_size)
+              VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        args: [it.id, workId, it.imageUrl, it.thumbUrl, it.mediaType, i, it.imageSize],
       }))
     );
 
@@ -151,7 +154,7 @@ export async function PUT(
   const body = await req.json();
   const items = Array.isArray(body) ? body : [];
 
-  const valid: { id: string; imageUrl: string; thumbUrl: string; imageSize: number; sortOrder: number }[] = [];
+  const valid: { id: string; imageUrl: string; thumbUrl: string; mediaType: string; imageSize: number; sortOrder: number }[] = [];
   for (const [i, item] of items.entries()) {
     const parsed = addImageSchema.safeParse(item);
     if (!parsed.success) continue;
@@ -159,6 +162,7 @@ export async function PUT(
       id: createId(),
       imageUrl: parsed.data.imageUrl,
       thumbUrl: parsed.data.thumbUrl,
+      mediaType: parsed.data.mediaType,
       imageSize: parsed.data.imageSize,
       sortOrder: parsed.data.sortOrder ?? i,
     });
@@ -182,9 +186,9 @@ export async function PUT(
   if (valid.length > 0) {
     await db.batch(
       valid.map((it) => ({
-        sql: `INSERT INTO work_images (id, work_id, image_url, thumb_url, sort_order, image_size)
-              VALUES (?, ?, ?, ?, ?, ?)`,
-        args: [it.id, workId, it.imageUrl, it.thumbUrl, it.sortOrder, it.imageSize],
+        sql: `INSERT INTO work_images (id, work_id, image_url, thumb_url, media_type, sort_order, image_size)
+              VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        args: [it.id, workId, it.imageUrl, it.thumbUrl, it.mediaType, it.sortOrder, it.imageSize],
       }))
     );
   }

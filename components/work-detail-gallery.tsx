@@ -7,6 +7,8 @@ import { animate, motion, useMotionValue, type PanInfo } from "framer-motion";
 interface GalleryImage {
   id: string;
   image_url: string;
+  thumb_url?: string;
+  media_type?: string;
 }
 
 const SWIPE_OFFSET_THRESHOLD = 68;
@@ -189,22 +191,43 @@ export default function WorkDetailGallery({
             type="button"
             onClick={() => openViewer(index)}
             tabIndex={activeImage ? -1 : 0}
-            className="block w-full bg-surface cursor-zoom-in border border-border/35"
+            className="block w-full bg-surface cursor-zoom-in border border-border/35 relative"
           >
-            <Image
-              src={image.image_url}
-              alt={`${workTitle} ${index + 1}`}
-              width={2400}
-              height={3000}
-              unoptimized
-              sizes="(max-width: 768px) 98vw, 96vw"
-              className={`w-full h-auto object-contain transition-opacity duration-500 ${readyMap[image.id || String(index)] ? "opacity-100" : "opacity-0"}`}
-              priority={index === 0}
-              onLoad={() => {
-                const key = image.id || String(index);
-                setReadyMap((current) => (current[key] ? current : { ...current, [key]: true }));
-              }}
-            />
+            {image.media_type === "video" ? (
+              <>
+                <video
+                  src={image.image_url}
+                  poster={image.thumb_url}
+                  muted
+                  preload="metadata"
+                  className="w-full h-auto"
+                  onLoadedMetadata={() => {
+                    const key = image.id || String(index);
+                    setReadyMap((current) => (current[key] ? current : { ...current, [key]: true }));
+                  }}
+                />
+                <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <span className="w-12 h-12 rounded-full bg-bg/70 border border-border flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-accent ml-0.5"><polygon points="5,3 19,12 5,21" /></svg>
+                  </span>
+                </span>
+              </>
+            ) : (
+              <Image
+                src={image.image_url}
+                alt={`${workTitle} ${index + 1}`}
+                width={2400}
+                height={3000}
+                unoptimized
+                sizes="(max-width: 768px) 98vw, 96vw"
+                className={`w-full h-auto object-contain transition-opacity duration-500 ${readyMap[image.id || String(index)] ? "opacity-100" : "opacity-0"}`}
+                priority={index === 0}
+                onLoad={() => {
+                  const key = image.id || String(index);
+                  setReadyMap((current) => (current[key] ? current : { ...current, [key]: true }));
+                }}
+              />
+            )}
           </button>
         ))}
       </div>
@@ -287,15 +310,23 @@ export default function WorkDetailGallery({
                     data-gallery-slide={index}
                     className="flex h-full w-[97vw] shrink-0 items-center justify-center"
                   >
-                    <Image
-                      src={image.image_url}
-                      alt={workTitle}
-                      width={2400}
-                      height={3000}
-                      unoptimized
-                      sizes="97vw"
-                      draggable={false}
-                      className="max-w-[97vw] max-h-[97vh] object-contain select-none"
+                    {image.media_type === "video" ? (
+                      <video
+                        src={image.image_url}
+                        poster={image.thumb_url}
+                        controls
+                        className="max-w-[97vw] max-h-[97vh] object-contain select-none"
+                      />
+                    ) : (
+                      <Image
+                        src={image.image_url}
+                        alt={workTitle}
+                        width={2400}
+                        height={3000}
+                        unoptimized
+                        sizes="97vw"
+                        draggable={false}
+                        className="max-w-[97vw] max-h-[97vh] object-contain select-none"
                       style={
                         isActive
                           ? {
@@ -396,6 +427,7 @@ export default function WorkDetailGallery({
                       } : undefined}
                       onClick={(event) => event.stopPropagation()}
                     />
+                    )}
                   </div>
                 );
               })}

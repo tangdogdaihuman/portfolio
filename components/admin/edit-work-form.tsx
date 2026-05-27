@@ -17,6 +17,7 @@ interface EditableImage {
   thumb_url: string;
   source: "existing" | "new";
   size: number;
+  media_type: string;
 }
 
 function moveEditableImages(images: EditableImage[], fromIndex: number, toIndex: number) {
@@ -104,6 +105,7 @@ export default function EditWorkForm({
               thumb_url: image.thumb_url as string,
               source: "existing" as const,
               size: (image.image_size as number) || 0,
+              media_type: (image.media_type as string) || "image",
             }))
           );
         }
@@ -159,6 +161,7 @@ export default function EditWorkForm({
         thumb_url: result.thumbUrl,
         source: "new" as const,
         size: result.size,
+        media_type: "image",
       })),
     ]);
     setUploading(false);
@@ -230,6 +233,7 @@ export default function EditWorkForm({
             .map((image, index) => ({
               imageUrl: image.image_url,
               thumbUrl: image.thumb_url,
+              mediaType: image.media_type,
               imageSize: image.size,
               sortOrder: index,
             }))
@@ -367,6 +371,22 @@ export default function EditWorkForm({
                   aria-label={`删除第 ${index + 1} 张`}
                 >
                   ×
+                </button>
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setAllImages((current) => current.map((img, i) =>
+                      i === index ? { ...img, media_type: img.media_type === "video" ? "image" : "video" } : img
+                    ));
+                  }}
+                  className={`absolute top-0.5 right-0.5 text-[9px] px-1 border ${
+                    image.media_type === "video"
+                      ? "bg-accent text-bg border-accent"
+                      : "bg-bg/80 text-text-muted border-border/70 hover:text-text"
+                  }`}
+                >
+                  {image.media_type === "video" ? "视频" : "图片"}
                 </button>
               </div>
             ))}

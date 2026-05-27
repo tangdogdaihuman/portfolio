@@ -22,6 +22,7 @@ export interface WorkImage {
   work_id: string;
   image_url: string;
   thumb_url: string;
+  media_type: string;
   sort_order: number;
   image_size: number;
   created_at: string;

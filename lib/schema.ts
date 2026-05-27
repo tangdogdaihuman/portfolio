@@ -23,6 +23,7 @@ export const BASE_SCHEMA_SQL = `
     work_id TEXT NOT NULL,
     image_url TEXT NOT NULL,
     thumb_url TEXT NOT NULL,
+    media_type TEXT NOT NULL DEFAULT 'image',
     sort_order INTEGER DEFAULT 0,
     image_size INTEGER DEFAULT 0,
     created_at TEXT DEFAULT (datetime('now'))
@@ -94,6 +95,7 @@ export const COLUMN_PATCHES = [
   { table: "works", column: "size_weight", definition: "REAL DEFAULT 1.0" },
   { table: "intro", column: "tagline", definition: "TEXT NOT NULL DEFAULT ''" },
   { table: "work_images", column: "image_size", definition: "INTEGER DEFAULT 0" },
+  { table: "work_images", column: "media_type", definition: "TEXT NOT NULL DEFAULT 'image'" },
 ] as const;
 
 export const RECORDED_MIGRATIONS = [

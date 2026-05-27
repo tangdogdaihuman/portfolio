@@ -42,6 +42,7 @@ export function rowToWorkImage(row: Record<string, unknown>): WorkImage {
     work_id: readString(row.work_id),
     image_url: readString(row.image_url),
     thumb_url: readString(row.thumb_url),
+    media_type: readString(row.media_type) || "image",
     sort_order: readNumber(row.sort_order),
     image_size: readNumber(row.image_size),
     created_at: readString(row.created_at),
