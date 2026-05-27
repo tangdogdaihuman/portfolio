@@ -181,7 +181,7 @@ export default function AddWorkForm({
             点击选择图片（可多选）
             <input
               type="file"
-              accept="image/*"
+              accept="image/*,video/*"
               multiple
               onChange={handleUpload}
               className="hidden"

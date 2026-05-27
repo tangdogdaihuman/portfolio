@@ -422,7 +422,7 @@ export default function EditWorkForm({
         ) : (
           <label className="inline-block px-6 py-6 border-2 border-dashed border-border text-text-muted text-sm cursor-pointer hover:border-accent-dim">
             点击选择（可多选）
-            <input type="file" accept="image/*" multiple onChange={uploadNewFiles} className="hidden" />
+            <input type="file" accept="image/*,video/*" multiple onChange={uploadNewFiles} className="hidden" />
           </label>
         )}
       </div>
