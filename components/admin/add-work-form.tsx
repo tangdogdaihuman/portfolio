@@ -220,7 +220,7 @@ export default function AddWorkForm({
                       setDragIdx(null);
                     }}
                     onClick={() => setPreviewIndex(index)}
-                    className={`relative inline-block align-top cursor-grab active:cursor-grabbing group border ${
+                    className={`relative cursor-grab active:cursor-grabbing group border ${
                       index === activePreviewIndex ? "border-accent" : "border-border"
                     }`}
                   >
