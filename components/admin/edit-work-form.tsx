@@ -344,14 +344,14 @@ export default function EditWorkForm({
                   setDragIdx(null);
                 }}
                 onClick={() => setPreviewIndex(index)}
-                className={`relative inline-block cursor-grab active:cursor-grabbing group border ${
+                className={`relative inline-block align-top cursor-grab active:cursor-grabbing group border ${
                   index === activePreviewIndex ? "border-accent" : "border-border"
                 }`}
               >
                 {image.media_type === "video" ? (
-                  <video src={image.image_url} muted className="w-20 h-16 object-cover pointer-events-none" />
+                  <video src={image.image_url} muted className="w-20 h-16 object-cover pointer-events-none block" />
                 ) : (
-                  <Image src={image.thumb_url} alt="" width={80} height={64} unoptimized className="w-20 h-16 object-cover" />
+                  <Image src={image.thumb_url} alt="" width={80} height={64} unoptimized className="w-20 h-16 object-cover block" />
                 )}
                 <button
                   type="button"

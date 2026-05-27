@@ -220,12 +220,12 @@ export default function AddWorkForm({
                       setDragIdx(null);
                     }}
                     onClick={() => setPreviewIndex(index)}
-                    className={`relative inline-block cursor-grab active:cursor-grabbing group border ${
+                    className={`relative inline-block align-top cursor-grab active:cursor-grabbing group border ${
                       index === activePreviewIndex ? "border-accent" : "border-border"
                     }`}
                   >
                     {mediaTypes[index] === "video" ? (
-                      <video src={file.imageUrl} muted className="w-20 h-16 object-cover pointer-events-none" />
+                      <video src={file.imageUrl} muted className="w-20 h-16 object-cover pointer-events-none block" />
                     ) : (
                       <Image
                         src={file.thumbUrl}
@@ -233,7 +233,7 @@ export default function AddWorkForm({
                         width={80}
                         height={64}
                         unoptimized
-                        className="w-20 h-16 object-cover"
+                        className="w-20 h-16 object-cover block"
                       />
                     )}
                     <button
