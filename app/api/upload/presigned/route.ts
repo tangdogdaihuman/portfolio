@@ -9,7 +9,19 @@ import { reportApiError, reportMetric } from "@/lib/monitoring";
 import { getIdempotencyStore } from "@/lib/idempotency-store";
 import { fail, ok } from "@/lib/api-response";
 
-const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
+const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "image/avif", "video/mp4", "video/webm", "video/quicktime", "video/x-msvideo", "video/x-matroska"]);
+
+const EXT_MAP: Record<string, string> = {
+  "video/quicktime": "mov",
+  "video/x-msvideo": "avi",
+  "video/x-matroska": "mkv",
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/avif": "avif",
+  "video/mp4": "mp4",
+  "video/webm": "webm",
+};
 
 export async function POST(req: NextRequest) {
   try {
@@ -33,7 +45,7 @@ export async function POST(req: NextRequest) {
       reportMetric({ scope: "upload.presigned.invalid_type", value: 1, path: req.nextUrl.pathname, meta: { contentType } });
       return fail("BAD_REQUEST", "Invalid image type", 400);
     }
-    const ext = contentType.split("/")[1] || "png";
+    const ext = EXT_MAP[contentType] || "png";
     const id = createId();
     const originalKey = `originals/${id}.${ext}`;
 
