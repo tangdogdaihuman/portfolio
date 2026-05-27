@@ -348,7 +348,11 @@ export default function EditWorkForm({
                   index === activePreviewIndex ? "border-accent" : "border-border"
                 }`}
               >
-                <Image src={image.thumb_url} alt="" width={80} height={64} unoptimized className="w-20 h-16 object-cover" />
+                {image.media_type === "video" ? (
+                  <video src={image.image_url} muted className="w-20 h-16 object-cover pointer-events-none" />
+                ) : (
+                  <Image src={image.thumb_url} alt="" width={80} height={64} unoptimized className="w-20 h-16 object-cover" />
+                )}
                 <button
                   type="button"
                   onClick={(event) => {

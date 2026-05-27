@@ -224,14 +224,18 @@ export default function AddWorkForm({
                       index === activePreviewIndex ? "border-accent" : "border-border"
                     }`}
                   >
-                    <Image
-                      src={file.thumbUrl}
-                      alt=""
-                      width={80}
-                      height={64}
-                      unoptimized
-                      className="w-20 h-16 object-cover"
-                    />
+                    {mediaTypes[index] === "video" ? (
+                      <video src={file.imageUrl} muted className="w-20 h-16 object-cover pointer-events-none" />
+                    ) : (
+                      <Image
+                        src={file.thumbUrl}
+                        alt=""
+                        width={80}
+                        height={64}
+                        unoptimized
+                        className="w-20 h-16 object-cover"
+                      />
+                    )}
                     <button
                       type="button"
                       onClick={(event) => {
