@@ -250,24 +250,6 @@ export default function AddWorkForm({
                       type="button"
                       onClick={(event) => {
                         event.stopPropagation();
-                        setMediaTypes((current) => {
-                          const next = [...current];
-                          next[index] = next[index] === "video" ? "image" : "video";
-                          return next;
-                        });
-                      }}
-                      className={`absolute top-0.5 right-0.5 text-[9px] px-1 border ${
-                        mediaTypes[index] === "video"
-                          ? "bg-accent text-bg border-accent"
-                          : "bg-bg/80 text-text-muted border-border/70 hover:text-text"
-                      }`}
-                    >
-                      {mediaTypes[index] === "video" ? "视频" : "图片"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
                         void cleanupUploadedFiles([uploadedFiles[index]]);
                         setFormState((current) => removeUploadedFile(current, index));
                         setPreviewIndex((current) => getIndexAfterRemoval(current, index));

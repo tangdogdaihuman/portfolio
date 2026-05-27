@@ -373,22 +373,6 @@ export default function EditWorkForm({
                 >
                   ×
                 </button>
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setAllImages((current) => current.map((img, i) =>
-                      i === index ? { ...img, media_type: img.media_type === "video" ? "image" : "video" } : img
-                    ));
-                  }}
-                  className={`absolute top-0.5 right-0.5 text-[9px] px-1 border ${
-                    image.media_type === "video"
-                      ? "bg-accent text-bg border-accent"
-                      : "bg-bg/80 text-text-muted border-border/70 hover:text-text"
-                  }`}
-                >
-                  {image.media_type === "video" ? "视频" : "图片"}
-                </button>
               </div>
             ))}
             {allImages.length === 0 && <p className="text-text-muted text-xs">暂无图片</p>}

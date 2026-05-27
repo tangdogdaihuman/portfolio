@@ -37,6 +37,8 @@ export async function cleanupUploadedFiles(files: Pick<UploadedFile, "imageUrl" 
 
 export async function uploadImageToR2(file: File): Promise<UploadedFile> {
   const requestId = createRequestId();
+  const isVideo = /\.(mp4|webm|mov|avi|mkv)$/i.test(file.name) || file.type.startsWith("video/");
+
   const presignedRes = await fetch("/api/upload/presigned", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -51,6 +53,16 @@ export async function uploadImageToR2(file: File): Promise<UploadedFile> {
     headers: { "Content-Type": file.type },
   });
   if (!uploadRes.ok) throw new Error("上传原图失败");
+
+  if (isVideo) {
+    return {
+      imageUrl,
+      thumbUrl: imageUrl,
+      size: file.size,
+      fileName: file.name.replace(/\.[^.]+$/, ""),
+      originalFileName: file.name,
+    };
+  }
 
   const processRes = await fetch("/api/upload/process", {
     method: "POST",
