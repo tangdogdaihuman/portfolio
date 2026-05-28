@@ -194,24 +194,20 @@ export default function WorkDetailGallery({
             className="block w-full bg-surface cursor-zoom-in border border-border/35 relative"
           >
             {image.media_type === "video" ? (
-              <>
-                <video
-                  src={image.image_url}
-                  poster={image.thumb_url}
-                  muted
-                  preload="metadata"
-                  className="w-full h-auto"
-                  onLoadedMetadata={() => {
-                    const key = image.id || String(index);
-                    setReadyMap((current) => (current[key] ? current : { ...current, [key]: true }));
-                  }}
-                />
-                <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <span className="w-12 h-12 rounded-full bg-bg/70 border border-border flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="text-accent ml-0.5"><polygon points="5,3 19,12 5,21" /></svg>
-                  </span>
-                </span>
-              </>
+              <video
+                src={image.image_url}
+                poster={image.thumb_url !== image.image_url ? image.thumb_url : undefined}
+                controls
+                playsInline
+                muted
+                preload="metadata"
+                className="w-full h-auto"
+                onClick={(e) => e.stopPropagation()}
+                onLoadedMetadata={() => {
+                  const key = image.id || String(index);
+                  setReadyMap((current) => (current[key] ? current : { ...current, [key]: true }));
+                }}
+              />
             ) : (
               <Image
                 src={image.image_url}
