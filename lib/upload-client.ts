@@ -2,6 +2,7 @@ export interface UploadedFile {
   imageUrl: string;
   thumbUrl: string;
   size: number;
+  mediaType: "image" | "video";
   // Kept for compatibility: filename without extension.
   fileName: string;
   originalFileName: string;
@@ -59,6 +60,7 @@ export async function uploadImageToR2(file: File): Promise<UploadedFile> {
       imageUrl,
       thumbUrl: imageUrl,
       size: file.size,
+      mediaType: "video",
       fileName: file.name.replace(/\.[^.]+$/, ""),
       originalFileName: file.name,
     };
@@ -79,6 +81,7 @@ export async function uploadImageToR2(file: File): Promise<UploadedFile> {
     imageUrl: data.imageUrl,
     thumbUrl: data.thumbUrl,
     size: file.size,
+    mediaType: "image",
     fileName: file.name.replace(/\.[^.]+$/, ""),
     originalFileName: file.name,
   };

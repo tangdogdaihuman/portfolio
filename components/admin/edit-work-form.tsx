@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cleanupUploadedFiles, uploadImageToR2 } from "@/lib/upload-client";
 import {
   SOFTWARE_PRESETS,
@@ -9,6 +9,7 @@ import {
   getIndexAfterRemoval,
   getMovedIndex,
   mergeSoftwareValues,
+  moveInArray,
 } from "@/components/admin/work-form-state";
 
 interface EditableImage {
@@ -20,21 +21,11 @@ interface EditableImage {
   media_type: string;
 }
 
-function moveEditableImages(images: EditableImage[], fromIndex: number, toIndex: number) {
-  if (
-    fromIndex < 0 ||
-    toIndex < 0 ||
-    fromIndex >= images.length ||
-    toIndex >= images.length ||
-    fromIndex === toIndex
-  ) {
-    return images;
+function nextTempId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return `new_${crypto.randomUUID().slice(0, 8)}`;
   }
-
-  const updated = [...images];
-  const [moved] = updated.splice(fromIndex, 1);
-  updated.splice(toIndex, 0, moved);
-  return updated;
+  return `new_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
 export default function EditWorkForm({
@@ -64,7 +55,7 @@ export default function EditWorkForm({
   const [uploadDone, setUploadDone] = useState(0);
   const [saving, setSaving] = useState(false);
   const [saveStep, setSaveStep] = useState("");
-  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const dragIdxRef = useRef<number | null>(null);
   const [baseUpdatedAt, setBaseUpdatedAt] = useState("");
 
   useEffect(() => {
@@ -100,7 +91,7 @@ export default function EditWorkForm({
           if (cancelled) return;
           setAllImages(
             images.map((image: Record<string, unknown>) => ({
-              id: (image.id as string) || "",
+              id: (image.id as string) || nextTempId(),
               image_url: image.image_url as string,
               thumb_url: image.thumb_url as string,
               source: "existing" as const,
@@ -157,7 +148,7 @@ export default function EditWorkForm({
     setAllImages((current) => [
       ...current,
       ...ordered.map((result) => ({
-        id: "",
+        id: nextTempId(),
         image_url: result.imageUrl,
         thumb_url: result.thumbUrl,
         source: "new" as const,
@@ -332,16 +323,18 @@ export default function EditWorkForm({
           <div className="flex flex-wrap gap-2">
             {allImages.map((image, index) => (
               <div
-                key={image.id || `new_${index}`}
+                key={image.id}
                 draggable
-                onDragStart={() => setDragIdx(index)}
+                onDragStart={() => { dragIdxRef.current = index; }}
                 onDragOver={(event) => event.preventDefault()}
+                onDragEnd={() => { dragIdxRef.current = null; }}
                 onDrop={() => {
-                  if (dragIdx === null || dragIdx === index) return;
-                  setAllImages((current) => moveEditableImages(current, dragIdx, index));
-                  setCoverIndex((current) => getMovedIndex(current, dragIdx, index));
-                  setPreviewIndex((current) => getMovedIndex(current, dragIdx, index));
-                  setDragIdx(null);
+                  const fromIdx = dragIdxRef.current;
+                  if (fromIdx === null || fromIdx === index) return;
+                  setAllImages((current) => moveInArray(current, fromIdx, index));
+                  setCoverIndex((current) => getMovedIndex(current, fromIdx, index));
+                  setPreviewIndex((current) => getMovedIndex(current, fromIdx, index));
+                  dragIdxRef.current = null;
                 }}
                 onClick={() => setPreviewIndex(index)}
                 className={`relative w-20 h-16 cursor-grab active:cursor-grabbing group border overflow-hidden ${

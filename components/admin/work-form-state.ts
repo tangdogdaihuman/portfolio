@@ -64,6 +64,22 @@ export function appendUploadedFiles(state: WorkFormState, files: UploadedFile[])
   };
 }
 
+export function moveInArray<T>(arr: T[], fromIndex: number, toIndex: number): T[] {
+  if (
+    fromIndex < 0 ||
+    toIndex < 0 ||
+    fromIndex >= arr.length ||
+    toIndex >= arr.length ||
+    fromIndex === toIndex
+  ) {
+    return arr;
+  }
+  const updated = [...arr];
+  const [moved] = updated.splice(fromIndex, 1);
+  updated.splice(toIndex, 0, moved);
+  return updated;
+}
+
 export function getMovedIndex(currentIndex: number, fromIndex: number, toIndex: number): number {
   if (currentIndex === fromIndex) return toIndex;
   if (fromIndex < currentIndex && toIndex >= currentIndex) return currentIndex - 1;
@@ -78,19 +94,8 @@ export function getIndexAfterRemoval(currentIndex: number, removedIndex: number)
 }
 
 export function moveUploadedFile(state: WorkFormState, fromIndex: number, toIndex: number): WorkFormState {
-  if (
-    fromIndex < 0 ||
-    toIndex < 0 ||
-    fromIndex >= state.uploadedFiles.length ||
-    toIndex >= state.uploadedFiles.length ||
-    fromIndex === toIndex
-  ) {
-    return state;
-  }
-
-  const uploadedFiles = [...state.uploadedFiles];
-  const [moved] = uploadedFiles.splice(fromIndex, 1);
-  uploadedFiles.splice(toIndex, 0, moved);
+  const uploadedFiles = moveInArray(state.uploadedFiles, fromIndex, toIndex);
+  if (uploadedFiles === state.uploadedFiles) return state;
 
   return {
     ...state,

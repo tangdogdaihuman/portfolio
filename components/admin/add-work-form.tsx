@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState, type Dispatch, type SetStateAction } from "react";
+import { useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { cleanupUploadedFiles, uploadImageToR2 } from "@/lib/upload-client";
 import {
   SOFTWARE_PRESETS,
@@ -28,9 +28,8 @@ export default function AddWorkForm({
   onDone: () => void;
   showMsg: (text: string, ok: boolean) => void;
 }) {
-  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const dragIdxRef = useRef<number | null>(null);
   const [previewIndex, setPreviewIndex] = useState(0);
-  const [mediaTypes, setMediaTypes] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   const {
@@ -82,10 +81,6 @@ export default function AddWorkForm({
 
     const ordered = results.filter((file): file is Awaited<ReturnType<typeof uploadImageToR2>> => file !== null);
     setFormState((current) => appendUploadedFiles(current, ordered));
-    setMediaTypes((current) => [...current, ...ordered.map((result) => {
-      const originalFile = fileArray.find((f) => f.name === result.originalFileName);
-      return originalFile && /\.(mp4|webm|mov|avi|mkv)$/i.test(originalFile.name) ? "video" : "image";
-    })]);
     showMsg(formatUploadResult(ordered.length, total, failures, "个文件"), ordered.length > 0);
   };
 
@@ -131,13 +126,13 @@ export default function AddWorkForm({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
-          uploadedFiles.map((file, index) => ({
-            imageUrl: file.imageUrl,
-            thumbUrl: file.thumbUrl,
-            mediaType: mediaTypes[index] || "image",
-            imageSize: file.size,
-            sortOrder: index,
-          }))
+            uploadedFiles.map((file, index) => ({
+              imageUrl: file.imageUrl,
+              thumbUrl: file.thumbUrl,
+              mediaType: file.mediaType,
+              imageSize: file.size,
+              sortOrder: index,
+            }))
         ),
       });
 
@@ -209,22 +204,24 @@ export default function AddWorkForm({
               <div className="flex flex-wrap gap-2">
                 {uploadedFiles.map((file, index) => (
                   <div
-                    key={`${file.imageUrl}-${index}`}
+                    key={file.imageUrl}
                     draggable
-                    onDragStart={() => setDragIdx(index)}
+                    onDragStart={() => { dragIdxRef.current = index; }}
                     onDragOver={(event) => event.preventDefault()}
+                    onDragEnd={() => { dragIdxRef.current = null; }}
                     onDrop={() => {
-                      if (dragIdx === null || dragIdx === index) return;
-                      setFormState((current) => moveUploadedFile(current, dragIdx, index));
-                      setPreviewIndex((current) => getMovedIndex(current, dragIdx, index));
-                      setDragIdx(null);
+                      const fromIdx = dragIdxRef.current;
+                      if (fromIdx === null || fromIdx === index) return;
+                      setFormState((current) => moveUploadedFile(current, fromIdx, index));
+                      setPreviewIndex((current) => getMovedIndex(current, fromIdx, index));
+                      dragIdxRef.current = null;
                     }}
                     onClick={() => setPreviewIndex(index)}
                     className={`relative w-20 h-16 cursor-grab active:cursor-grabbing group border overflow-hidden ${
                       index === activePreviewIndex ? "border-accent" : "border-border"
                     }`}
                   >
-                    {mediaTypes[index] === "video" ? (
+                    {file.mediaType === "video" ? (
                       <video src={file.imageUrl} muted className="w-full h-full object-cover pointer-events-none" />
                     ) : (
                       <img src={file.thumbUrl} alt="" className="w-full h-full object-cover" />
@@ -245,13 +242,12 @@ export default function AddWorkForm({
                     </button>
                     <button
                       type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        void cleanupUploadedFiles([uploadedFiles[index]]);
-                        setFormState((current) => removeUploadedFile(current, index));
-                        setPreviewIndex((current) => getIndexAfterRemoval(current, index));
-                        setMediaTypes((current) => current.filter((_, i) => i !== index));
-                      }}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void cleanupUploadedFiles([uploadedFiles[index]]);
+                      setFormState((current) => removeUploadedFile(current, index));
+                      setPreviewIndex((current) => getIndexAfterRemoval(current, index));
+                    }}
                       className="absolute -top-2 -right-2 bg-bg border border-border text-text-muted text-xs w-6 h-6 flex items-center justify-center hover:text-red-400"
                       aria-label={`删除第 ${index + 1} 张`}
                     >
@@ -262,7 +258,7 @@ export default function AddWorkForm({
               </div>
               <div className="hidden md:block border border-border/70 bg-surface/50 p-2">
                 <p className="mb-2 text-[11px] tracking-[0.12em] uppercase text-text-muted">原图预览</p>
-                {mediaTypes[activePreviewIndex] === "video" ? (
+                {uploadedFiles[activePreviewIndex]?.mediaType === "video" ? (
                   <video
                     src={(uploadedFiles[activePreviewIndex] || uploadedFiles[0]).imageUrl}
                     controls

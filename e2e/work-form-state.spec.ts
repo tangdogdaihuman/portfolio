@@ -13,6 +13,7 @@ function makeFile(name: string): UploadedFile {
     imageUrl: `https://example.com/${name}.png`,
     thumbUrl: `https://example.com/${name}.webp`,
     size: 1024,
+    mediaType: "image",
     fileName: name,
     originalFileName: `${name}.png`,
   };
