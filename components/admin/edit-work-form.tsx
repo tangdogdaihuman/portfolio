@@ -344,14 +344,14 @@ export default function EditWorkForm({
                   setDragIdx(null);
                 }}
                 onClick={() => setPreviewIndex(index)}
-                className={`relative cursor-grab active:cursor-grabbing group border ${
+                className={`relative w-20 h-16 cursor-grab active:cursor-grabbing group border overflow-hidden ${
                   index === activePreviewIndex ? "border-accent" : "border-border"
                 }`}
               >
                 {image.media_type === "video" ? (
-                  <video src={image.image_url} muted className="w-20 h-16 object-cover pointer-events-none block" />
+                  <video src={image.image_url} muted className="w-full h-full object-cover pointer-events-none" />
                 ) : (
-                  <Image src={image.thumb_url} alt="" width={80} height={64} unoptimized className="w-20 h-16 object-cover block" />
+                  <img src={image.thumb_url} alt="" className="w-full h-full object-cover" />
                 )}
                 <button
                   type="button"
@@ -384,14 +384,22 @@ export default function EditWorkForm({
           {allImages.length > 0 && (
             <div className="hidden md:block border border-border/70 bg-surface/50 p-2">
               <p className="mb-2 text-[11px] tracking-[0.12em] uppercase text-text-muted">原图预览</p>
-              <Image
-                src={(allImages[activePreviewIndex] || allImages[0]).image_url}
-                alt="原图预览"
-                width={840}
-                height={840}
-                unoptimized
-                className="w-full h-auto max-h-[18rem] object-contain bg-bg/70 border border-border/40"
-              />
+              {allImages[activePreviewIndex]?.media_type === "video" ? (
+                <video
+                  src={allImages[activePreviewIndex].image_url}
+                  controls
+                  className="w-full h-auto max-h-[18rem] object-contain bg-bg/70 border border-border/40"
+                />
+              ) : (
+                <Image
+                  src={(allImages[activePreviewIndex] || allImages[0]).image_url}
+                  alt="原图预览"
+                  width={840}
+                  height={840}
+                  unoptimized
+                  className="w-full h-auto max-h-[18rem] object-contain bg-bg/70 border border-border/40"
+                />
+              )}
             </div>
           )}
         </div>

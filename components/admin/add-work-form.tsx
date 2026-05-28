@@ -220,21 +220,14 @@ export default function AddWorkForm({
                       setDragIdx(null);
                     }}
                     onClick={() => setPreviewIndex(index)}
-                    className={`relative cursor-grab active:cursor-grabbing group border ${
+                    className={`relative w-20 h-16 cursor-grab active:cursor-grabbing group border overflow-hidden ${
                       index === activePreviewIndex ? "border-accent" : "border-border"
                     }`}
                   >
                     {mediaTypes[index] === "video" ? (
-                      <video src={file.imageUrl} muted className="w-20 h-16 object-cover pointer-events-none block" />
+                      <video src={file.imageUrl} muted className="w-full h-full object-cover pointer-events-none" />
                     ) : (
-                      <Image
-                        src={file.thumbUrl}
-                        alt=""
-                        width={80}
-                        height={64}
-                        unoptimized
-                        className="w-20 h-16 object-cover block"
-                      />
+                      <img src={file.thumbUrl} alt="" className="w-full h-full object-cover" />
                     )}
                     <button
                       type="button"
@@ -269,14 +262,22 @@ export default function AddWorkForm({
               </div>
               <div className="hidden md:block border border-border/70 bg-surface/50 p-2">
                 <p className="mb-2 text-[11px] tracking-[0.12em] uppercase text-text-muted">原图预览</p>
-                <Image
-                  src={(uploadedFiles[activePreviewIndex] || uploadedFiles[0]).imageUrl}
-                  alt="原图预览"
-                  width={840}
-                  height={840}
-                  unoptimized
-                  className="w-full h-auto max-h-[18rem] object-contain bg-bg/70 border border-border/40"
-                />
+                {mediaTypes[activePreviewIndex] === "video" ? (
+                  <video
+                    src={(uploadedFiles[activePreviewIndex] || uploadedFiles[0]).imageUrl}
+                    controls
+                    className="w-full h-auto max-h-[18rem] object-contain bg-bg/70 border border-border/40"
+                  />
+                ) : (
+                  <Image
+                    src={(uploadedFiles[activePreviewIndex] || uploadedFiles[0]).imageUrl}
+                    alt="原图预览"
+                    width={840}
+                    height={840}
+                    unoptimized
+                    className="w-full h-auto max-h-[18rem] object-contain bg-bg/70 border border-border/40"
+                  />
+                )}
               </div>
             </div>
           </div>
