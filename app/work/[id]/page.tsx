@@ -77,6 +77,8 @@ export default async function WorkDetailPage(
   const galleryImages = images.map((image) => ({
     id: image.id,
     image_url: image.image_url,
+    thumb_url: image.thumb_url,
+    media_type: image.media_type,
   }));
 
   return (
