@@ -83,7 +83,9 @@ function WorkThumbImage({
   useEffect(() => {
     const image = imageRef.current;
     if (image?.complete && image.naturalWidth > 0) {
-      onReady(work.id);
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => onReady(work.id));
+      });
     }
   }, [onReady, work.id, work.thumb_url]);
 
