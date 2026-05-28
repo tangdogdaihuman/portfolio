@@ -10,7 +10,6 @@ import AuroraCanvas from "@/components/aurora-canvas";
 import ThemeToggle from "@/components/theme-toggle";
 
 const spring = { type: "spring" as const, damping: 28, stiffness: 200, mass: 0.8 };
-const springSlow = { type: "spring" as const, damping: 32, stiffness: 160, mass: 1 };
 const DEFAULT_TAGLINE = "Hard Surface / Stylized Character / Game Art";
 const VISIBLE_REFRESH_MIN_INTERVAL = 30000;
 
@@ -601,17 +600,20 @@ export default function HomeClient({
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10">
+            <AnimatePresence mode="popLayout">
             {sorted.map((work, i) => {
               const w = work.size_weight ?? 1;
               const colSpan = w >= 1.5 ? "md:col-span-8" : w >= 1.0 ? (i % 2 === 0 ? "md:col-span-7" : "md:col-span-5") : "md:col-span-4";
               return (
                 <motion.div
                   key={work.id}
-                  initial={{ opacity: 0, y: 40 }}
-                  whileInView={{ opacity: 1, y: 0 }}
+                  layout
+                  initial={{ opacity: 0 }}
+                  whileInView={{ opacity: 1 }}
                   viewport={{ once: true, margin: "-40px" }}
-                  transition={{ ...springSlow, delay: (i % 4) * 0.08 }}
-                  className={`work-card reveal group ${colSpan}`}
+                  exit={{ opacity: 0, scale: 0.96 }}
+                  transition={{ duration: 0.35, ease: [0.2, 0.9, 0.3, 1] }}
+                  className={`work-card group ${colSpan}`}
                 >
                   <Link href={`/work/${work.id}`} className="block" data-hover>
                     <div className="overflow-hidden">
@@ -632,6 +634,7 @@ export default function HomeClient({
                 </motion.div>
               );
             })}
+            </AnimatePresence>
           </div>
         )}
       </section>
