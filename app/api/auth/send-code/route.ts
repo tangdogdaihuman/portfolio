@@ -17,14 +17,15 @@ export async function POST(req: NextRequest) {
       return limited;
     }
 
-    // 发送频率限制：每 IP 60 秒内只能发一次
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
       || req.headers.get("x-real-ip")
       || "unknown";
 
+    // 先标记限流，再发邮件，关闭 check-then-act 窗口
     if (isRateLimited(ip)) {
-      return fail("RATE_LIMITED", "发送过于频繁，请60秒后再试", 429);
+      return fail("RATE_LIMITED", "发送过于频繁，请30秒后再试", 429);
     }
+    setRateLimit(ip);
 
     const code = generateCode(ip);
     const sent = await sendVerificationCode(code);
@@ -38,7 +39,6 @@ export async function POST(req: NextRequest) {
       return fail("SERVER_ERROR", "邮件发送失败，请确认服务端邮箱配置正确", 500);
     }
 
-    setRateLimit(ip);
     reportMetric({ scope: "sendcode.success", value: 1, path: req.nextUrl.pathname });
     return ok({ sent: true });
   } catch (error) {

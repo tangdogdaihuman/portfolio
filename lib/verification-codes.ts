@@ -20,14 +20,16 @@ function cleanup(now: number) {
   for (const [key, entry] of codes) {
     if (entry.expiresAt <= now) codes.delete(key);
   }
+  for (const [key, ts] of rateMap) {
+    if (now - ts > RATE_LIMIT_MS) rateMap.delete(key);
+  }
 }
 
-// 发送频率限制：同一 IP 每分钟最多 1 次
+// 发送频率限制：同一 IP 30 秒内只能发一次
 const rateMap = new Map<string, number>();
 const RATE_LIMIT_MS = 30_000;
 
 export function isRateLimited(ip: string): boolean {
-  cleanup(Date.now());
   const last = rateMap.get(ip);
   return last ? Date.now() - last < RATE_LIMIT_MS : false;
 }
@@ -37,7 +39,7 @@ export function setRateLimit(ip: string): void {
 }
 
 export function generateCode(ip: string): string {
-  const code = crypto.randomInt(100000, 999999).toString();
+  const code = crypto.randomInt(100000, 1000000).toString();
   codes.set(ip, {
     code,
     expiresAt: Date.now() + CODE_TTL_MS,
