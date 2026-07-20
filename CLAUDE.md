@@ -33,7 +33,7 @@ lib/schema.ts — 数据库 schema 单一来源（BASE_SCHEMA_SQL + COLUMN_PATCH
 lib/db.ts    — Turso 延迟初始化(Proxy) + 首次访问自动 runMigrations()
 lib/auth.ts  — HMAC-SHA256 cookie 签发/验证
 lib/r2.ts              — S3Client + deleteFromR2()
-lib/r2-delete-jobs.ts  — enqueueR2Delete() 异步删除排队
+lib/r2-delete-jobs.ts  — enqueueR2DeleteInTransaction() 事务内排队 + processR2DeleteJobs() 清理
 lib/image.ts — Sharp 800px webp q85
 proxy.ts     — Next 16 proxy（不是 middleware），拦截 /admin/:path*，验证 cookie 或 ?key= 参数
 ```
@@ -74,22 +74,42 @@ proxy.ts     — Next 16 proxy（不是 middleware），拦截 /admin/:path*，�
 
 ## R2 删除（异步）
 
-删除作品/图片时不直接删 R2 文件，而是调用 `enqueueR2Delete()` 写入 `r2_delete_jobs` 表。由外部 cron（`GET /api/cron/r2-delete?limit=20`，`CRON_SECRET` 认证）按回退重试策略异步清理。`.github/workflows/r2-delete-cron.yml` 每 15 分钟触发一次。
+删除作品/图片时不直接删 R2 文件，而是在事务内调用 `enqueueR2DeleteInTransaction()` 写入 `r2_delete_jobs` 表。由外部 cron（`GET /api/cron/r2-delete?limit=20`，`CRON_SECRET` 认证）按回退重试策略异步清理。`.github/workflows/r2-delete-cron.yml` 每 15 分钟触发一次。
 
-## 认证
+## 认证（三种登录方式共存）
 
-- `/admin` 受 `proxy.ts` 保护；`/admin/login` 和 `/api/auth/login` 放行
+`/admin` 受 `proxy.ts` 保护；`/admin/login` 和 `/api/auth/login` 放行。登录页支持三 Tab 切换：
+
+| 方式 | 路由 | 实现 |
+|------|------|------|
+| TOTP 动态口令 | `{token}` → `verifyTotp()` | `lib/totp.ts`（otplib），30 秒刷新，离线可用。密钥 `TOTP_SECRET` 存 `.env.local`，通过 `app/admin/totp-setup/` 扫码绑定 |
+| 邮箱验证码 | `{code}` → `verifyCode()` | `lib/email.ts`（nodemailer） + `lib/verification-codes.ts`（内存存储），仅允许 `1193662756@qq.com`。`app/api/auth/send-code/` 发送，30s 间隔限流 |
+| 管理密钥 | `{key}` → `timingSafeEqual` | 原有 `ADMIN_SECRET_KEY` |
+
+- `ADMIN_SECRET_KEY` 缺失时 `/admin` 返回 503。排查"本地后台打不开"先查此变量
 - 支持 `/admin?key=...` 一次性书签登录，验证后签发 `admin_token` cookie
-- `ADMIN_SECRET_KEY` 缺失时：`/admin` 路径返回 503，非 admin 路径放行。排查"本地后台打不开"先查此变量。
+- QQ 邮箱 SMTP 直连真实 IP（`120.232.69.34`）绕过本地 DNS 污染，见 `lib/email.ts`
 
 ## 关键约束
 
 - **永不使用 `fs.writeFile`**：Vercel 无可写磁盘
-- Sharp、`@libsql/client`、R2/S3、`crypto` 只能在服务端，禁止混入 `'use client'`
+- Sharp、`@libsql/client`、R2/S3、`crypto`、`nodemailer`、`otplib` 只能在服务端，禁止混入 `'use client'`
 - Tailwind v4 无 `tailwind.config.ts`，主题变量在 `app/globals.css` 的 `@theme inline`，PostCSS 只配 `@tailwindcss/postcss`
 - Framer Motion：`spring` 统一 `damping: 28 stiffness: 200`
 - `proxy.ts` 不要改回 middleware（Next 16 约定）
 - 表单状态用对象整体替换，别用函数式 `setState`（`components/admin/work-form-state.ts` 管理不可变更新）
+- 验证码存储在进程内存（`lib/verification-codes.ts`），重启丢失；生产多实例需改为 Upstash
+- `lib/email.ts` 的 QQ SMTP 使用硬编码真实 IP 绕过 DNS 污染，修改邮件配置时勿恢复为域名解析
+
+## 环境变量
+
+必填（见 `.env.example`）：`DATABASE_URL`、`DATABASE_AUTH_TOKEN`、R2 五件套（`R2_ACCOUNT_ID`、`R2_ACCESS_KEY_ID`、`R2_SECRET_ACCESS_KEY`、`R2_BUCKET_NAME`、`R2_PUBLIC_URL`）、`ADMIN_SECRET_KEY`。
+
+邮箱验证码新增（可选，不与 TOTP 冲突）：`EMAIL_HOST`、`EMAIL_PORT`(587)、`EMAIL_USER`(1193662756@qq.com)、`EMAIL_PASS`（QQ 邮箱授权码，非 QQ 密码）。
+
+TOTP 新增（可选）：`TOTP_SECRET`，通过 `npx tsx scripts/generate-totp.ts` 生成或访问 `/admin/totp-setup` 扫码获取。
+
+可选：`CRON_SECRET`、`UPSTASH_REDIS_REST_URL`+`UPSTASH_REDIS_REST_TOKEN`、`MONITORING_WEBHOOK_URL`、`NEXT_PUBLIC_BASE_URL`。
 
 ## 易漏点
 
