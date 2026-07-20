@@ -59,8 +59,7 @@ test.describe("桌面端自定义光标", () => {
     await moveUntilCursorVisible(page, 420, 260);
 
     await page.mouse.wheel(0, 1800);
-    await page.waitForTimeout(220);
-    expect(await getCursorOpacity(page, ".cursor-ring")).toBeLessThan(0.65);
+    await expect.poll(async () => getCursorOpacity(page, ".cursor-ring"), { timeout: 2000 }).toBeLessThan(0.65);
 
     await moveUntilCursorVisible(page, 980, 620, 0.9);
 
