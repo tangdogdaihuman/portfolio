@@ -10,7 +10,6 @@ export async function POST(req: NextRequest) {
     const blockedOrigin = requireSameOrigin(req);
     if (blockedOrigin) return blockedOrigin;
 
-    // 全局限流：每 IP 每分钟最多 3 次发送请求
     const limited = await rateLimit(req, "send-code", 3, 60 * 1000);
     if (limited) {
       reportMetric({ scope: "sendcode.rate_limited", value: 1, path: req.nextUrl.pathname });

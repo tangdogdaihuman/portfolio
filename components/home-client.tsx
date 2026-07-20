@@ -199,7 +199,6 @@ export default function HomeClient({
 
   const introRows = useMemo(() => intro.split("\n"), [intro]);
 
-  // Marquee items: repeat tags 6x to ensure infinite scroll
   const marqueeLabel = useMemo(() => {
     const marqueeItems = tags.length > 0 ? tags : ["Digital Art", "Character Design", "3D", "Illustration"];
     return `${marqueeItems.join(" · ")} ·`;
@@ -253,7 +252,6 @@ export default function HomeClient({
           <div className="hero-contrast-scrim z-[1] pointer-events-none" />
 
           <div className="relative z-10 flex flex-col items-center justify-center w-full max-w-6xl mx-auto">
-            {/* Portfolio title — fades out on scroll */}
             <motion.div
               style={{ opacity: portfolioOpacity, scale: portfolioScale, filter: portfolioFilter }}
               className="text-center pointer-events-none"
@@ -298,7 +296,6 @@ export default function HomeClient({
               </motion.p>
             </motion.div>
 
-            {/* Intro — visible on load, lines exit one by one on scroll */}
             {intro && (
                <div className="mt-6 max-w-[46rem] mx-auto text-center px-3">
                 {(() => {
@@ -328,7 +325,6 @@ export default function HomeClient({
             </motion.div>
           </div>
 
-          {/* Scroll indicator — fades with Portfolio */}
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2 }}>
             <motion.div
               style={{ opacity: portfolioOpacity }}

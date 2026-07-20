@@ -7,7 +7,7 @@ interface CodeEntry {
 }
 
 const MAX_ATTEMPTS = 5;
-const CODE_TTL_MS = 5 * 60 * 1000; // 5 分钟有效
+const CODE_TTL_MS = 5 * 60 * 1000;
 
 const codes = new Map<string, CodeEntry>();
 
@@ -25,7 +25,6 @@ function cleanup(now: number) {
   }
 }
 
-// 发送频率限制：同一 IP 30 秒内只能发一次
 const rateMap = new Map<string, number>();
 const RATE_LIMIT_MS = 30_000;
 
