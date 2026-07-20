@@ -11,6 +11,7 @@ const bodoni = Bodoni_Moda({
 const zcoolXiaoWei = ZCOOL_XiaoWei({
   variable: "--font-display-cn",
   weight: "400",
+  subsets: ["latin"],
 });
 
 const inter = Inter({
