@@ -59,6 +59,10 @@ export default function WorkDetailGallery({
     setPan({ x: 0, y: 0 });
   }, []);
 
+  const markReady = useCallback((key: string) => {
+    setReadyMap((current) => (current[key] ? current : { ...current, [key]: true }));
+  }, []);
+
   const setZoomSafe = useCallback((value: number) => {
     setZoom(Math.min(5, Math.max(1, value)));
   }, []);
@@ -210,6 +214,12 @@ export default function WorkDetailGallery({
               />
             ) : (
               <Image
+                ref={(element) => {
+                  const key = image.id || String(index);
+                  if (element?.complete && element.naturalWidth > 0) {
+                    requestAnimationFrame(() => markReady(key));
+                  }
+                }}
                 src={image.image_url}
                 alt={`${workTitle} ${index + 1}`}
                 width={2400}
@@ -217,11 +227,9 @@ export default function WorkDetailGallery({
                 unoptimized
                 sizes="(max-width: 768px) 98vw, 96vw"
                 className={`w-full h-auto object-contain transition-opacity duration-500 ${readyMap[image.id || String(index)] ? "opacity-100" : "opacity-0"}`}
-                priority={index === 0}
-                onLoad={() => {
-                  const key = image.id || String(index);
-                  setReadyMap((current) => (current[key] ? current : { ...current, [key]: true }));
-                }}
+                priority={index < 2}
+                onLoad={() => markReady(image.id || String(index))}
+                onError={() => markReady(image.id || String(index))}
               />
             )}
           </button>
