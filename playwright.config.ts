@@ -26,8 +26,9 @@ export default defineConfig({
       R2_ACCESS_KEY_ID: "local",
       R2_SECRET_ACCESS_KEY: "local",
       R2_BUCKET_NAME: "local",
-      R2_PUBLIC_URL: "https://example.com",
+      R2_PUBLIC_URL: "https://r2.local",
       NEXT_PUBLIC_BASE_URL: baseURL,
+      ADMIN_LOGIN_RATE_LIMIT: "1000",
     },
   },
 });

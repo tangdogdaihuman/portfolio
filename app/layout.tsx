@@ -20,6 +20,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || "https://tangzihang.top"),
   title: {
     default: "Tang Zihang — CG Portfolio",
     template: "%s — Tang Zihang",
@@ -28,10 +29,12 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Tang Zihang — CG Portfolio",
     description: "唐子航个人 CG 作品集 · 3D 角色/场景/材质",
+    url: "/",
     siteName: "Tang Zihang Portfolio",
     type: "website",
     locale: "zh_CN",
   },
+  alternates: { canonical: "/" },
   robots: { index: true, follow: true },
 };
 
@@ -45,7 +48,7 @@ export default function RootLayout({
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(()=>{try{var t=localStorage.getItem("theme"),c=document.documentElement.classList;c.remove("light");c.remove("dark");c.add(t==="light"?"light":"dark")}catch(e){document.documentElement.className+=" dark"}})()`,
+            __html: `(()=>{try{var t=localStorage.getItem("theme"),c=document.documentElement.classList;c.remove("light");c.remove("dark");c.add(t==="light"?"light":"dark")}catch(e){document.documentElement.classList.add("dark")}})()`,
           }}
         />
       </head>

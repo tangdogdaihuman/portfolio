@@ -13,7 +13,15 @@ const {
 } = resolveSmokeSettings();
 
 async function request(path, init = {}) {
-  const res = await fetch(`${baseUrl}${path}`, init);
+  const headers = new Headers(init.headers || {});
+  const method = (init.method || "GET").toUpperCase();
+  if (method !== "GET" && method !== "HEAD" && !headers.has("origin")) {
+    headers.set("origin", baseUrl);
+  }
+  if (!headers.has("referer")) {
+    headers.set("referer", `${baseUrl}/`);
+  }
+  const res = await fetch(`${baseUrl}${path}`, { ...init, headers });
   const text = await res.text();
   let json = null;
   try {

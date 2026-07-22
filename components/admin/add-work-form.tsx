@@ -112,6 +112,13 @@ export default function AddWorkForm({
           workDate,
           imageSize: cover.size,
           sizeWeight,
+          images: uploadedFiles.map((file, index) => ({
+            imageUrl: file.imageUrl,
+            thumbUrl: file.thumbUrl,
+            mediaType: file.mediaType,
+            imageSize: file.size,
+            sortOrder: index,
+          })),
         }),
       });
 
@@ -119,27 +126,6 @@ export default function AddWorkForm({
         await cleanupUploadedFiles(uploadedFiles);
         setFormState((current) => patchWorkFormState(current, { uploadedFiles: [], coverIndex: 0 }));
         showMsg("创建失败，已清理本次上传，请重新上传", false);
-        return;
-      }
-
-      const { id: workId } = await res.json();
-      const imagesRes = await fetch(`/api/works/${workId}/images`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-            uploadedFiles.map((file, index) => ({
-              imageUrl: file.imageUrl,
-              thumbUrl: file.thumbUrl,
-              mediaType: file.mediaType,
-              imageSize: file.size,
-              sortOrder: index,
-            }))
-        ),
-      });
-
-      if (!imagesRes.ok) {
-        showMsg("作品已创建，但图片列表保存失败，请进入编辑页检查", false);
-        onDone();
         return;
       }
 

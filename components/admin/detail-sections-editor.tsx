@@ -10,6 +10,25 @@ interface Section {
   sort_order: number;
 }
 
+function toggleSelectionBold(el: HTMLDivElement) {
+  el.focus();
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0) return;
+  const range = selection.getRangeAt(0);
+  if (range.collapsed || !el.contains(range.commonAncestorContainer)) return;
+
+  const fragment = range.extractContents();
+  const strong = document.createElement("strong");
+  strong.appendChild(fragment);
+  range.insertNode(strong);
+
+  selection.removeAllRanges();
+  const nextRange = document.createRange();
+  nextRange.selectNodeContents(strong);
+  nextRange.collapse(false);
+  selection.addRange(nextRange);
+}
+
 export default function DetailSectionsEditor({ showMsg }: { showMsg: (text: string, ok: boolean) => void }) {
   const [sections, setSections] = useState<Section[]>([]);
   const [loading, setLoading] = useState(true);
@@ -18,11 +37,26 @@ export default function DetailSectionsEditor({ showMsg }: { showMsg: (text: stri
   const contentRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   useEffect(() => {
-    fetch("/api/detail-sections")
-      .then((r) => r.json())
-      .then((data) => setSections(data))
-      .finally(() => setLoading(false));
-  }, []);
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const res = await fetch("/api/detail-sections");
+        if (!res.ok) throw new Error("load failed");
+        const data = await res.json();
+        if (!cancelled) setSections(Array.isArray(data) ? data : []);
+      } catch {
+        if (!cancelled) showMsg("加载详细介绍失败，请刷新重试", false);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [showMsg]);
 
   useEffect(() => {
     for (const s of sections) {
@@ -138,8 +172,7 @@ export default function DetailSectionsEditor({ showMsg }: { showMsg: (text: stri
                 e.preventDefault();
                 const el = contentRefs.current[s.id];
                 if (!el) return;
-                el.focus();
-                document.execCommand("bold", false);
+                toggleSelectionBold(el);
                 updateSection(s.id, "content", el.innerHTML);
               }}
               className="shrink-0 w-8 h-8 border border-border text-text-muted text-xs font-bold hover:text-accent hover:border-accent-dim transition-colors"

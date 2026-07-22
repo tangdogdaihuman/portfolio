@@ -21,7 +21,11 @@ export async function POST(req: NextRequest) {
     const blockedOrigin = requireSameOrigin(req);
     if (blockedOrigin) return blockedOrigin;
 
-    const limited = await rateLimit(req, "admin-login", 10, 5 * 60 * 1000);
+    const configuredLoginRateLimit = Number(process.env.ADMIN_LOGIN_RATE_LIMIT || 10);
+    const loginRateLimit = Number.isFinite(configuredLoginRateLimit) && configuredLoginRateLimit > 0
+      ? Math.floor(configuredLoginRateLimit)
+      : 10;
+    const limited = await rateLimit(req, "admin-login", loginRateLimit, 5 * 60 * 1000);
     if (limited) {
       reportMetric({ scope: "auth.login.rate_limited", value: 1, path: req.nextUrl.pathname });
       return limited;

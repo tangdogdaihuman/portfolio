@@ -181,14 +181,19 @@ export default function AdminPageClient() {
   };
 
   const deleteWork = async (work: Work) => {
-    const response = await fetch(`/api/works/${work.id}`, { method: "DELETE" });
-    if (response.ok) {
-      refresh();
-      showMsg("已删除", true);
-    } else {
-      showMsg("删除失败", false);
+    try {
+      const response = await fetch(`/api/works/${work.id}`, { method: "DELETE" });
+      if (response.ok) {
+        refresh();
+        showMsg("已删除", true);
+      } else {
+        showMsg("删除失败", false);
+      }
+    } catch {
+      showMsg("删除失败，请检查网络后重试", false);
+    } finally {
+      setPendingDelete(null);
     }
-    setPendingDelete(null);
   };
 
   const togglePin = async (work: Work) => {

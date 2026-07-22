@@ -90,11 +90,17 @@ export async function POST(
       return fail("NOT_FOUND", "Work not found", 404);
     }
 
+    const maxSort = await db.execute({
+      sql: "SELECT COALESCE(MAX(sort_order), -1) as max_sort FROM work_images WHERE work_id = ?",
+      args: [workId],
+    });
+    const startSort = Number(maxSort.rows[0]?.max_sort ?? -1) + 1;
+
     await db.batch(
       valid.map((it, i) => ({
         sql: `INSERT INTO work_images (id, work_id, image_url, thumb_url, media_type, sort_order, image_size)
               VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        args: [it.id, workId, it.imageUrl, it.thumbUrl, it.mediaType, i, it.imageSize],
+        args: [it.id, workId, it.imageUrl, it.thumbUrl, it.mediaType, startSort + i, it.imageSize],
       }))
     );
 
@@ -133,6 +139,15 @@ export async function DELETE(
   let removedCount = 0;
 
   try {
+    const currentWork = await transaction.execute({
+      sql: "SELECT image_url, thumb_url FROM works WHERE id = ?",
+      args: [workId],
+    });
+    if (currentWork.rows.length === 0) {
+      await transaction.rollback();
+      return fail("NOT_FOUND", "Work not found", 404);
+    }
+
     const images = await transaction.execute({
       sql: "SELECT image_url, thumb_url FROM work_images WHERE work_id = ?",
       args: [workId],
@@ -142,9 +157,16 @@ export async function DELETE(
       if (row.image_url) urls.push(row.image_url as string);
       if (row.thumb_url) urls.push(row.thumb_url as string);
     }
+
+    const protectedUrls = new Set(
+      [currentWork.rows[0].image_url, currentWork.rows[0].thumb_url]
+        .filter((value): value is string => typeof value === "string" && value.length > 0)
+    );
+    const urlsToDelete = keepFiles ? [] : urls.filter((url) => !protectedUrls.has(url));
+
     await transaction.execute({ sql: "DELETE FROM work_images WHERE work_id = ?", args: [workId] });
-    if (!keepFiles) {
-      await enqueueR2DeleteInTransaction(transaction, urls);
+    if (urlsToDelete.length > 0) {
+      await enqueueR2DeleteInTransaction(transaction, urlsToDelete);
     }
     await transaction.commit();
   } catch (error) {
@@ -215,6 +237,13 @@ export async function PUT(
       valid,
       currentWork.rows[0] as Record<string, unknown>
     );
+    if (valid.length === 0) {
+      const protectedUrls = new Set(
+        [currentWork.rows[0].image_url, currentWork.rows[0].thumb_url]
+          .filter((value): value is string => typeof value === "string" && value.length > 0)
+      );
+      removedUrls = removedUrls.filter((url) => !protectedUrls.has(url));
+    }
     await replaceWorkImagesInTransaction(transaction, workId, valid);
 
     if (valid.length > 0) {

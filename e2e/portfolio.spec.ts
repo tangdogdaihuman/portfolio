@@ -1,4 +1,4 @@
-import { expect, test, type APIRequestContext, type Page, type Response } from "@playwright/test";
+import { expect, request, test, type APIRequestContext, type Page, type Response } from "@playwright/test";
 import { createClient } from "@libsql/client";
 import { ADMIN_SECRET, newAdminApi, toAdminBaseURL } from "./admin-api";
 
@@ -76,6 +76,126 @@ async function createApiWork(
   const createdBody = await created.json();
   return createdBody.id as string;
 }
+
+test("本地 loopback origin 别名不会误拦管理登录", async ({ baseURL }) => {
+  if (!baseURL) throw new Error("baseURL is required");
+  const api = await request.newContext({
+    baseURL,
+    extraHTTPHeaders: { origin: toAdminBaseURL(baseURL) },
+  });
+
+  try {
+    const login = await api.post("/api/auth/login", { data: { key: ADMIN_SECRET } });
+    expect(login.status(), await login.text()).toBe(200);
+  } finally {
+    await api.dispose();
+  }
+});
+
+test("新增作品可在单个请求内同时写入图片列表", async ({ baseURL }) => {
+  if (!baseURL) throw new Error("baseURL is required");
+  const api = await newAdminApi(baseURL);
+  let workId = "";
+
+  try {
+    const created = await api.post("/api/works", {
+      data: {
+        title: `atomic-create-e2e-${Date.now()}`,
+        description: "atomic create description",
+        tags: ["atomic", "e2e"],
+        imageUrl: GALLERY_IMAGES[1].imageUrl,
+        thumbUrl: GALLERY_IMAGES[1].thumbUrl,
+        pinned: false,
+        sortOrder: 350,
+        workDate: "2026-07",
+        imageSize: 2049,
+        sizeWeight: 1,
+        images: GALLERY_IMAGES.map((image, index) => ({
+          imageUrl: image.imageUrl,
+          thumbUrl: image.thumbUrl,
+          imageSize: 2048 + index,
+          sortOrder: index,
+        })),
+      },
+    });
+    expect(created.status(), await created.text()).toBe(201);
+    const createdBody = await created.json();
+    workId = createdBody.id as string;
+
+    const images = await api.get(`/api/works/${workId}/images`);
+    expect(images.status()).toBe(200);
+    const imageBody = await images.json();
+    expect(imageBody.map((image: { image_url: string }) => image.image_url)).toEqual(GALLERY_IMAGES.map((image) => image.imageUrl));
+  } finally {
+    if (workId) await api.delete(`/api/works/${workId}`);
+    await api.dispose();
+  }
+});
+
+test("清空图片列表不会删除仍被封面引用的 R2 文件", async ({ baseURL }) => {
+  if (!baseURL) throw new Error("baseURL is required");
+  const api = await newAdminApi(baseURL);
+  const stamp = Date.now();
+  const cover = {
+    imageUrl: `https://example.com/originals/keep-${stamp}.png`,
+    thumbUrl: `https://example.com/thumbnails/keep-${stamp}.webp`,
+  };
+  const extra = {
+    imageUrl: `https://example.com/originals/drop-${stamp}.png`,
+    thumbUrl: `https://example.com/thumbnails/drop-${stamp}.webp`,
+  };
+  const workId = await createApiWork(api, `clear-images-e2e-${stamp}`, 400, { cover });
+
+  try {
+    const added = await api.post(`/api/works/${workId}/images`, {
+      data: [
+        { ...cover, imageSize: 1024, sortOrder: 0 },
+        { ...extra, imageSize: 1025, sortOrder: 1 },
+      ],
+    });
+    expect(added.status(), await added.text()).toBe(201);
+
+    const cleared = await api.delete(`/api/works/${workId}/images`);
+    expect(cleared.status(), await cleared.text()).toBe(200);
+
+    const keepJob = await findR2DeleteJobContaining(cover.imageUrl);
+    const dropJob = await findR2DeleteJobContaining(extra.imageUrl);
+    expect(keepJob.rows.length).toBe(0);
+    expect(dropJob.rows.length).toBeGreaterThan(0);
+  } finally {
+    await api.delete(`/api/works/${workId}`);
+    await api.dispose();
+  }
+});
+
+test("详细介绍富文本会过滤危险 HTML", async ({ page, baseURL }) => {
+  if (!baseURL) throw new Error("baseURL is required");
+  const api = await newAdminApi(baseURL);
+  let sectionId = "";
+
+  try {
+    const created = await api.post("/api/detail-sections", {
+      data: {
+        title: `xss-e2e-${Date.now()}`,
+        content: `<img src=x onerror="window.__xss=1"><strong>safe-bold</strong><script>window.__xss=1</script>`,
+      },
+    });
+    expect(created.status(), await created.text()).toBe(201);
+    const createdBody = await created.json();
+    sectionId = createdBody.id as string;
+
+    await page.goto("/");
+    await expect(page.getByText("safe-bold")).toBeVisible();
+    const flagged = await page.evaluate(() => Boolean((window as unknown as { __xss?: boolean }).__xss));
+    expect(flagged).toBe(false);
+    const aboutHtml = await page.locator("#about").innerHTML();
+    expect(aboutHtml).not.toContain("<script");
+    expect(aboutHtml).not.toContain("onerror");
+  } finally {
+    if (sectionId) await api.delete(`/api/detail-sections/${sectionId}`);
+    await api.dispose();
+  }
+});
 
 async function findR2DeleteJobContaining(value: string) {
   const client = createClient({ url: "file:./e2e.db" });

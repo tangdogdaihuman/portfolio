@@ -13,23 +13,23 @@ import { useActiveHomeSection, useBackToTopVisibility, useCustomCursor, useHomeD
 const spring = { type: "spring" as const, damping: 28, stiffness: 200, mass: 0.8 };
 const DEFAULT_TAGLINE = "Hard Surface / Stylized Character / Game Art";
 
-function sanitizeHtml(html: string): string {
+function htmlToSafeText(html: string): string {
   return html
-    .replace(/<script[\s\S]*?<\/script>/gi, "")
-    .replace(/<iframe[\s\S]*?<\/iframe>/gi, "")
-    .replace(/<object[\s\S]*?<\/object>/gi, "")
-    .replace(/<embed[\s\S]*?\/?>/gi, "")
-    .replace(/<form[\s\S]*?<\/form>/gi, "")
-    .replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, "")
-    .replace(/href\s*=\s*(?:"javascript:[^"]*"|'javascript:[^']*')/gi, "");
+    .replace(/<\s*(script|style|iframe|object|embed|form|svg|math)[\s\S]*?<\s*\/\s*\1\s*>/gi, "")
+    .replace(/<\s*br\s*\/?\s*>/gi, "\n")
+    .replace(/<\s*\/\s*p\s*>/gi, "\n")
+    .replace(/<\s*p[^>]*>/gi, "")
+    .replace(/<\s*(strong|b)\s*>/gi, "**")
+    .replace(/<\s*\/\s*(strong|b)\s*>/gi, "**")
+    .replace(/<\s*(em|i|u)\s*>/gi, "")
+    .replace(/<\s*\/\s*(em|i|u)\s*>/gi, "")
+    .replace(/<[^>]+>/g, "");
 }
 
 function renderBoldContent(text: string) {
   if (!text) return null;
-  if (/<[a-z][\s\S]*>/i.test(text)) {
-    return <span dangerouslySetInnerHTML={{ __html: sanitizeHtml(text) }} />;
-  }
-  return text.split(/(\*\*.*?\*\*)/g).map((part, i) => {
+  const safeText = htmlToSafeText(text);
+  return safeText.split(/(\*\*.*?\*\*)/g).map((part, i) => {
     if (part.startsWith("**") && part.endsWith("**")) {
       return <strong key={i}>{part.slice(2, -2)}</strong>;
     }

@@ -9,7 +9,16 @@ import { reportApiError, reportMetric } from "@/lib/monitoring";
 import { writeAuditLog } from "@/lib/audit-log";
 import { fail, ok } from "@/lib/api-response";
 import { processR2DeleteJobs } from "@/lib/r2-delete-jobs";
+import { replaceWorkImagesInTransaction, type PreparedWorkImage } from "@/lib/work-images-replace";
 import { rowToWork } from "@/lib/work-mappers";
+
+const imageSchema = z.object({
+  imageUrl: z.string().url(),
+  thumbUrl: z.string().url(),
+  mediaType: z.enum(["image", "video"]).default("image"),
+  imageSize: z.number().int().default(0),
+  sortOrder: z.number().int().optional(),
+});
 
 const workSchema = z.object({
   title: z.string().min(1),
@@ -23,6 +32,7 @@ const workSchema = z.object({
   workDate: z.string().default(""),
   imageSize: z.number().int().default(0),
   sizeWeight: z.number().min(0.5).max(2.0).default(1.0),
+  images: z.array(imageSchema).optional(),
 });
 
 export async function GET() {
@@ -52,12 +62,51 @@ export async function POST(req: NextRequest) {
 
     const { title, description, tags, software, imageUrl, thumbUrl, pinned, sortOrder, workDate, imageSize, sizeWeight } = parsed.data;
     const id = createId();
+    const images: PreparedWorkImage[] = (parsed.data.images ?? []).map((image, index) => ({
+      id: createId(),
+      imageUrl: image.imageUrl,
+      thumbUrl: image.thumbUrl,
+      mediaType: image.mediaType,
+      imageSize: image.imageSize,
+      sortOrder: image.sortOrder ?? index,
+    }));
+    const cover = images.length > 0
+      ? images.find((image) => image.imageUrl === imageUrl || image.thumbUrl === thumbUrl) || null
+      : null;
+    if (images.length > 0 && !cover) {
+      return fail("BAD_REQUEST", "Cover image must be included in images", 400);
+    }
 
-    await db.execute({
-      sql: `INSERT INTO works (id, title, description, tags, software, image_url, thumb_url, pinned, sort_order, work_date, image_size, size_weight)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: [id, title, description, tagsToString(tags), tagsToString(software), imageUrl, thumbUrl, pinned ? 1 : 0, sortOrder, workDate, imageSize, sizeWeight],
-    });
+    const transaction = await db.transaction("write");
+    try {
+      await transaction.execute({
+        sql: `INSERT INTO works (id, title, description, tags, software, image_url, thumb_url, pinned, sort_order, work_date, image_size, size_weight)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [
+          id,
+          title,
+          description,
+          tagsToString(tags),
+          tagsToString(software),
+          cover?.imageUrl ?? imageUrl,
+          cover?.thumbUrl ?? thumbUrl,
+          pinned ? 1 : 0,
+          sortOrder,
+          workDate,
+          cover?.imageSize ?? imageSize,
+          sizeWeight,
+        ],
+      });
+      if (images.length > 0) {
+        await replaceWorkImagesInTransaction(transaction, id, images);
+      }
+      await transaction.commit();
+    } catch (error) {
+      if (!transaction.closed) await transaction.rollback();
+      throw error;
+    } finally {
+      if (!transaction.closed) transaction.close();
+    }
 
     reportMetric({ scope: "audit.work.create", value: 1, path: req.nextUrl.pathname, meta: { id } });
     await writeAuditLog(req, "work.create", { id, title });

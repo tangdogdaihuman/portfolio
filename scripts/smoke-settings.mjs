@@ -1,4 +1,4 @@
-const DEFAULT_LOCAL_BASE_URL = "http://127.0.0.1:3000";
+const DEFAULT_LOCAL_BASE_URL = "http://localhost:3000";
 const DEFAULT_PRODUCTION_BASE_URL = "https://tangzihang.top";
 
 function getArgValue(argv, name) {
