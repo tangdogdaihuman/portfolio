@@ -215,33 +215,30 @@ function workRow(page: Page, title: string) {
     .locator("xpath=ancestor::div[contains(concat(' ', normalize-space(@class), ' '), ' items-start ')][1]");
 }
 
-async function waitForWorkUpdates(page: Page, ids: string[], action: () => Promise<void>) {
-  const pending = new Set(ids);
-  const responses: Response[] = [];
-  const waitForResponses = new Promise<Response[]>((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      page.off("response", onResponse);
-      reject(new Error(`Timed out waiting for work updates: ${[...pending].join(", ")}`));
-    }, 5000);
-
-    const onResponse = (response: Response) => {
-      if (response.request().method() !== "PUT") return;
-      const matchedId = ids.find((id) => response.url().endsWith(`/api/works/${id}`));
-      if (!matchedId) return;
-      responses.push(response);
-      pending.delete(matchedId);
-      if (pending.size === 0) {
-        clearTimeout(timeout);
-        page.off("response", onResponse);
-        resolve(responses);
-      }
-    };
-
-    page.on("response", onResponse);
+async function waitForReorderResponse(page: Page, action: () => Promise<void>) {
+  let resolve!: (response: Response) => void;
+  let reject!: (error: Error) => void;
+  const promise = new Promise<Response>((res, rej) => {
+    resolve = res;
+    reject = rej;
   });
 
+  const timeout = setTimeout(() => {
+    page.off("response", onResponse);
+    reject(new Error("Timed out waiting for reorder"));
+  }, 5000);
+
+  const onResponse = (response: Response) => {
+    if (response.request().method() !== "PUT") return;
+    if (!response.url().endsWith("/api/works/reorder")) return;
+    clearTimeout(timeout);
+    page.off("response", onResponse);
+    resolve(response);
+  };
+
+  page.on("response", onResponse);
   await action();
-  return waitForResponses;
+  return promise;
 }
 
 test.beforeAll(async ({ baseURL }) => {
@@ -433,15 +430,15 @@ test("后台连续排序不会因为本地版本号过期而冲突", async ({ pa
     await expect(workRow(page, titleB)).toBeVisible();
     await page.waitForTimeout(1200);
 
-    const firstMoveResponses = await waitForWorkUpdates(page, [workAId, workBId], () =>
+    const firstReorder = await waitForReorderResponse(page, () =>
       workRow(page, titleA).getByRole("button", { name: "下移排序" }).click()
     );
-    expect(firstMoveResponses.map((response) => response.status()).sort()).toEqual([200, 200]);
+    expect(firstReorder.status()).toBe(200);
 
     const moveBackButton = workRow(page, titleB).getByRole("button", { name: "下移排序" });
     await expect(moveBackButton).toBeEnabled();
-    const secondMoveResponses = await waitForWorkUpdates(page, [workAId, workBId], () => moveBackButton.click());
-    expect(secondMoveResponses.map((response) => response.status()).sort()).toEqual([200, 200]);
+    const secondReorder = await waitForReorderResponse(page, () => moveBackButton.click());
+    expect(secondReorder.status()).toBe(200);
 
     await expect(page.getByText("排序冲突，已刷新，请重试")).toHaveCount(0);
   } finally {

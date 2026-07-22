@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import ConfirmDialog from "@/components/admin/confirm-dialog";
 
 interface Section {
@@ -110,6 +110,18 @@ export default function DetailSectionsEditor({ showMsg }: { showMsg: (text: stri
     setPendingDelete(null);
   };
 
+  const reloadSections = useCallback(async () => {
+    try {
+      const res = await fetch("/api/detail-sections");
+      if (res.ok) {
+        const data = await res.json();
+        setSections(Array.isArray(data) ? data : []);
+      }
+    } catch {
+      showMsg("刷新详细介绍失败", false);
+    }
+  }, [showMsg]);
+
   const moveSection = async (id: string, direction: "up" | "down") => {
     const idx = sections.findIndex((s) => s.id === id);
     if (idx === -1) return;
@@ -121,16 +133,20 @@ export default function DetailSectionsEditor({ showMsg }: { showMsg: (text: stri
     const reordered = updated.map((section, index) => ({ ...section, sort_order: index }));
     setSections(reordered);
 
-    await Promise.all([
-      fetch(`/api/detail-sections/${reordered[idx].id}`, {
-        method: "PUT", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sortOrder: idx }),
+    const res = await fetch("/api/detail-sections/reorder", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        items: [
+          { id: reordered[idx].id, sortOrder: idx },
+          { id: reordered[swapIdx].id, sortOrder: swapIdx },
+        ],
       }),
-      fetch(`/api/detail-sections/${reordered[swapIdx].id}`, {
-        method: "PUT", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sortOrder: swapIdx }),
-      }),
-    ]);
+    });
+    if (!res.ok) {
+      showMsg("排序失败，已刷新，请重试", false);
+      void reloadSections();
+    }
   };
 
   if (loading) return <div className="text-text-muted text-sm">加载中...</div>;

@@ -138,37 +138,29 @@ export default function AdminPageClient() {
     setReordering(true);
 
     try {
-      const [updatedWorkRes, updatedOtherRes] = await Promise.all([
-        fetch(`/api/works/${work.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sortOrder: nextWorkSortOrder, expectedUpdatedAt: getWorkUpdatedAt(work) }),
+      const res = await fetch("/api/works/reorder", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: [
+            { id: work.id, sortOrder: nextWorkSortOrder, expectedUpdatedAt: getWorkUpdatedAt(work) },
+            { id: other.id, sortOrder: nextOtherSortOrder, expectedUpdatedAt: getWorkUpdatedAt(other) },
+          ],
         }),
-        fetch(`/api/works/${other.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sortOrder: nextOtherSortOrder, expectedUpdatedAt: getWorkUpdatedAt(other) }),
-        }),
-      ]);
+      });
 
-      if (!updatedWorkRes.ok || !updatedOtherRes.ok) {
+      if (!res.ok) {
         refresh();
-        showMsg("排序冲突，已刷新，请重试", false);
+        showMsg(res.status === 409 ? "排序冲突，已刷新，请重试" : "排序失败，已刷新，请重试", false);
         return;
       }
 
-      const [updatedWorkBody, updatedOtherBody] = await Promise.all([
-        updatedWorkRes.json().catch(() => null) as Promise<{ updatedAt?: string } | null>,
-        updatedOtherRes.json().catch(() => null) as Promise<{ updatedAt?: string } | null>,
-      ]);
-      const updatedWorkAt = updatedWorkBody?.updatedAt;
-      const updatedOtherAt = updatedOtherBody?.updatedAt;
-
+      const body = await res.json().catch(() => null) as { updated?: Array<{ id: string; updatedAt: string }> } | null;
+      const updates = body?.updated ?? [];
       setWorks((current) =>
         current.map((item) => {
-          if (item.id === work.id && updatedWorkAt) return { ...item, updated_at: updatedWorkAt };
-          if (item.id === other.id && updatedOtherAt) return { ...item, updated_at: updatedOtherAt };
-          return item;
+          const next = updates.find((entry) => entry.id === item.id);
+          return next ? { ...item, updated_at: next.updatedAt } : item;
         })
       );
     } catch {
