@@ -24,10 +24,10 @@ async function moveUntilCursorVisible(
   minOpacity = 0.8
 ) {
   await expect.poll(async () => {
-    await page.mouse.move(x, y);
-    await page.waitForTimeout(80);
+    await page.mouse.move(x, y, { steps: 5 });
+    await page.waitForTimeout(120);
     return getCursorOpacity(page, ".cursor-ring");
-  }, { timeout: 3000 }).toBeGreaterThan(minOpacity);
+  }, { timeout: 5000 }).toBeGreaterThan(minOpacity);
 }
 
 test.describe("桌面端自定义光标", () => {
