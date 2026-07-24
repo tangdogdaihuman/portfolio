@@ -8,11 +8,13 @@ interface CodeEntry {
 
 const MAX_ATTEMPTS = 5;
 const CODE_TTL_MS = 5 * 60 * 1000;
+const CLEANUP_INTERVAL = 60_000;
 
 const codes = new Map<string, CodeEntry>();
+const rateMap = new Map<string, number>();
+const RATE_LIMIT_MS = 30_000;
 
 let lastCleanup = 0;
-const CLEANUP_INTERVAL = 60_000;
 
 function cleanup(now: number) {
   if (now - lastCleanup < CLEANUP_INTERVAL) return;
@@ -25,9 +27,6 @@ function cleanup(now: number) {
   }
 }
 
-const rateMap = new Map<string, number>();
-const RATE_LIMIT_MS = 30_000;
-
 export function isRateLimited(ip: string): boolean {
   const last = rateMap.get(ip);
   return last ? Date.now() - last < RATE_LIMIT_MS : false;
@@ -38,6 +37,7 @@ export function setRateLimit(ip: string): void {
 }
 
 export function generateCode(ip: string): string {
+  cleanup(Date.now());
   const code = crypto.randomInt(100000, 1000000).toString();
   codes.set(ip, {
     code,
@@ -63,7 +63,9 @@ export function verifyCode(ip: string, input: string): boolean {
     return false;
   }
 
-  if (entry.code === input) {
+  const a = Buffer.from(entry.code);
+  const b = Buffer.from(input);
+  if (a.length === b.length && crypto.timingSafeEqual(a, b)) {
     codes.delete(ip);
     return true;
   }

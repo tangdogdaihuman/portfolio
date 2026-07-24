@@ -23,13 +23,18 @@ function createTransport(host: string, port: number): nodemailer.Transporter {
 async function trySendMail(mailOptions: nodemailer.SendMailOptions): Promise<boolean> {
   const port = Number(process.env.EMAIL_PORT) || 587;
 
-  for (const ip of QQ_SMTP_IPS) {
+  // Respect EMAIL_HOST if configured; fall back to hardcoded IPs (DNS pollution workaround)
+  const hosts: string[] = process.env.EMAIL_HOST
+    ? [process.env.EMAIL_HOST, ...QQ_SMTP_IPS]
+    : QQ_SMTP_IPS;
+
+  for (const host of hosts) {
     try {
-      const t = createTransport(ip, port);
+      const t = createTransport(host, port);
       await t.sendMail(mailOptions);
       return true;
     } catch (err) {
-      console.error(`[email] SMTP ${ip}:${port} failed:`, (err as Error).message);
+      console.error(`[email] SMTP ${host}:${port} failed:`, (err as Error).message);
     }
   }
   return false;

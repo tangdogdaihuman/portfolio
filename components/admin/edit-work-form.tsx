@@ -67,8 +67,13 @@ export default function EditWorkForm({
 
       const patch: Partial<EditWorkFormState> = { loading: false, conflict: false };
 
+      let workImageUrl = "";
+      let workThumbUrl = "";
+
       if (workRes.ok) {
         const work = await workRes.json();
+        workImageUrl = (work.image_url as string) || "";
+        workThumbUrl = (work.thumb_url as string) || "";
         const softwareValues = Array.isArray(work.software)
           ? work.software.map((item: unknown) => (typeof item === "string" ? item.trim() : "")).filter(Boolean)
           : [];
@@ -83,7 +88,7 @@ export default function EditWorkForm({
       }
 
       if (imagesRes.ok) {
-        const images = await imagesRes.json();
+        const images: Array<Record<string, unknown>> = await imagesRes.json();
         patch.allImages = images.map((image: Record<string, unknown>) => ({
           id: (image.id as string) || nextTempImageId(),
           image_url: image.image_url as string,
@@ -92,7 +97,11 @@ export default function EditWorkForm({
           size: (image.image_size as number) || 0,
           media_type: (image.media_type as string) || (VIDEO_EXT.test((image.image_url as string) || "") ? "video" : "image"),
         }));
-        patch.coverIndex = 0;
+        const coverIdx = images.findIndex(
+          (img: Record<string, unknown>) =>
+            (img.image_url as string) === workImageUrl || (img.thumb_url as string) === workThumbUrl
+        );
+        patch.coverIndex = coverIdx >= 0 ? coverIdx : 0;
         patch.previewIndex = 0;
       }
 
@@ -130,7 +139,7 @@ export default function EditWorkForm({
           thumb_url: result.thumbUrl,
           source: "new" as const,
           size: result.size,
-          media_type: VIDEO_EXT.test(result.originalFileName) ? "video" : "image",
+          media_type: result.mediaType,
         })),
       ],
     }));

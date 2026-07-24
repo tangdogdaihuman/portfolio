@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     const requestId = typeof body.requestId === "string" ? body.requestId : "";
     if (!ALLOWED.has(contentType)) {
       reportMetric({ scope: "upload.presigned.invalid_type", value: 1, path: req.nextUrl.pathname, meta: { contentType } });
-      return fail("BAD_REQUEST", "Invalid image type", 400);
+      return fail("BAD_REQUEST", "Invalid file type", 400);
     }
     const limit = getUploadLimitForType(contentType);
     if (!Number.isFinite(fileSize) || fileSize <= 0 || !limit) {
@@ -50,10 +50,13 @@ export async function POST(req: NextRequest) {
     }
     const cacheKey = requestId ? `upload:presigned:${requestId}` : "";
     const cached = cacheKey
-      ? getIdempotencyStore().get<{ uploadUrl: string; originalKey: string; imageUrl: string }>(cacheKey)
+      ? getIdempotencyStore().get<{ uploadUrl: string; originalKey: string; imageUrl: string; contentType: string }>(cacheKey)
       : null;
     if (cached) {
-      return ok(cached);
+      if (cached.contentType !== contentType) {
+        return fail("BAD_REQUEST", "Request ID reused with different content type", 400);
+      }
+      return ok({ uploadUrl: cached.uploadUrl, originalKey: cached.originalKey, imageUrl: cached.imageUrl });
     }
     const ext = EXT_MAP[contentType] || "png";
     const id = createId();
@@ -73,6 +76,7 @@ export async function POST(req: NextRequest) {
       uploadUrl: signedUrl,
       originalKey,
       imageUrl: publicUrl(originalKey),
+      contentType,
     };
     if (cacheKey) {
       getIdempotencyStore().set(cacheKey, payload, 10 * 60 * 1000);

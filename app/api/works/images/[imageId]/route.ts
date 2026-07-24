@@ -16,7 +16,7 @@ export async function DELETE(
 
   const unauth = await requireAuth(req);
   if (unauth) return unauth;
-  await processR2DeleteJobs();
+  void processR2DeleteJobs().catch(() => {});
 
   const { imageId } = await params;
   const urls: string[] = [];
@@ -45,8 +45,10 @@ export async function DELETE(
     });
     if (work.rows.length > 0) {
       const w = work.rows[0];
-      const deletedUrl = row.image_url || row.thumb_url;
-      if (w.image_url === deletedUrl || w.thumb_url === row.thumb_url) {
+      const isCover =
+        (typeof w.image_url === "string" && w.image_url === row.image_url) ||
+        (typeof w.thumb_url === "string" && w.thumb_url === row.thumb_url);
+      if (isCover) {
         const nextImg = await transaction.execute({
           sql: "SELECT image_url, thumb_url FROM work_images WHERE work_id = ? ORDER BY sort_order ASC LIMIT 1",
           args: [workId],
@@ -62,7 +64,17 @@ export async function DELETE(
       }
     }
 
-    await enqueueR2DeleteInTransaction(transaction, urls);
+    // Re-read current work for cover URL protection
+    const currentWork = await transaction.execute({
+      sql: "SELECT image_url, thumb_url FROM works WHERE id = ?",
+      args: [workId],
+    });
+    const protectedUrls = new Set(
+      [currentWork.rows[0]?.image_url, currentWork.rows[0]?.thumb_url]
+        .filter((v): v is string => typeof v === "string" && v.length > 0)
+    );
+    const safeUrls = urls.filter((url) => !protectedUrls.has(url));
+    await enqueueR2DeleteInTransaction(transaction, safeUrls);
     await transaction.commit();
   } catch (error) {
     if (!transaction.closed) await transaction.rollback();

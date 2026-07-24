@@ -127,7 +127,7 @@ export default function AdminPageClient() {
       return;
     }
 
-    const nextWorkSortOrder = direction === "up" ? (other.sort_order ?? 0) + 1 : (other.sort_order ?? 0) - 1;
+    const nextWorkSortOrder = other.sort_order ?? 0;
     const nextOtherSortOrder = work.sort_order ?? 0;
     const updatedWorks = [...works];
     updatedWorks[index] = { ...other, sort_order: nextOtherSortOrder };

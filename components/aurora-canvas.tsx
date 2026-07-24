@@ -32,13 +32,23 @@ const cssRibbons = [
   { left: "89%", width: "8%", opacity: 0.36, delay: "-6s", duration: "18s" },
 ];
 
+let cssFallbackCache: boolean | null = null;
+
 function shouldUseCssFallback() {
-  if (typeof window === "undefined" || typeof document === "undefined") return false;
+  if (cssFallbackCache !== null) return cssFallbackCache;
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    cssFallbackCache = false;
+    return false;
+  }
   const probe = document.createElement("canvas").getContext("2d");
-  if (!probe) return true;
+  if (!probe) {
+    cssFallbackCache = true;
+    return true;
+  }
   const supportsFilter = "filter" in probe;
   const supportsComposite = typeof probe.globalCompositeOperation === "string";
-  return !supportsFilter || !supportsComposite;
+  cssFallbackCache = !supportsFilter || !supportsComposite;
+  return cssFallbackCache;
 }
 
 function subscribeToNothing() {

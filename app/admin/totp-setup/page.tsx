@@ -17,6 +17,7 @@ export default async function TotpSetupPage() {
         </p>
 
         <div className="bg-white p-4 rounded-sm mb-6 flex justify-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={qrDataUrl} alt="TOTP QR Code" width={200} height={200} />
         </div>
 

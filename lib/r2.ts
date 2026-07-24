@@ -1,4 +1,5 @@
 import { S3Client, DeleteObjectsCommand } from "@aws-sdk/client-s3";
+import { reportMetric } from "@/lib/monitoring";
 
 export const r2 = new S3Client({
   region: "auto",
@@ -16,15 +17,34 @@ export function publicUrl(key: string): string {
   return `${R2_PUBLIC_URL}/${key}`;
 }
 
-function urlToKey(url: string): string | null {
-  if (!url) return null;
-  const prefix = R2_PUBLIC_URL.endsWith("/") ? R2_PUBLIC_URL : R2_PUBLIC_URL + "/";
-  if (url.startsWith(prefix)) return url.slice(prefix.length);
+export function urlToKey(url: string): string | null {
+  if (!url || !R2_PUBLIC_URL) return null;
+  const prefixes = [
+    R2_PUBLIC_URL,
+    ...(process.env.R2_ALT_PUBLIC_URLS?.split(",").map((s) => s.trim()).filter(Boolean) ?? []),
+  ];
+  for (const p of prefixes) {
+    const prefix = p.endsWith("/") ? p : p + "/";
+    if (url.startsWith(prefix)) return url.slice(prefix.length);
+  }
   return null;
 }
 
 export async function deleteFromR2(urls: string[]): Promise<void> {
-  const keys = urls.map(urlToKey).filter((k): k is string => !!k);
+  const deduped = [...new Set(urls.filter(Boolean))];
+  const keys: string[] = [];
+  let skipped = 0;
+  for (const url of deduped) {
+    const key = urlToKey(url);
+    if (key) {
+      keys.push(key);
+    } else {
+      skipped++;
+    }
+  }
+  if (skipped > 0) {
+    reportMetric({ scope: "r2.delete.skipped", value: skipped });
+  }
   if (keys.length === 0) return;
 
   await deleteR2Keys(r2, R2_BUCKET, keys);

@@ -114,9 +114,7 @@ export default function AddWorkForm({
       });
 
       if (!res.ok) {
-        await cleanupUploadedFiles(uploadedFiles);
-        setFormState((current) => patchWorkFormState(current, { uploadedFiles: [], coverIndex: 0 }));
-        showMsg("创建失败，已清理本次上传，请重新上传", false);
+        showMsg(`创建失败（${res.status}），已保留上传文件，可直接重试`, false);
         return;
       }
 

@@ -52,7 +52,7 @@ export async function PUT(
 
     const unauth = await requireAuth(req);
     if (unauth) return unauth;
-    await processR2DeleteJobs();
+    void processR2DeleteJobs().catch(() => {});
 
     const { id } = await params;
     const body = await req.json();
@@ -154,10 +154,12 @@ export async function DELETE(
         sql: "SELECT image_url, thumb_url FROM works WHERE id = ?",
         args: [id],
       });
-      if (work.rows.length > 0) {
-        if (work.rows[0].image_url) urls.push(work.rows[0].image_url as string);
-        if (work.rows[0].thumb_url) urls.push(work.rows[0].thumb_url as string);
+      if (work.rows.length === 0) {
+        await transaction.rollback();
+        return fail("NOT_FOUND", "Work not found", 404);
       }
+      if (work.rows[0].image_url) urls.push(work.rows[0].image_url as string);
+      if (work.rows[0].thumb_url) urls.push(work.rows[0].thumb_url as string);
       const images = await transaction.execute({
         sql: "SELECT image_url, thumb_url FROM work_images WHERE work_id = ?",
         args: [id],

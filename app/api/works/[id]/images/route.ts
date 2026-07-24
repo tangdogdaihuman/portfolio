@@ -62,7 +62,7 @@ export async function POST(
 
   const unauth = await requireAuth(req);
   if (unauth) return unauth;
-  await processR2DeleteJobs();
+  void processR2DeleteJobs().catch(() => {});
 
   const { id: workId } = await params;
   const body = await req.json();
@@ -130,7 +130,7 @@ export async function DELETE(
 
   const unauth = await requireAuth(req);
   if (unauth) return unauth;
-  await processR2DeleteJobs();
+  void processR2DeleteJobs().catch(() => {});
 
   const { id: workId } = await params;
   const keepFiles = new URL(req.url).searchParams.get("keepFiles") === "true";
@@ -193,7 +193,7 @@ export async function PUT(
 
   const unauth = await requireAuth(req);
   if (unauth) return unauth;
-  await processR2DeleteJobs();
+  void processR2DeleteJobs().catch(() => {});
 
   const { id: workId } = await params;
   const body = await req.json();

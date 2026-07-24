@@ -36,11 +36,11 @@ export async function POST(req: NextRequest) {
     const getResponse = await r2.send(
       new GetObjectCommand({ Bucket: R2_BUCKET, Key: originalKey })
     );
-    if (!getResponse.Body || !getResponse.ContentLength || getResponse.ContentLength === 0) {
+    if (!getResponse.Body) {
       reportMetric({ scope: "upload.process.empty_original", value: 1, path: req.nextUrl.pathname, meta: { originalKey } });
       return fail("BAD_REQUEST", "Original file is empty or not found", 400);
     }
-    if (getResponse.ContentLength > MAX_IMAGE_UPLOAD_BYTES) {
+    if (getResponse.ContentLength && getResponse.ContentLength > MAX_IMAGE_UPLOAD_BYTES) {
       reportMetric({ scope: "upload.process.too_large", value: 1, path: req.nextUrl.pathname, meta: { originalKey, size: getResponse.ContentLength } });
       return fail("PAYLOAD_TOO_LARGE", `图片过大，限制为 ${formatBytes(MAX_IMAGE_UPLOAD_BYTES)}`, 413);
     }

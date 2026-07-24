@@ -52,6 +52,11 @@ export function initializeDb() {
 }
 
 async function createSchema(client: Client) {
+  const url = process.env.DATABASE_URL ?? "";
+  if (url.startsWith("file:")) {
+    await client.execute("PRAGMA journal_mode = WAL;");
+    await client.execute("PRAGMA busy_timeout = 5000;");
+  }
   await client.executeMultiple(BASE_SCHEMA_SQL);
 }
 

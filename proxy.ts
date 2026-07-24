@@ -26,7 +26,9 @@ function proxy(req: NextRequest) {
     const b = Buffer.from(secret);
     if (a.length === b.length && crypto.timingSafeEqual(a, b)) {
       const token = signToken(secret);
-      const response = NextResponse.redirect(new URL("/admin", req.url));
+      const targetPathname = pathname.startsWith("/admin") ? pathname : "/admin";
+      const response = NextResponse.redirect(new URL(targetPathname, req.url));
+      response.headers.set("Cache-Control", "no-store");
       response.cookies.set(COOKIE_NAME, token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",

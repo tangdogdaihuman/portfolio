@@ -47,7 +47,7 @@ export async function PUT(
 
     const unauth = await requireAuth(req);
     if (unauth) return unauth;
-    await processR2DeleteJobs();
+    void processR2DeleteJobs().catch(() => {});
 
     const { id: workId } = await params;
     const body = await req.json();

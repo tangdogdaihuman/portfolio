@@ -35,7 +35,10 @@ export async function PUT(req: NextRequest) {
   }
 
   await db.execute({
-    sql: "UPDATE intro SET content = ?, tagline = ?, updated_at = datetime('now') WHERE id = 1",
+    sql: `INSERT INTO intro (id, content, tagline, updated_at)
+          VALUES (1, ?, ?, datetime('now'))
+          ON CONFLICT(id) DO UPDATE SET content = excluded.content,
+            tagline = excluded.tagline, updated_at = excluded.updated_at`,
     args: [parsed.data.content, parsed.data.tagline],
   });
 

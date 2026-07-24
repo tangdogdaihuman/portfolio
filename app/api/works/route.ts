@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
 
     const unauth = await requireAuth(req);
     if (unauth) return unauth;
-    await processR2DeleteJobs();
+    void processR2DeleteJobs().catch(() => {});
 
     const body = await req.json();
     const parsed = workSchema.safeParse(body);

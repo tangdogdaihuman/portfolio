@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
       }
       await setAuthCookie();
       reportMetric({ scope: "auth.login.totp_success", value: 1, path: req.nextUrl.pathname });
-      await writeAuditLog(req, "auth.login.totp_success");
+      void writeAuditLog(req, "auth.login.totp_success");
       return ok({ loggedIn: true });
     }
 
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
 
       await setAuthCookie();
       reportMetric({ scope: "auth.login.code_success", value: 1, path: req.nextUrl.pathname });
-      await writeAuditLog(req, "auth.login.code_success");
+      void writeAuditLog(req, "auth.login.code_success");
       return ok({ loggedIn: true });
     }
 
@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
 
     await setAuthCookie();
     reportMetric({ scope: "auth.login.success", value: 1, path: req.nextUrl.pathname });
-    await writeAuditLog(req, "auth.login.success");
+    void writeAuditLog(req, "auth.login.success");
     return ok({ loggedIn: true });
   } catch (error) {
     reportApiError({

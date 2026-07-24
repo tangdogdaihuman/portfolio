@@ -1,6 +1,7 @@
 import { createId } from "@paralleldrive/cuid2";
 import type { NextRequest } from "next/server";
 import db from "@/lib/db";
+import { reportApiError } from "@/lib/monitoring";
 
 type AuditMeta = Record<string, unknown>;
 
@@ -15,17 +16,25 @@ export async function writeAuditLog(
   scope: string,
   meta: AuditMeta = {}
 ) {
-  await db.execute({
-    sql: `INSERT INTO audit_logs (id, scope, actor, path, method, meta)
-          VALUES (?, ?, ?, ?, ?, ?)`,
-    args: [
-      createId(),
-      scope,
-      getActor(req),
-      req.nextUrl.pathname,
-      req.method,
-      JSON.stringify(meta),
-    ],
-  });
+  try {
+    await db.execute({
+      sql: `INSERT INTO audit_logs (id, scope, actor, path, method, meta)
+            VALUES (?, ?, ?, ?, ?, ?)`,
+      args: [
+        createId(),
+        scope,
+        getActor(req),
+        req.nextUrl.pathname,
+        req.method,
+        JSON.stringify(meta),
+      ],
+    });
+  } catch (error) {
+    reportApiError({
+      scope: "audit.write_failed",
+      message: error instanceof Error ? error.message : "unknown",
+      path: req.nextUrl.pathname,
+    });
+  }
 }
 
