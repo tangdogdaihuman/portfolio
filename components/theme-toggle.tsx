@@ -1,10 +1,25 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import { toggleResolvedTheme, useResolvedTheme } from "@/lib/theme-client";
+
+function subscribeToNothing() {
+  return () => {};
+}
 
 export default function ThemeToggle() {
   const theme = useResolvedTheme();
   const dark = theme === "dark";
+  const mounted = useSyncExternalStore(subscribeToNothing, () => true, () => false);
+
+  if (!mounted) {
+    return (
+      <span
+        aria-hidden="true"
+        className="w-8 h-8 inline-flex items-center justify-center border border-border text-transparent"
+      />
+    );
+  }
 
   return (
     <button

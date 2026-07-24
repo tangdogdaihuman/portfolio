@@ -20,20 +20,22 @@ export default function IntroForm({
   return (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm text-text-muted mb-2">
+        <label htmlFor="intro-tagline" className="block text-sm text-text-muted mb-2">
           Hero 副标题（显示在姓名下方）
         </label>
         <input
+          id="intro-tagline"
           value={tagline}
           onChange={(event) => setTagline(event.target.value)}
           className="w-full bg-bg border border-border text-text px-4 py-2 text-sm focus:outline-none focus:border-accent-dim transition-colors"
           placeholder="Hard Surface / Stylized Character / Game Art"
         />
       </div>
-      <label className="block text-sm text-text-muted mb-2">
+      <label htmlFor="intro-content" className="block text-sm text-text-muted mb-2">
         {label || "个人介绍（支持换行，前台按段落显示）"}
       </label>
       <textarea
+        id="intro-content"
         value={intro}
         onChange={(event) => setIntro(event.target.value)}
         rows={10}

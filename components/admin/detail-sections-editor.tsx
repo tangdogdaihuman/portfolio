@@ -34,6 +34,7 @@ export default function DetailSectionsEditor({ showMsg }: { showMsg: (text: stri
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Section | null>(null);
+  const [failedIds, setFailedIds] = useState<string[]>([]);
   const contentRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   useEffect(() => {
@@ -85,17 +86,24 @@ export default function DetailSectionsEditor({ showMsg }: { showMsg: (text: stri
 
   const saveAll = async () => {
     setSaving(true);
-    const results = await Promise.all(
-      sections.map((s) =>
-        fetch(`/api/detail-sections/${s.id}`, {
+    const results = await Promise.allSettled(
+      sections.map(async (s) => {
+        const res = await fetch(`/api/detail-sections/${s.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ title: s.title, content: s.content, sortOrder: s.sort_order }),
-        })
-      )
+        });
+        if (!res.ok) throw new Error(`${s.title} 保存失败`);
+        return s.id;
+      })
     );
-    const ok = results.every((r) => r.ok);
-    showMsg(ok ? "已保存" : "部分保存失败", ok);
+    const failed = sections.filter((_, index) => results[index].status === "rejected");
+    setFailedIds(failed.map((s) => s.id));
+    if (failed.length === 0) {
+      showMsg("已保存", true);
+    } else {
+      showMsg(`保存失败 ${failed.length} 条：${failed.map((s) => s.title).join("、")}，可再次点击保存全部重试`, false);
+    }
     setSaving(false);
   };
 
@@ -161,23 +169,30 @@ export default function DetailSectionsEditor({ showMsg }: { showMsg: (text: stri
         </div>
       </div>
       {sections.map((s, i) => (
-        <div key={s.id} className="border border-border bg-surface p-4 space-y-3">
+        <div key={s.id} className={`border bg-surface p-4 space-y-3 ${failedIds.includes(s.id) ? "border-red-400/60" : "border-border"}`}>
           <div className="flex items-center gap-2">
             <button onClick={() => moveSection(s.id, "up")} disabled={i === 0} className="text-xs text-text-muted hover:text-text disabled:opacity-30">↑</button>
             <button onClick={() => moveSection(s.id, "down")} disabled={i === sections.length - 1} className="text-xs text-text-muted hover:text-text disabled:opacity-30">↓</button>
             <input
               value={s.title}
               onChange={(e) => updateSection(s.id, "title", e.target.value)}
+              aria-label="栏目标题"
               className="flex-1 bg-bg border border-border text-text px-3 py-1.5 text-sm focus:outline-none focus:border-accent-dim"
               placeholder="栏目标题"
             />
             <button onClick={() => setPendingDelete(s)} className="px-2 py-1.5 text-xs text-red-400/70 hover:text-red-400">删除</button>
           </div>
+          {failedIds.includes(s.id) && (
+            <p className="text-xs text-red-400" role="alert">本条保存失败，点击右上角「保存全部」重试</p>
+          )}
           <div className="flex items-start gap-2">
             <div
               ref={(el) => { if (el) contentRefs.current[s.id] = el; }}
               contentEditable
               suppressContentEditableWarning
+              role="textbox"
+              aria-multiline="true"
+              aria-label={`${s.title || "栏目"} 内容`}
               onInput={(e) => updateSection(s.id, "content", e.currentTarget.innerHTML)}
               className="w-full min-h-[6rem] bg-bg border border-border text-text px-3 py-2 text-sm focus:outline-none focus:border-accent-dim whitespace-pre-wrap"
             />

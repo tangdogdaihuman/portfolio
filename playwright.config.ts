@@ -29,6 +29,7 @@ export default defineConfig({
       R2_PUBLIC_URL: "https://r2.local",
       NEXT_PUBLIC_BASE_URL: baseURL,
       ADMIN_LOGIN_RATE_LIMIT: "1000",
+      NEXT_IMAGES_UNOPTIMIZED: "1",
     },
   },
 });

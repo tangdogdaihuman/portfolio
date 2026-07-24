@@ -148,9 +148,11 @@ export default function AuroraCanvas() {
     const profile = getPerformanceProfile();
     const raysLayer = document.createElement("canvas");
     const staticLayer = document.createElement("canvas");
+    const bloomLayer = document.createElement("canvas");
     const ctxA = raysLayer.getContext("2d");
     const ctxS = staticLayer.getContext("2d");
-    if (!ctxA || !ctxS) return;
+    const ctxBloom = bloomLayer.getContext("2d");
+    if (!ctxA || !ctxS || !ctxBloom) return;
 
     const noise3D = createNoise3D();
 
@@ -188,6 +190,8 @@ export default function AuroraCanvas() {
       raysLayer.height = eh;
       staticLayer.width = pw;
       staticLayer.height = ph;
+      bloomLayer.width = Math.max(1, Math.floor(ew * 0.5));
+      bloomLayer.height = Math.max(1, Math.floor(eh * 0.5));
 
       ctxB.setTransform(baseRatio, 0, 0, baseRatio, 0, 0);
       ctxA.setTransform(effectRatio, 0, 0, effectRatio, 0, 0);
@@ -242,6 +246,29 @@ export default function AuroraCanvas() {
       for (let i = 0; i < total; i += RAY_PROPS) initRay(i);
     };
 
+    const HUE_BUCKETS = 8;
+    const raySprites: Array<HTMLCanvasElement | null> = new Array(HUE_BUCKETS).fill(null);
+    const getRaySprite = (hue: number) => {
+      const bucket = Math.max(0, Math.min(HUE_BUCKETS - 1, Math.floor(((hue - BASE_HUE) / RANGE_HUE) * HUE_BUCKETS)));
+      const cached = raySprites[bucket];
+      if (cached) return cached;
+      const bucketHue = BASE_HUE + ((bucket + 0.5) / HUE_BUCKETS) * RANGE_HUE;
+      const sprite = document.createElement("canvas");
+      sprite.width = 1;
+      sprite.height = 256;
+      const sctx = sprite.getContext("2d");
+      if (sctx) {
+        const g = sctx.createLinearGradient(0, 0, 0, 256);
+        g.addColorStop(0, `hsla(${bucketHue}, ${profile.saturation}%, 66%, 0)`);
+        g.addColorStop(0.5, `hsla(${bucketHue}, ${profile.saturation}%, 66%, 1)`);
+        g.addColorStop(1, `hsla(${bucketHue}, ${profile.saturation}%, 66%, 0)`);
+        sctx.fillStyle = g;
+        sctx.fillRect(0, 0, 1, 256);
+      }
+      raySprites[bucket] = sprite;
+      return sprite;
+    };
+
     const drawRay = (i: number) => {
       const x = props[i];
       const y1 = props[i + 1];
@@ -252,17 +279,8 @@ export default function AuroraCanvas() {
       const hue = props[i + 7];
       const a = fadeInOut(life, ttl) * 0.44 * profile.alphaQuality;
 
-      const gradient = ctxA.createLinearGradient(x, y1, x, y2);
-      gradient.addColorStop(0, `hsla(${hue}, ${profile.saturation}%, 66%, 0)`);
-      gradient.addColorStop(0.5, `hsla(${hue}, ${profile.saturation}%, 66%, ${a})`);
-      gradient.addColorStop(1, `hsla(${hue}, ${profile.saturation}%, 66%, 0)`);
-
-      ctxA.beginPath();
-      ctxA.strokeStyle = gradient;
-      ctxA.lineWidth = width;
-      ctxA.moveTo(x, y1);
-      ctxA.lineTo(x, y2);
-      ctxA.stroke();
+      ctxA.globalAlpha = a;
+      ctxA.drawImage(getRaySprite(hue), x - width / 2, y2, width, Math.max(1, y1 - y2));
     };
 
     const updateRay = (i: number) => {
@@ -286,11 +304,15 @@ export default function AuroraCanvas() {
       ctxB.drawImage(raysLayer, 0, 0, w, h);
       ctxB.restore();
 
+      ctxBloom.clearRect(0, 0, bloomLayer.width, bloomLayer.height);
+      ctxBloom.filter = `blur(${Math.max(2, profile.bloomBlur * 0.5)}px)`;
+      ctxBloom.drawImage(raysLayer, 0, 0, bloomLayer.width, bloomLayer.height);
+      ctxBloom.filter = "none";
+
       ctxB.save();
       ctxB.globalAlpha = profile.bloomAlpha;
-      ctxB.filter = `blur(${profile.bloomBlur}px)`;
       ctxB.globalCompositeOperation = "screen";
-      ctxB.drawImage(raysLayer, 0, 0, w, h);
+      ctxB.drawImage(bloomLayer, 0, 0, w, h);
       ctxB.restore();
     };
 
@@ -313,6 +335,7 @@ export default function AuroraCanvas() {
         updateRay(i);
       }
       ctxA.globalCompositeOperation = "source-over";
+      ctxA.globalAlpha = 1;
       composeFrame();
 
       if (profile.reducedMotion) {
@@ -331,12 +354,15 @@ export default function AuroraCanvas() {
     };
 
     const onResize = () => {
-      w = Math.max(1, visible.offsetWidth);
-      h = Math.max(1, visible.offsetHeight);
+      const nextW = Math.max(1, visible.offsetWidth);
+      const nextH = Math.max(1, visible.offsetHeight);
+      if (nextW === w && nextH === h) return;
+      w = nextW;
+      h = nextH;
       setCanvasResolution();
       drawStaticBackground();
       rebuildRays();
-      drawFrame(performance.now());
+      runIfNeeded();
     };
 
     const onVisibilityChange = () => {

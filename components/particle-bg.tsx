@@ -232,10 +232,12 @@ export default function BgCanvas() {
     };
 
     const onResize = () => {
-      ({ width: w, height: h } = getViewportSize());
+      const next = getViewportSize();
+      if (next.width === w && next.height === h) return;
+      ({ width: w, height: h } = next);
       setCanvasResolution();
       drawStaticLayer();
-      drawFrame(performance.now());
+      runIfNeeded();
     };
 
     const onVisibilityChange = () => {

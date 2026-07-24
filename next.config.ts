@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_GIT_SHA: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) || "dev",
   },
   images: {
+    unoptimized: process.env.NEXT_IMAGES_UNOPTIMIZED === "1",
     remotePatterns: [
       {
         protocol: "https",

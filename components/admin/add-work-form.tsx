@@ -1,14 +1,11 @@
 "use client";
 
-import Image from "next/image";
-import { useRef, useState, type Dispatch, type SetStateAction } from "react";
-import { cleanupUploadedFiles, uploadImageToR2 } from "@/lib/upload-client";
+import { useCallback, useState, type Dispatch, type SetStateAction } from "react";
+import { cleanupUploadedFiles, type UploadedFile } from "@/lib/upload-client";
 import { UPLOAD_LIMIT_HINT } from "@/lib/upload-policy";
 import {
-  SOFTWARE_PRESETS,
   appendUploadedFiles,
   createEmptyWorkFormState,
-  formatUploadResult,
   getIndexAfterRemoval,
   getMovedIndex,
   mergeSoftwareValues,
@@ -17,6 +14,13 @@ import {
   removeUploadedFile,
   type WorkFormState,
 } from "@/components/admin/work-form-state";
+import {
+  SoftwarePicker,
+  SortableThumbGrid,
+  UploadFailureList,
+  UploadProgressBar,
+  useMultiFileUpload,
+} from "@/components/admin/work-form-shared";
 
 export default function AddWorkForm({
   formState,
@@ -29,7 +33,6 @@ export default function AddWorkForm({
   onDone: () => void;
   showMsg: (text: string, ok: boolean) => void;
 }) {
-  const dragIdxRef = useRef<number | null>(null);
   const [previewIndex, setPreviewIndex] = useState(0);
   const [submitting, setSubmitting] = useState(false);
 
@@ -43,46 +46,34 @@ export default function AddWorkForm({
     sizeWeight,
     uploadedFiles,
     coverIndex,
-    uploading,
-    uploadProgress,
-    uploadTotal,
-    uploadDone,
   } = formState;
 
   const updateForm = (patch: Partial<WorkFormState>) => {
     setFormState((current) => patchWorkFormState(current, patch));
   };
 
-  const activePreviewIndex = uploadedFiles.length === 0 ? 0 : Math.min(previewIndex, uploadedFiles.length - 1);
+  const handleUploaded = useCallback((files: UploadedFile[]) => {
+    setFormState((current) => appendUploadedFiles(current, files));
+  }, [setFormState]);
 
-  const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const {
+    uploading,
+    totalCount,
+    doneCount,
+    totalBytes,
+    doneBytes,
+    failures,
+    startUpload,
+    retryFailure,
+    dismissFailure,
+  } = useMultiFileUpload({ onUploaded: handleUploaded });
+
+  const handleUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
-
-    const total = files.length;
-    updateForm({ uploading: true, uploadProgress: "上传中", uploadTotal: total, uploadDone: 0 });
-
     const fileArray = Array.from(files);
     event.target.value = "";
-    let completed = 0;
-    const results: (Awaited<ReturnType<typeof uploadImageToR2>> | null)[] = new Array(fileArray.length).fill(null);
-    const failures: string[] = [];
-
-    await Promise.all(
-      fileArray.map(async (file, index) => {
-        try {
-          results[index] = await uploadImageToR2(file);
-        } catch (error) {
-          failures.push(`${file.name}: ${error instanceof Error ? error.message : "上传失败"}`);
-        }
-        completed += 1;
-        updateForm({ uploading: true, uploadProgress: "上传中", uploadTotal: total, uploadDone: completed });
-      })
-    );
-
-    const ordered = results.filter((file): file is Awaited<ReturnType<typeof uploadImageToR2>> => file !== null);
-    setFormState((current) => appendUploadedFiles(current, ordered));
-    showMsg(formatUploadResult(ordered.length, total, failures, "个文件"), ordered.length > 0);
+    startUpload(fileArray);
   };
 
   const createWork = async () => {
@@ -142,39 +133,31 @@ export default function AddWorkForm({
   return (
     <div className="space-y-5">
       <div>
-        <label className="block text-sm text-text-muted mb-1">
+        <label htmlFor="add-work-files" className="block text-sm text-text-muted mb-1">
           图片（可多选，{UPLOAD_LIMIT_HINT}）
         </label>
         {uploading ? (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs text-text-muted">
-              <span>{uploadProgress}</span>
-              <span>{uploadDone} / {uploadTotal}</span>
-            </div>
-            <div className="h-2 bg-surface overflow-hidden">
-              <div
-                className="h-full bg-accent transition-all duration-300 ease-out"
-                style={{ width: `${uploadTotal > 0 ? (uploadDone / uploadTotal) * 100 : 0}%` }}
-              />
-            </div>
-          </div>
+          <UploadProgressBar label="上传中" doneCount={doneCount} totalCount={totalCount} doneBytes={doneBytes} totalBytes={totalBytes} />
         ) : (
-          <label className="inline-block px-6 py-10 border-2 border-dashed border-border text-text-muted text-sm cursor-pointer hover:border-accent-dim transition-colors">
+          <label htmlFor="add-work-files" className="inline-block px-6 py-10 border-2 border-dashed border-border text-text-muted text-sm cursor-pointer hover:border-accent-dim transition-colors">
             点击选择图片（可多选）
-            <input
-              type="file"
-              accept="image/*,video/*"
-              multiple
-              onChange={handleUpload}
-              className="hidden"
-            />
           </label>
         )}
+        <input
+          id="add-work-files"
+          type="file"
+          accept="image/*,video/*"
+          multiple
+          onChange={handleUpload}
+          className="hidden"
+        />
+        <UploadFailureList failures={failures} onRetry={retryFailure} onDismiss={dismissFailure} />
         <div className="mt-4">
-          <label className="block text-sm text-text-muted mb-1">
+          <label htmlFor="add-work-size-weight" className="block text-sm text-text-muted mb-1">
             展示权重 {sizeWeight.toFixed(1)}（0.5=紧凑 1.0=默认 2.0=大）
           </label>
           <input
+            id="add-work-size-weight"
             type="range"
             min="0.5"
             max="2.0"
@@ -187,89 +170,35 @@ export default function AddWorkForm({
         {uploadedFiles.length > 0 && !uploading && (
           <div className="mt-3 space-y-2">
             <p className="text-xs text-text-muted">拖拽排序 · 单击缩略图预览原图 · 按钮设封面</p>
-            <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_18rem]">
-              <div className="flex flex-wrap gap-2">
-                {uploadedFiles.map((file, index) => (
-                  <div
-                    key={file.imageUrl}
-                    draggable
-                    onDragStart={() => { dragIdxRef.current = index; }}
-                    onDragOver={(event) => event.preventDefault()}
-                    onDragEnd={() => { dragIdxRef.current = null; }}
-                    onDrop={() => {
-                      const fromIdx = dragIdxRef.current;
-                      if (fromIdx === null || fromIdx === index) return;
-                      setFormState((current) => moveUploadedFile(current, fromIdx, index));
-                      setPreviewIndex((current) => getMovedIndex(current, fromIdx, index));
-                      dragIdxRef.current = null;
-                    }}
-                    onClick={() => setPreviewIndex(index)}
-                    className={`relative w-20 h-16 cursor-grab active:cursor-grabbing group border overflow-hidden ${
-                      index === activePreviewIndex ? "border-accent" : "border-border"
-                    }`}
-                  >
-                    {file.mediaType === "video" ? (
-                      <video src={file.imageUrl} muted className="w-full h-full object-cover pointer-events-none" />
-                    ) : (
-                      <Image src={file.thumbUrl} alt="" fill sizes="80px" unoptimized className="object-cover" />
-                    )}
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        updateForm({ coverIndex: index });
-                      }}
-                      className={`absolute bottom-0.5 left-0.5 text-[9px] px-1 border ${
-                        index === coverIndex
-                          ? "bg-accent text-bg border-accent"
-                          : "bg-bg/80 text-text-muted border-border/70 hover:text-text"
-                      }`}
-                    >
-                      封面
-                    </button>
-                    <button
-                      type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      void cleanupUploadedFiles([uploadedFiles[index]]);
-                      setFormState((current) => removeUploadedFile(current, index));
-                      setPreviewIndex((current) => getIndexAfterRemoval(current, index));
-                    }}
-                      className="absolute -top-2 -right-2 bg-bg border border-border text-text-muted text-xs w-6 h-6 flex items-center justify-center hover:text-red-400"
-                      aria-label={`删除第 ${index + 1} 张`}
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <div className="hidden md:block border border-border/70 bg-surface/50 p-2">
-                <p className="mb-2 text-[11px] tracking-[0.12em] uppercase text-text-muted">原图预览</p>
-                {uploadedFiles[activePreviewIndex]?.mediaType === "video" ? (
-                  <video
-                    src={(uploadedFiles[activePreviewIndex] || uploadedFiles[0]).imageUrl}
-                    controls
-                    className="w-full h-auto max-h-[18rem] object-contain bg-bg/70 border border-border/40"
-                  />
-                ) : (
-                  <Image
-                    src={(uploadedFiles[activePreviewIndex] || uploadedFiles[0]).imageUrl}
-                    alt="原图预览"
-                    width={840}
-                    height={840}
-                    unoptimized
-                    className="w-full h-auto max-h-[18rem] object-contain bg-bg/70 border border-border/40"
-                  />
-                )}
-              </div>
-            </div>
+            <SortableThumbGrid
+              files={uploadedFiles.map((file) => ({
+                key: file.imageUrl,
+                imageUrl: file.imageUrl,
+                thumbUrl: file.thumbUrl,
+                mediaType: file.mediaType,
+              }))}
+              coverIndex={coverIndex}
+              previewIndex={previewIndex}
+              onPreview={setPreviewIndex}
+              onCover={(index) => updateForm({ coverIndex: index })}
+              onRemove={(index) => {
+                void cleanupUploadedFiles([uploadedFiles[index]]);
+                setFormState((current) => removeUploadedFile(current, index));
+                setPreviewIndex((current) => getIndexAfterRemoval(current, index));
+              }}
+              onMove={(fromIndex, toIndex) => {
+                setFormState((current) => moveUploadedFile(current, fromIndex, toIndex));
+                setPreviewIndex((current) => getMovedIndex(current, fromIndex, toIndex));
+              }}
+            />
           </div>
         )}
       </div>
 
       <div>
-        <label className="block text-sm text-text-muted mb-1">标题（批量上传时自动编号）</label>
+        <label htmlFor="add-work-title" className="block text-sm text-text-muted mb-1">标题（批量上传时自动编号）</label>
         <input
+          id="add-work-title"
           value={title}
           onChange={(event) => updateForm({ title: event.target.value })}
           className="w-full bg-bg border border-border text-text px-4 py-2 text-sm focus:outline-none focus:border-accent-dim transition-colors"
@@ -278,8 +207,9 @@ export default function AddWorkForm({
       </div>
 
       <div>
-        <label className="block text-sm text-text-muted mb-1">简介</label>
+        <label htmlFor="add-work-description" className="block text-sm text-text-muted mb-1">简介</label>
         <textarea
+          id="add-work-description"
           value={description}
           onChange={(event) => updateForm({ description: event.target.value })}
           rows={4}
@@ -289,10 +219,11 @@ export default function AddWorkForm({
       </div>
 
       <div>
-        <label className="block text-sm text-text-muted mb-1">
+        <label htmlFor="add-work-tags" className="block text-sm text-text-muted mb-1">
           标签（逗号分隔，如：角色,场景,3D）
         </label>
         <input
+          id="add-work-tags"
           value={tags}
           onChange={(event) => updateForm({ tags: event.target.value })}
           className="w-full bg-bg border border-border text-text px-4 py-2 text-sm focus:outline-none focus:border-accent-dim transition-colors"
@@ -301,46 +232,21 @@ export default function AddWorkForm({
       </div>
 
       <div>
-        <label className="block text-sm text-text-muted mb-2">
-          使用软件（可多选）
-        </label>
-        <div className="flex flex-wrap gap-2">
-          {SOFTWARE_PRESETS.map((name) => {
-            const checked = software.includes(name);
-            return (
-              <button
-                key={name}
-                type="button"
-                aria-pressed={checked}
-                onClick={() => {
-                  updateForm({
-                    software: checked ? software.filter((item) => item !== name) : [...software, name],
-                  });
-                }}
-                className={`px-3 py-1.5 text-xs border transition-colors ${
-                  checked
-                    ? "border-accent text-accent bg-surface"
-                    : "border-border text-text-muted hover:text-text"
-                }`}
-              >
-                {name}
-              </button>
-            );
-          })}
-        </div>
-        <input
-          value={softwareCustom}
-          onChange={(event) => updateForm({ softwareCustom: event.target.value })}
-          className="mt-2 w-full bg-bg border border-border text-text px-4 py-2 text-sm focus:outline-none focus:border-accent-dim transition-colors"
-          placeholder="自定义软件（逗号分隔）"
+        <span className="block text-sm text-text-muted mb-2">使用软件（可多选）</span>
+        <SoftwarePicker
+          software={software}
+          softwareCustom={softwareCustom}
+          customInputId="add-work-software-custom"
+          onChange={(patch) => updateForm(patch)}
         />
       </div>
 
       <div>
-        <label className="block text-sm text-text-muted mb-1">
+        <label htmlFor="add-work-date" className="block text-sm text-text-muted mb-1">
           时间（如：2024 年 3 月 / 2025 暑期）
         </label>
         <input
+          id="add-work-date"
           value={workDate}
           onChange={(event) => updateForm({ workDate: event.target.value })}
           className="w-full bg-bg border border-border text-text px-4 py-2 text-sm focus:outline-none focus:border-accent-dim transition-colors"

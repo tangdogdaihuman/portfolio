@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import type { Section, Work } from "@/lib/types";
 
-const VISIBLE_REFRESH_MIN_INTERVAL = 30000;
+const WORKS_REFRESH_MIN_INTERVAL = 30000;
+const META_REFRESH_MIN_INTERVAL = 600000;
 
 export function useHomeDataRefresh({
   initialIntro,
@@ -26,38 +27,49 @@ export function useHomeDataRefresh({
   const [expandedSection, setExpandedSection] = useState<string | null>(initialSections[0]?.id ?? null);
   const [works, setWorks] = useState<Work[]>(initialWorks);
   const refreshInFlightRef = useRef(false);
-  const lastRefreshAtRef = useRef(0);
+  const lastWorksRefreshAtRef = useRef(0);
+  const lastMetaRefreshAtRef = useRef(0);
 
   const refreshData = useCallback(async (options?: { force?: boolean }) => {
     const now = Date.now();
     if (refreshInFlightRef.current) return;
-    if (!options?.force && now - lastRefreshAtRef.current < VISIBLE_REFRESH_MIN_INTERVAL) return;
+    if (!options?.force && now - lastWorksRefreshAtRef.current < WORKS_REFRESH_MIN_INTERVAL) return;
     refreshInFlightRef.current = true;
+    const fetchMeta = Boolean(options?.force) || now - lastMetaRefreshAtRef.current >= META_REFRESH_MIN_INTERVAL;
 
     try {
-      const [introRes, sectionsRes, worksRes] = await Promise.all([fetch("/api/intro"), fetch("/api/detail-sections"), fetch("/api/works")]);
-      if (!introRes.ok || !sectionsRes.ok || !worksRes.ok) {
-        throw new Error("refresh failed");
+      const worksRequest = fetch("/api/works");
+      const introRequest = fetchMeta ? fetch("/api/intro") : null;
+      const sectionsRequest = fetchMeta ? fetch("/api/detail-sections") : null;
+
+      const worksRes = await worksRequest;
+      if (!worksRes.ok) throw new Error("refresh failed");
+
+      if (introRequest && sectionsRequest) {
+        const [introRes, sectionsRes] = await Promise.all([introRequest, sectionsRequest]);
+        if (!introRes.ok || !sectionsRes.ok) throw new Error("refresh failed");
+        const [introData, nextSections] = await Promise.all([
+          introRes.json() as Promise<{ content?: string; tagline?: string }>,
+          sectionsRes.json() as Promise<Section[]>,
+        ]);
+        setIntro(introData.content || "");
+        setTagline((introData.tagline || "").trim() || defaultTagline);
+        setDetailSections(nextSections);
+        setExpandedSection((current) => {
+          if (nextSections.length === 0) return null;
+          if (!current) return nextSections[0].id;
+          return nextSections.some((section) => section.id === current) ? current : nextSections[0].id;
+        });
+        lastMetaRefreshAtRef.current = Date.now();
       }
-      const [introData, nextSections, nextWorks] = await Promise.all([
-        introRes.json() as Promise<{ content?: string; tagline?: string }>,
-        sectionsRes.json() as Promise<Section[]>,
-        worksRes.json() as Promise<Work[]>,
-      ]);
-      setIntro(introData.content || "");
-      setTagline((introData.tagline || "").trim() || defaultTagline);
-      setDetailSections(nextSections);
-      setExpandedSection((current) => {
-        if (nextSections.length === 0) return null;
-        if (!current) return nextSections[0].id;
-        return nextSections.some((section) => section.id === current) ? current : nextSections[0].id;
-      });
+
+      const nextWorks = (await worksRes.json()) as Work[];
       setWorks(nextWorks);
       setLoadError(false);
+      lastWorksRefreshAtRef.current = Date.now();
     } catch {
       setLoadError(true);
     } finally {
-      lastRefreshAtRef.current = Date.now();
       refreshInFlightRef.current = false;
       setLoadingWorks(false);
     }
@@ -67,7 +79,8 @@ export function useHomeDataRefresh({
 
   useEffect(() => {
     if (!initialLoadError) {
-      lastRefreshAtRef.current = Date.now();
+      lastWorksRefreshAtRef.current = Date.now();
+      lastMetaRefreshAtRef.current = Date.now();
     }
   }, [initialLoadError]);
 
@@ -115,16 +128,33 @@ export function useCustomCursor(
     const cursor = cursorRef.current, ring = ringRef.current;
     if (!cursor || !ring) return;
     let mx = 0, my = 0, rx = 0, ry = 0;
+    let cursorScale = 1, ringScale = 1;
+    let cursorScaleTarget = 1, ringScaleTarget = 1;
     let hasRingPosition = false;
+    let raf = 0;
     const setCursorVisibility = (visible: boolean) => {
       const opacity = visible ? "1" : "0";
       cursor.style.opacity = opacity;
       ring.style.opacity = opacity;
     };
-    const syncRing = (x: number, y: number) => {
-      rx = x; ry = y;
-      ring.style.left = rx + "px";
-      ring.style.top = ry + "px";
+    const cursorTransform = () => `translate3d(${mx}px, ${my}px, 0) translate(-50%, -50%) scale(${cursorScale})`;
+    const ringTransform = () => `translate3d(${rx}px, ${ry}px, 0) translate(-50%, -50%) scale(${ringScale})`;
+    const animate = () => {
+      raf = 0;
+      rx += (mx - rx) * 0.15;
+      ry += (my - ry) * 0.15;
+      ringScale += (ringScaleTarget - ringScale) * 0.2;
+      cursorScale += (cursorScaleTarget - cursorScale) * 0.2;
+      ring.style.transform = ringTransform();
+      cursor.style.transform = cursorTransform();
+      const settled =
+        Math.abs(mx - rx) < 0.05 && Math.abs(my - ry) < 0.05 &&
+        Math.abs(ringScaleTarget - ringScale) < 0.005 &&
+        Math.abs(cursorScaleTarget - cursorScale) < 0.005;
+      if (!settled) raf = requestAnimationFrame(animate);
+    };
+    const wake = () => {
+      if (!raf && hasRingPosition) raf = requestAnimationFrame(animate);
     };
     const onScroll = () => {
       if (!hasRingPosition) return;
@@ -132,36 +162,27 @@ export function useCustomCursor(
     };
     const onMove = (e: MouseEvent) => {
       mx = e.clientX; my = e.clientY;
-      cursor.style.left = mx + "px";
-      cursor.style.top = my + "px";
       if (!hasRingPosition || Math.hypot(mx - rx, my - ry) > 180) {
         hasRingPosition = true;
-        syncRing(mx, my);
+        rx = mx; ry = my;
+        ring.style.transform = ringTransform();
       }
+      cursor.style.transform = cursorTransform();
       setCursorVisibility(true);
       const hovering = (e.target as HTMLElement).closest(".work-card, a, button, [data-hover]");
-      if (hovering) { cursor.classList.add("hover"); ring.classList.add("hover"); }
-      else { cursor.classList.remove("hover"); ring.classList.remove("hover"); }
+      ringScaleTarget = hovering ? 2 : 1;
+      cursorScaleTarget = hovering ? 0 : 1;
+      if (hovering) { ring.classList.add("hover"); }
+      else { ring.classList.remove("hover"); }
+      wake();
     };
     setCursorVisibility(false);
-    const animate = () => {
-      if (!hasRingPosition) {
-        raf = requestAnimationFrame(animate);
-        return;
-      }
-      rx += (mx - rx) * 0.15;
-      ry += (my - ry) * 0.15;
-      ring.style.left = rx + "px";
-      ring.style.top = ry + "px";
-      raf = requestAnimationFrame(animate);
-    };
-    let raf = requestAnimationFrame(animate);
     window.addEventListener("mousemove", onMove, { passive: true });
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("scroll", onScroll);
-      cancelAnimationFrame(raf);
+      if (raf) cancelAnimationFrame(raf);
     };
   }, [cursorRef, ringRef]);
 }
@@ -212,23 +233,4 @@ export function useActiveHomeSection(worksLength: number, detailSectionLength: n
   }, [worksLength, detailSectionLength]);
 
   return activeSection;
-}
-
-export function useBackToTopVisibility() {
-  const [showBackToTop, setShowBackToTop] = useState(false);
-
-  useEffect(() => {
-    const updateVisibility = () => {
-      setShowBackToTop(window.scrollY > Math.max(280, window.innerHeight * 0.55));
-    };
-    updateVisibility();
-    window.addEventListener("scroll", updateVisibility, { passive: true });
-    window.addEventListener("resize", updateVisibility);
-    return () => {
-      window.removeEventListener("scroll", updateVisibility);
-      window.removeEventListener("resize", updateVisibility);
-    };
-  }, []);
-
-  return showBackToTop;
 }

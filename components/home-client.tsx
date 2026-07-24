@@ -2,16 +2,31 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { motion, AnimatePresence, useScroll, useTransform, type MotionValue } from "framer-motion";
+import { memo, useState, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
+import { motion, AnimatePresence, useScroll, useTransform, MotionConfig, type MotionValue } from "framer-motion";
 import type { Section, Work } from "@/lib/types";
 import BgCanvas from "@/components/particle-bg";
 import AuroraCanvas from "@/components/aurora-canvas";
 import ThemeToggle from "@/components/theme-toggle";
-import { useActiveHomeSection, useBackToTopVisibility, useCustomCursor, useHomeDataRefresh } from "@/components/home-hooks";
+import BackToTopButton from "@/components/back-to-top-button";
+import { useActiveHomeSection, useCustomCursor, useHomeDataRefresh } from "@/components/home-hooks";
 
 const spring = { type: "spring" as const, damping: 28, stiffness: 200, mass: 0.8 };
 const DEFAULT_TAGLINE = "Hard Surface / Stylized Character / Game Art";
+
+function subscribeCoarsePointer(callback: () => void) {
+  const mql = window.matchMedia("(pointer: coarse)");
+  mql.addEventListener("change", callback);
+  return () => mql.removeEventListener("change", callback);
+}
+
+function getCoarsePointerSnapshot() {
+  return window.matchMedia("(pointer: coarse)").matches;
+}
+
+function getCoarsePointerServerSnapshot() {
+  return false;
+}
 
 function htmlToSafeText(html: string): string {
   return html
@@ -67,27 +82,18 @@ function IntroLine({
   );
 }
 
-function WorkThumbImage({
-  work,
-  priority,
-  ready,
-  onReady,
-}: {
-  work: Work;
-  priority: boolean;
-  ready: boolean;
-  onReady: (id: string) => void;
-}) {
+function WorkThumbImage({ work, priority }: { work: Work; priority: boolean }) {
   const imageRef = useRef<HTMLImageElement>(null);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const image = imageRef.current;
     if (image?.complete && image.naturalWidth > 0) {
       requestAnimationFrame(() => {
-        requestAnimationFrame(() => onReady(work.id));
+        requestAnimationFrame(() => setReady(true));
       });
     }
-  }, [onReady, work.id, work.thumb_url]);
+  }, [work.thumb_url]);
 
   return (
     <Image
@@ -103,12 +109,63 @@ function WorkThumbImage({
       loading={priority ? "eager" : "lazy"}
       onLoad={(event) => {
         if (event.currentTarget.naturalWidth > 0) {
-          onReady(work.id);
+          setReady(true);
         }
       }}
+      onError={() => setReady(true)}
     />
   );
 }
+
+const SiteNav = memo(function SiteNav({ worksCount, sectionsCount }: { worksCount: number; sectionsCount: number }) {
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const activeSection = useActiveHomeSection(worksCount, sectionsCount);
+
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobileNavOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [mobileNavOpen]);
+
+  const navClass = (id: "works" | "about" | "contact") => `nav-link ${activeSection === id ? "nav-link-active text-text" : ""}`;
+
+  return (
+    <nav className="fixed top-0 left-0 right-0 z-[70] px-4 md:px-10 py-3.5 md:py-4.5 flex justify-between items-center bg-bg/70 backdrop-blur-md border-b border-border/30">
+        <a href="#" className="font-display text-lg tracking-wider text-text">Portfolio</a>
+        <div className="hidden md:flex items-center gap-7 text-[0.67rem] tracking-[0.22em] uppercase text-text-muted">
+          <a href="#works" className={navClass("works")}>作品</a>
+          <a href="#about" className={navClass("about")}>关于</a>
+          <a href="#contact" className={navClass("contact")}>联系</a>
+          <ThemeToggle />
+        </div>
+        <div className="flex items-center gap-3 md:hidden">
+          <ThemeToggle />
+          <button
+            type="button"
+            aria-label={mobileNavOpen ? "关闭导航菜单" : "打开导航菜单"}
+            onClick={() => setMobileNavOpen((open) => !open)}
+            className="md:hidden inline-flex items-center justify-center w-11 h-11 border border-border text-text-muted hover:text-text transition-colors"
+          >
+          {mobileNavOpen ? (
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><line x1="4" y1="7" x2="20" y2="7" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="17" x2="20" y2="17" /></svg>
+          )}
+        </button>
+        {mobileNavOpen && (
+          <div className="absolute top-full right-4 mt-2 w-44 bg-surface border border-border/80 p-2 md:hidden">
+            <a href="#works" onClick={() => setMobileNavOpen(false)} className={`block px-3 py-3 text-xs tracking-[0.2em] uppercase transition-colors ${activeSection === "works" ? "text-text" : "text-text-muted hover:text-accent"}`}>作品</a>
+            <a href="#about" onClick={() => setMobileNavOpen(false)} className={`block px-3 py-3 text-xs tracking-[0.2em] uppercase transition-colors ${activeSection === "about" ? "text-text" : "text-text-muted hover:text-accent"}`}>关于</a>
+            <a href="#contact" onClick={() => setMobileNavOpen(false)} className={`block px-3 py-3 text-xs tracking-[0.2em] uppercase transition-colors ${activeSection === "contact" ? "text-text" : "text-text-muted hover:text-accent"}`}>联系</a>
+          </div>
+        )}
+        </div>
+      </nav>
+  );
+});
 
 export default function HomeClient({
   initialIntro,
@@ -143,29 +200,32 @@ export default function HomeClient({
   });
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<"default" | "newest" | "oldest">("default");
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [thumbReady, setThumbReady] = useState<Record<string, true>>({});
+  const coarsePointer = useSyncExternalStore(subscribeCoarsePointer, getCoarsePointerSnapshot, getCoarsePointerServerSnapshot);
   const cursorRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
-  const activeSection = useActiveHomeSection(works.length, detailSections.length);
-  const showBackToTop = useBackToTopVisibility();
+  const revealObserverRef = useRef<IntersectionObserver | null>(null);
   useCustomCursor(cursorRef, ringRef);
 
   useEffect(() => {
-    if (!mobileNavOpen) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMobileNavOpen(false);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [mobileNavOpen]);
+    if (!revealObserverRef.current) {
+      revealObserverRef.current = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("in");
+            revealObserverRef.current?.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.15 });
+    }
+    const obs = revealObserverRef.current;
+    document.querySelectorAll(".reveal:not(.in)").forEach((el) => obs.observe(el));
+  }, [works, detailSections, loadingWorks]);
 
-  useEffect(() => {
-    const obs = new IntersectionObserver((entries) => entries.forEach((e) => { if (e.isIntersecting) e.target.classList.add("in"); }), { threshold: 0.15 });
-    document.querySelectorAll(".reveal").forEach((el) => obs.observe(el));
-    return () => obs.disconnect();
-  }, [works]);
+  useEffect(() => () => {
+    revealObserverRef.current?.disconnect();
+    revealObserverRef.current = null;
+  }, []);
 
   const tags = useMemo(() => [...new Set(works.flatMap((w) => w.tags))], [works]);
   const filtered = useMemo(
@@ -181,9 +241,6 @@ export default function HomeClient({
     });
     return byDate;
   }, [filtered, sortMode]);
-  const markThumbReady = useCallback((id: string) => {
-    setThumbReady((current) => (current[id] ? current : { ...current, [id]: true }));
-  }, []);
 
   const sortOptions: Array<{ value: "default" | "newest" | "oldest"; label: string }> = [
     { value: "default", label: "精选" },
@@ -203,45 +260,14 @@ export default function HomeClient({
     const marqueeItems = tags.length > 0 ? tags : ["Digital Art", "Character Design", "3D", "Illustration"];
     return `${marqueeItems.join(" · ")} ·`;
   }, [tags]);
-  const navClass = (id: "works" | "about" | "contact") => `nav-link ${activeSection === id ? "nav-link-active text-text" : ""}`;
 
   return (
+    <MotionConfig reducedMotion="user">
     <>
       <div ref={cursorRef} className="cursor hidden md:block" />
       <div ref={ringRef} className="cursor-ring hidden md:block" />
 
-      {/* Nav */}
-      <nav className="fixed top-0 left-0 right-0 z-[70] px-4 md:px-10 py-3.5 md:py-4.5 flex justify-between items-center bg-bg/70 backdrop-blur-md border-b border-border/30">
-          <a href="#" className="font-display text-lg tracking-wider text-text">Portfolio</a>
-          <div className="hidden md:flex items-center gap-7 text-[0.67rem] tracking-[0.22em] uppercase text-text-muted">
-            <a href="#works" className={navClass("works")}>作品</a>
-            <a href="#about" className={navClass("about")}>关于</a>
-            <a href="#contact" className={navClass("contact")}>联系</a>
-            <ThemeToggle />
-          </div>
-          <div className="flex items-center gap-3 md:hidden">
-            <ThemeToggle />
-            <button
-              type="button"
-              aria-label={mobileNavOpen ? "关闭导航菜单" : "打开导航菜单"}
-              onClick={() => setMobileNavOpen((open) => !open)}
-              className="md:hidden inline-flex items-center justify-center w-11 h-11 border border-border text-text-muted hover:text-text transition-colors"
-            >
-            {mobileNavOpen ? (
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><line x1="4" y1="7" x2="20" y2="7" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="17" x2="20" y2="17" /></svg>
-            )}
-          </button>
-          {mobileNavOpen && (
-            <div className="absolute top-full right-4 mt-2 w-44 bg-surface border border-border/80 p-2 md:hidden">
-              <a href="#works" onClick={() => setMobileNavOpen(false)} className={`block px-3 py-3 text-xs tracking-[0.2em] uppercase transition-colors ${activeSection === "works" ? "text-text" : "text-text-muted hover:text-accent"}`}>作品</a>
-              <a href="#about" onClick={() => setMobileNavOpen(false)} className={`block px-3 py-3 text-xs tracking-[0.2em] uppercase transition-colors ${activeSection === "about" ? "text-text" : "text-text-muted hover:text-accent"}`}>关于</a>
-              <a href="#contact" onClick={() => setMobileNavOpen(false)} className={`block px-3 py-3 text-xs tracking-[0.2em] uppercase transition-colors ${activeSection === "contact" ? "text-text" : "text-text-muted hover:text-accent"}`}>联系</a>
-            </div>
-          )}
-          </div>
-        </nav>
+      <SiteNav worksCount={works.length} sectionsCount={detailSections.length} />
 
       <BgCanvas />
 
@@ -428,7 +454,7 @@ export default function HomeClient({
               return (
                 <motion.div
                   key={work.id}
-                  layout
+                  layout={coarsePointer ? false : true}
                   initial={{ opacity: 0 }}
                   whileInView={{ opacity: 1 }}
                   viewport={{ once: true, margin: "-40px" }}
@@ -438,7 +464,7 @@ export default function HomeClient({
                 >
                   <Link href={`/work/${work.id}`} className="block" data-hover>
                     <div className="overflow-hidden">
-                      <WorkThumbImage work={work} priority={i < 2} ready={Boolean(thumbReady[work.id])} onReady={markThumbReady} />
+                      <WorkThumbImage work={work} priority={i < 2} />
                     </div>
                     <div className="card-meta">
                       <div className="flex items-center gap-2.5 text-[0.58rem] tracking-[0.28em] uppercase text-accent-dim">
@@ -494,7 +520,7 @@ export default function HomeClient({
                     <span className="font-display text-lg text-text-muted group-hover:text-accent transition-colors duration-300">{s.title}</span>
                     <motion.span
                       animate={{ rotate: isOpen ? 45 : 0 }}
-                      transition={{ type: "spring", damping: 20, stiffness: 200 }}
+                      transition={spring}
                       className="text-accent-dim text-lg flex-shrink-0 ml-4"
                     >
                       +
@@ -537,9 +563,9 @@ export default function HomeClient({
                 联系方式
               </h2>
               <div className="space-y-3 text-text-muted text-sm">
-                <p><span className="text-text-muted/60">邮箱：</span><a href="mailto:1193662756@qq.com" className="nav-link inline text-text-muted hover:text-accent transition-colors">1193662756@qq.com</a></p>
-                <p><span className="text-text-muted/60">微信号：</span><span className="nav-link cursor-default">T15918177465</span></p>
-                <p><span className="text-text-muted/60">电话：</span><span className="nav-link cursor-default">15918177465</span></p>
+                <p><span className="text-text-muted">邮箱：</span><a href="mailto:1193662756@qq.com" className="nav-link inline text-text-muted hover:text-accent transition-colors">1193662756@qq.com</a></p>
+                <p><span className="text-text-muted">微信号：</span><span className="nav-link cursor-default">T15918177465</span></p>
+                <p><span className="text-text-muted">电话：</span><span className="nav-link cursor-default">15918177465</span></p>
               </div>
             </div>
             <div className="md:col-span-5 md:pt-24">
@@ -562,17 +588,9 @@ export default function HomeClient({
         <p className="text-[0.6rem] tracking-[0.3em] uppercase text-text-muted/30">&copy; {new Date().getFullYear()} · All Rights Reserved</p>
       </footer>
 
-      {showBackToTop && (
-        <button
-          type="button"
-          aria-label="回到顶部"
-          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          className="fixed right-4 md:right-6 bottom-4 md:bottom-6 z-[80] w-11 h-11 inline-flex items-center justify-center border border-border/80 bg-bg/78 backdrop-blur-sm text-text-muted hover:text-accent hover:border-accent transition-colors"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><polyline points="18 15 12 9 6 15" /></svg>
-        </button>
-      )}
+      <BackToTopButton />
       </div>
     </>
+    </MotionConfig>
   );
 }

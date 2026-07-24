@@ -3,9 +3,10 @@ import { expect, test } from "@playwright/test";
 async function getCursorPosition(page: import("@playwright/test").Page, selector: ".cursor" | ".cursor-ring") {
   return page.locator(selector).evaluate((node) => {
     const element = node as HTMLElement;
+    const match = /translate3d\(\s*(-?[\d.]+)px,\s*(-?[\d.]+)px/.exec(element.style.transform || "");
     return {
-      left: Number.parseFloat(element.style.left || "0"),
-      top: Number.parseFloat(element.style.top || "0"),
+      left: match ? Number.parseFloat(match[1]) : 0,
+      top: match ? Number.parseFloat(match[2]) : 0,
     };
   });
 }

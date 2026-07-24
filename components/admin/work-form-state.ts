@@ -138,3 +138,85 @@ export function formatUploadResult(successCount: number, total: number, failures
   const more = failures.length > 3 ? `；另有 ${failures.length - 3} 个失败` : "";
   return `${successCount}/${total} ${unit}上传成功，${failures.length} 个失败：${shown}${more}`;
 }
+
+export interface EditableImage {
+  id: string;
+  image_url: string;
+  thumb_url: string;
+  source: "existing" | "new";
+  size: number;
+  media_type: string;
+}
+
+export interface EditWorkFormState {
+  title: string;
+  description: string;
+  tags: string;
+  software: string[];
+  softwareCustom: string;
+  workDate: string;
+  sizeWeight: number;
+  allImages: EditableImage[];
+  coverIndex: number;
+  previewIndex: number;
+  loading: boolean;
+  saving: boolean;
+  saveStep: string;
+  baseUpdatedAt: string;
+  conflict: boolean;
+}
+
+export function createEditWorkFormState(): EditWorkFormState {
+  return {
+    title: "",
+    description: "",
+    tags: "",
+    software: [],
+    softwareCustom: "",
+    workDate: "",
+    sizeWeight: 1,
+    allImages: [],
+    coverIndex: 0,
+    previewIndex: 0,
+    loading: true,
+    saving: false,
+    saveStep: "",
+    baseUpdatedAt: "",
+    conflict: false,
+  };
+}
+
+export function patchEditWorkFormState(state: EditWorkFormState, patch: Partial<EditWorkFormState>): EditWorkFormState {
+  return { ...state, ...patch };
+}
+
+export function moveEditableImage(state: EditWorkFormState, fromIndex: number, toIndex: number): EditWorkFormState {
+  const allImages = moveInArray(state.allImages, fromIndex, toIndex);
+  if (allImages === state.allImages) return state;
+  return {
+    ...state,
+    allImages,
+    coverIndex: getMovedIndex(state.coverIndex, fromIndex, toIndex),
+    previewIndex: getMovedIndex(state.previewIndex, fromIndex, toIndex),
+  };
+}
+
+export function removeEditableImage(state: EditWorkFormState, index: number): EditWorkFormState {
+  const allImages = state.allImages.filter((_, currentIndex) => currentIndex !== index);
+  if (allImages.length === 0) {
+    return { ...state, allImages, coverIndex: 0, previewIndex: 0 };
+  }
+  return {
+    ...state,
+    allImages,
+    coverIndex: getIndexAfterRemoval(state.coverIndex, index),
+    previewIndex: getIndexAfterRemoval(state.previewIndex, index),
+  };
+}
+
+export function nextTempImageId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return `new_${crypto.randomUUID().slice(0, 8)}`;
+  }
+  return `new_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}

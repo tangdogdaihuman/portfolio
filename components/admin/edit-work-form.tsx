@@ -1,33 +1,27 @@
 "use client";
 
-import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
-import { cleanupUploadedFiles, uploadImageToR2 } from "@/lib/upload-client";
+import { useCallback, useEffect, useState } from "react";
+import { cleanupUploadedFiles, type UploadedFile } from "@/lib/upload-client";
 import { UPLOAD_LIMIT_HINT } from "@/lib/upload-policy";
 import {
   SOFTWARE_PRESETS,
-  formatUploadResult,
-  getIndexAfterRemoval,
-  getMovedIndex,
+  createEditWorkFormState,
   mergeSoftwareValues,
-  moveInArray,
+  moveEditableImage,
+  nextTempImageId,
+  patchEditWorkFormState,
+  removeEditableImage,
+  type EditWorkFormState,
 } from "@/components/admin/work-form-state";
+import {
+  SoftwarePicker,
+  SortableThumbGrid,
+  UploadFailureList,
+  UploadProgressBar,
+  useMultiFileUpload,
+} from "@/components/admin/work-form-shared";
 
-interface EditableImage {
-  id: string;
-  image_url: string;
-  thumb_url: string;
-  source: "existing" | "new";
-  size: number;
-  media_type: string;
-}
-
-function nextTempId() {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return `new_${crypto.randomUUID().slice(0, 8)}`;
-  }
-  return `new_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-}
+const VIDEO_EXT = /\.(mp4|webm|mov|avi|mkv)$/i;
 
 export default function EditWorkForm({
   workId,
@@ -40,125 +34,126 @@ export default function EditWorkForm({
   onCancel: () => void;
   showMsg: (text: string, ok: boolean) => void;
 }) {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [tags, setTags] = useState("");
-  const [software, setSoftware] = useState<string[]>([]);
-  const [softwareCustom, setSoftwareCustom] = useState("");
-  const [workDate, setWorkDate] = useState("");
-  const [allImages, setAllImages] = useState<EditableImage[]>([]);
-  const [coverIndex, setCoverIndex] = useState(0);
-  const [previewIndex, setPreviewIndex] = useState(0);
-  const [sizeWeight, setSizeWeight] = useState(1);
-  const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
-  const [uploadTotal, setUploadTotal] = useState(0);
-  const [uploadDone, setUploadDone] = useState(0);
-  const [saving, setSaving] = useState(false);
-  const [saveStep, setSaveStep] = useState("");
-  const dragIdxRef = useRef<number | null>(null);
-  const [baseUpdatedAt, setBaseUpdatedAt] = useState("");
+  const [form, setForm] = useState<EditWorkFormState>(createEditWorkFormState);
+
+  const updateForm = (patch: Partial<EditWorkFormState>) => {
+    setForm((current) => patchEditWorkFormState(current, patch));
+  };
+
+  const {
+    title,
+    description,
+    tags,
+    software,
+    softwareCustom,
+    workDate,
+    sizeWeight,
+    allImages,
+    coverIndex,
+    previewIndex,
+    loading,
+    saving,
+    saveStep,
+    baseUpdatedAt,
+    conflict,
+  } = form;
+
+  const load = useCallback(async () => {
+    try {
+      const [workRes, imagesRes] = await Promise.all([
+        fetch(`/api/works/${workId}`),
+        fetch(`/api/works/${workId}/images`),
+      ]);
+
+      const patch: Partial<EditWorkFormState> = { loading: false, conflict: false };
+
+      if (workRes.ok) {
+        const work = await workRes.json();
+        const softwareValues = Array.isArray(work.software)
+          ? work.software.map((item: unknown) => (typeof item === "string" ? item.trim() : "")).filter(Boolean)
+          : [];
+        patch.title = work.title || "";
+        patch.description = work.description || "";
+        patch.tags = (work.tags || []).join(",");
+        patch.software = softwareValues.filter((item: string) => SOFTWARE_PRESETS.includes(item as (typeof SOFTWARE_PRESETS)[number]));
+        patch.softwareCustom = softwareValues.filter((item: string) => !SOFTWARE_PRESETS.includes(item as (typeof SOFTWARE_PRESETS)[number])).join(", ");
+        patch.workDate = work.work_date || "";
+        patch.sizeWeight = work.size_weight ?? 1;
+        patch.baseUpdatedAt = typeof work.updated_at === "string" ? work.updated_at : "";
+      }
+
+      if (imagesRes.ok) {
+        const images = await imagesRes.json();
+        patch.allImages = images.map((image: Record<string, unknown>) => ({
+          id: (image.id as string) || nextTempImageId(),
+          image_url: image.image_url as string,
+          thumb_url: image.thumb_url as string,
+          source: "existing" as const,
+          size: (image.image_size as number) || 0,
+          media_type: (image.media_type as string) || (VIDEO_EXT.test((image.image_url as string) || "") ? "video" : "image"),
+        }));
+        patch.coverIndex = 0;
+        patch.previewIndex = 0;
+      }
+
+      setForm((current) => patchEditWorkFormState(current, patch));
+    } catch {
+      showMsg("加载作品失败，请重试", false);
+      updateForm({ loading: false });
+    }
+  }, [showMsg, workId]);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function load() {
+    async function initialLoad() {
       try {
-        const [workRes, imagesRes] = await Promise.all([
-          fetch(`/api/works/${workId}`),
-          fetch(`/api/works/${workId}/images`),
-        ]);
-
-        if (cancelled) return;
-
-        if (workRes.ok) {
-          const work = await workRes.json();
-          if (cancelled) return;
-          setTitle(work.title || "");
-          setDescription(work.description || "");
-          setTags((work.tags || []).join(","));
-          const softwareValues = Array.isArray(work.software)
-            ? work.software.map((item: unknown) => (typeof item === "string" ? item.trim() : "")).filter(Boolean)
-            : [];
-          setSoftware(softwareValues.filter((item: string) => SOFTWARE_PRESETS.includes(item as (typeof SOFTWARE_PRESETS)[number])));
-          setSoftwareCustom(softwareValues.filter((item: string) => !SOFTWARE_PRESETS.includes(item as (typeof SOFTWARE_PRESETS)[number])).join(", "));
-          setWorkDate(work.work_date || "");
-          setSizeWeight(work.size_weight ?? 1);
-          setBaseUpdatedAt(typeof work.updated_at === "string" ? work.updated_at : "");
-        }
-
-        if (imagesRes.ok) {
-          const images = await imagesRes.json();
-          if (cancelled) return;
-          setAllImages(
-            images.map((image: Record<string, unknown>) => ({
-              id: (image.id as string) || nextTempId(),
-              image_url: image.image_url as string,
-              thumb_url: image.thumb_url as string,
-              source: "existing" as const,
-              size: (image.image_size as number) || 0,
-              media_type: (image.media_type as string) || (/\.(mp4|webm|mov|avi|mkv)$/i.test((image.image_url as string) || "") ? "video" : "image"),
-            }))
-          );
-        }
-      } catch {
-        if (!cancelled) showMsg("加载作品失败，请重试", false);
+        await load();
       } finally {
-        if (!cancelled) setLoading(false);
+        if (cancelled) return;
       }
     }
 
-    load();
+    void initialLoad();
     return () => {
       cancelled = true;
     };
-  }, [showMsg, workId]);
+  }, [load]);
 
-  const activePreviewIndex = allImages.length === 0 ? 0 : Math.min(previewIndex, allImages.length - 1);
+  const handleUploaded = useCallback((files: UploadedFile[]) => {
+    setForm((current) => patchEditWorkFormState(current, {
+      allImages: [
+        ...current.allImages,
+        ...files.map((result) => ({
+          id: nextTempImageId(),
+          image_url: result.imageUrl,
+          thumb_url: result.thumbUrl,
+          source: "new" as const,
+          size: result.size,
+          media_type: VIDEO_EXT.test(result.originalFileName) ? "video" : "image",
+        })),
+      ],
+    }));
+  }, []);
 
-  const uploadNewFiles = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const {
+    uploading,
+    totalCount,
+    doneCount,
+    totalBytes,
+    doneBytes,
+    failures,
+    startUpload,
+    retryFailure,
+    dismissFailure,
+  } = useMultiFileUpload({ onUploaded: handleUploaded });
+
+  const uploadNewFiles = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
-
-    const total = files.length;
-    setUploading(true);
-    setUploadTotal(total);
-    setUploadDone(0);
-
     const fileArray = Array.from(files);
     event.target.value = "";
-    const results: (Awaited<ReturnType<typeof uploadImageToR2>> | null)[] = new Array(fileArray.length).fill(null);
-    const failures: string[] = [];
-    let done = 0;
-
-    await Promise.all(
-      fileArray.map(async (file, index) => {
-        try {
-          const result = await uploadImageToR2(file);
-          results[index] = result;
-        } catch (error) {
-          failures.push(`${file.name}: ${error instanceof Error ? error.message : "上传失败"}`);
-        }
-        done += 1;
-        setUploadDone(done);
-      })
-    );
-
-    const ordered = results.filter((result): result is NonNullable<(typeof results)[number]> => result !== null);
-    const videoExt = /\.(mp4|webm|mov|avi|mkv)$/i;
-    setAllImages((current) => [
-      ...current,
-      ...ordered.map((result) => ({
-        id: nextTempId(),
-        image_url: result.imageUrl,
-        thumb_url: result.thumbUrl,
-        source: "new" as const,
-        size: result.size,
-        media_type: videoExt.test(result.originalFileName) ? "video" : "image",
-      })),
-    ]);
-    setUploading(false);
-    showMsg(formatUploadResult(ordered.length, total, failures, "张新图"), ordered.length > 0);
+    startUpload(fileArray);
   };
 
   const removeImage = (index: number) => {
@@ -166,9 +161,7 @@ export default function EditWorkForm({
     if (removed?.source === "new") {
       cleanupUploadedFiles([{ imageUrl: removed.image_url, thumbUrl: removed.thumb_url }]).catch(() => {});
     }
-    setAllImages((current) => current.filter((_, currentIndex) => currentIndex !== index));
-    setCoverIndex((current) => (allImages.length <= 1 ? 0 : getIndexAfterRemoval(current, index)));
-    setPreviewIndex((current) => getIndexAfterRemoval(current, index));
+    setForm((current) => removeEditableImage(current, index));
   };
 
   const handleSave = async () => {
@@ -179,8 +172,7 @@ export default function EditWorkForm({
       return;
     }
 
-    setSaving(true);
-    setSaveStep("保存作品");
+    updateForm({ saving: true, saveStep: "保存作品", conflict: false });
 
     const cover = allImages[coverIndex] || allImages[0];
     try {
@@ -212,26 +204,26 @@ export default function EditWorkForm({
 
       if (!saveRes.ok) {
         if (saveRes.status === 409) {
-          showMsg("检测到他人已修改该作品，请刷新后重试", false);
+          updateForm({ saving: false, saveStep: "", conflict: true });
         } else {
           showMsg("保存作品失败", false);
+          updateForm({ saving: false, saveStep: "" });
         }
-        setSaving(false);
-        setSaveStep("");
         return;
       }
 
       const saveBody = await saveRes.json().catch(() => null) as { updatedAt?: string } | null;
-      if (saveBody?.updatedAt) setBaseUpdatedAt(saveBody.updatedAt);
+      updateForm({
+        saving: false,
+        saveStep: "",
+        ...(saveBody?.updatedAt ? { baseUpdatedAt: saveBody.updatedAt } : {}),
+      });
 
       showMsg("已保存", true);
-      setSaving(false);
-      setSaveStep("");
       onDone();
     } catch {
       showMsg("保存过程中出现网络错误，请重试", false);
-      setSaving(false);
-      setSaveStep("");
+      updateForm({ saving: false, saveStep: "" });
     }
   };
 
@@ -243,162 +235,91 @@ export default function EditWorkForm({
         <button onClick={onCancel} className="text-sm text-text-muted hover:text-text">← 返回</button>
         <span className="text-sm text-text">编辑作品</span>
       </div>
-      <div>
-        <label className="block text-sm text-text-muted mb-1">标题</label>
-        <input value={title} onChange={(event) => setTitle(event.target.value)} className="w-full bg-bg border border-border text-text px-4 py-2 text-sm focus:outline-none focus:border-accent-dim" />
-      </div>
-      <div>
-        <label className="block text-sm text-text-muted mb-1">简介</label>
-        <textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={4} className="w-full bg-bg border border-border text-text px-4 py-3 text-sm focus:outline-none focus:border-accent-dim resize-y" />
-      </div>
-      <div>
-        <label className="block text-sm text-text-muted mb-1">标签</label>
-        <input value={tags} onChange={(event) => setTags(event.target.value)} className="w-full bg-bg border border-border text-text px-4 py-2 text-sm focus:outline-none focus:border-accent-dim" />
-      </div>
-      <div>
-        <label className="block text-sm text-text-muted mb-2">使用软件（可多选）</label>
-        <div className="flex flex-wrap gap-2">
-          {SOFTWARE_PRESETS.map((name) => {
-            const checked = software.includes(name);
-            return (
-              <button
-                key={name}
-                type="button"
-                aria-pressed={checked}
-                onClick={() => setSoftware(checked ? software.filter((item) => item !== name) : [...software, name])}
-                className={`px-3 py-1.5 text-xs border transition-colors ${
-                  checked
-                    ? "border-accent text-accent bg-surface"
-                    : "border-border text-text-muted hover:text-text"
-                }`}
-              >
-                {name}
-              </button>
-            );
-          })}
+      {conflict && (
+        <div className="flex items-center gap-3 border border-red-400/50 bg-surface px-4 py-3" role="alert">
+          <span className="flex-1 text-sm text-text-muted">检测到他人已修改该作品，当前编辑内容已过期。</span>
+          <button
+            type="button"
+            onClick={() => {
+              updateForm({ loading: true });
+              void load();
+            }}
+            className="text-sm text-accent hover:underline"
+          >
+            放弃本地修改并重新加载
+          </button>
         </div>
-        <input
-          value={softwareCustom}
-          onChange={(event) => setSoftwareCustom(event.target.value)}
-          className="mt-2 w-full bg-bg border border-border text-text px-4 py-2 text-sm focus:outline-none focus:border-accent-dim"
-          placeholder="自定义软件（逗号分隔）"
+      )}
+      <div>
+        <label htmlFor="edit-work-title" className="block text-sm text-text-muted mb-1">标题</label>
+        <input id="edit-work-title" value={title} onChange={(event) => updateForm({ title: event.target.value })} className="w-full bg-bg border border-border text-text px-4 py-2 text-sm focus:outline-none focus:border-accent-dim" />
+      </div>
+      <div>
+        <label htmlFor="edit-work-description" className="block text-sm text-text-muted mb-1">简介</label>
+        <textarea id="edit-work-description" value={description} onChange={(event) => updateForm({ description: event.target.value })} rows={4} className="w-full bg-bg border border-border text-text px-4 py-3 text-sm focus:outline-none focus:border-accent-dim resize-y" />
+      </div>
+      <div>
+        <label htmlFor="edit-work-tags" className="block text-sm text-text-muted mb-1">标签</label>
+        <input id="edit-work-tags" value={tags} onChange={(event) => updateForm({ tags: event.target.value })} className="w-full bg-bg border border-border text-text px-4 py-2 text-sm focus:outline-none focus:border-accent-dim" />
+      </div>
+      <div>
+        <span className="block text-sm text-text-muted mb-2">使用软件（可多选）</span>
+        <SoftwarePicker
+          software={software}
+          softwareCustom={softwareCustom}
+          customInputId="edit-work-software-custom"
+          onChange={(patch) => updateForm(patch)}
         />
       </div>
       <div>
-        <label className="block text-sm text-text-muted mb-1">时间</label>
-        <input value={workDate} onChange={(event) => setWorkDate(event.target.value)} className="w-full bg-bg border border-border text-text px-4 py-2 text-sm focus:outline-none focus:border-accent-dim" />
+        <label htmlFor="edit-work-date" className="block text-sm text-text-muted mb-1">时间</label>
+        <input id="edit-work-date" value={workDate} onChange={(event) => updateForm({ workDate: event.target.value })} className="w-full bg-bg border border-border text-text px-4 py-2 text-sm focus:outline-none focus:border-accent-dim" />
       </div>
       <div>
-        <label className="block text-sm text-text-muted mb-1">
+        <label htmlFor="edit-work-size-weight" className="block text-sm text-text-muted mb-1">
           展示权重 {sizeWeight.toFixed(1)}（0.5=紧凑 1.0=默认 2.0=大）
         </label>
         <input
+          id="edit-work-size-weight"
           type="range"
           min="0.5"
           max="2.0"
           step="0.1"
           value={sizeWeight}
-          onChange={(event) => setSizeWeight(parseFloat(event.target.value))}
+          onChange={(event) => updateForm({ sizeWeight: parseFloat(event.target.value) })}
           className="w-full accent-accent"
         />
       </div>
       <div>
-        <label className="block text-sm text-text-muted mb-1">所有图片 · 拖拽排序 · 单击缩略图预览原图（{allImages.length} 张）</label>
-        <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_18rem]">
-          <div className="flex flex-wrap gap-2">
-            {allImages.map((image, index) => (
-              <div
-                key={image.id}
-                draggable
-                onDragStart={() => { dragIdxRef.current = index; }}
-                onDragOver={(event) => event.preventDefault()}
-                onDragEnd={() => { dragIdxRef.current = null; }}
-                onDrop={() => {
-                  const fromIdx = dragIdxRef.current;
-                  if (fromIdx === null || fromIdx === index) return;
-                  setAllImages((current) => moveInArray(current, fromIdx, index));
-                  setCoverIndex((current) => getMovedIndex(current, fromIdx, index));
-                  setPreviewIndex((current) => getMovedIndex(current, fromIdx, index));
-                  dragIdxRef.current = null;
-                }}
-                onClick={() => setPreviewIndex(index)}
-                className={`relative w-20 h-16 cursor-grab active:cursor-grabbing group border overflow-hidden ${
-                  index === activePreviewIndex ? "border-accent" : "border-border"
-                }`}
-              >
-                {image.media_type === "video" ? (
-                  <video src={image.image_url} muted className="w-full h-full object-cover pointer-events-none" />
-                ) : (
-                  <Image src={image.thumb_url} alt="" fill sizes="80px" unoptimized className="object-cover" />
-                )}
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setCoverIndex(index);
-                  }}
-                  className={`absolute bottom-0.5 left-0.5 text-[9px] px-1 border ${
-                    index === coverIndex
-                      ? "bg-accent text-bg border-accent"
-                      : "bg-bg/80 text-text-muted border-border/70 hover:text-text"
-                  }`}
-                >
-                  封面
-                </button>
-                <button
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    removeImage(index);
-                  }}
-                  className="absolute -top-2 -right-2 bg-bg border border-border text-text-muted text-xs w-6 h-6 flex items-center justify-center hover:text-red-400"
-                  aria-label={`删除第 ${index + 1} 张`}
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-            {allImages.length === 0 && <p className="text-text-muted text-xs">暂无图片</p>}
-          </div>
-          {allImages.length > 0 && (
-            <div className="hidden md:block border border-border/70 bg-surface/50 p-2">
-              <p className="mb-2 text-[11px] tracking-[0.12em] uppercase text-text-muted">原图预览</p>
-              {allImages[activePreviewIndex]?.media_type === "video" ? (
-                <video
-                  src={allImages[activePreviewIndex].image_url}
-                  controls
-                  className="w-full h-auto max-h-[18rem] object-contain bg-bg/70 border border-border/40"
-                />
-              ) : (
-                <Image
-                  src={(allImages[activePreviewIndex] || allImages[0]).image_url}
-                  alt="原图预览"
-                  width={840}
-                  height={840}
-                  unoptimized
-                  className="w-full h-auto max-h-[18rem] object-contain bg-bg/70 border border-border/40"
-                />
-              )}
-            </div>
-          )}
-        </div>
+        <span className="block text-sm text-text-muted mb-1">所有图片 · 拖拽排序 · 单击缩略图预览原图（{allImages.length} 张）</span>
+        <SortableThumbGrid
+          files={allImages.map((image) => ({
+            key: image.id,
+            imageUrl: image.image_url,
+            thumbUrl: image.thumb_url,
+            mediaType: image.media_type,
+          }))}
+          coverIndex={coverIndex}
+          previewIndex={previewIndex}
+          onPreview={(index) => updateForm({ previewIndex: index })}
+          onCover={(index) => updateForm({ coverIndex: index })}
+          onRemove={removeImage}
+          onMove={(fromIndex, toIndex) => {
+            setForm((current) => moveEditableImage(current, fromIndex, toIndex));
+          }}
+        />
       </div>
       <div>
-        <label className="block text-sm text-text-muted mb-1">添加新图片（{UPLOAD_LIMIT_HINT}）</label>
+        <label htmlFor="edit-work-files" className="block text-sm text-text-muted mb-1">添加新图片（{UPLOAD_LIMIT_HINT}）</label>
         {uploading ? (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs text-text-muted">
-              <span>上传中</span><span>{uploadDone} / {uploadTotal}</span>
-            </div>
-            <div className="h-2 bg-surface overflow-hidden">
-              <div className="h-full bg-accent transition-all duration-300 ease-out" style={{ width: `${uploadTotal > 0 ? (uploadDone / uploadTotal) * 100 : 0}%` }} />
-            </div>
-          </div>
+          <UploadProgressBar label="上传中" doneCount={doneCount} totalCount={totalCount} doneBytes={doneBytes} totalBytes={totalBytes} />
         ) : (
-          <label className="inline-block px-6 py-6 border-2 border-dashed border-border text-text-muted text-sm cursor-pointer hover:border-accent-dim">
+          <label htmlFor="edit-work-files" className="inline-block px-6 py-6 border-2 border-dashed border-border text-text-muted text-sm cursor-pointer hover:border-accent-dim">
             点击选择（可多选）
-            <input type="file" accept="image/*,video/*" multiple onChange={uploadNewFiles} className="hidden" />
           </label>
         )}
+        <input id="edit-work-files" type="file" accept="image/*,video/*" multiple onChange={uploadNewFiles} className="hidden" />
+        <UploadFailureList failures={failures} onRetry={retryFailure} onDismiss={dismissFailure} />
       </div>
       <div className="flex gap-3">
         <button onClick={handleSave} disabled={saving} className="px-8 py-2.5 bg-accent text-bg text-sm font-medium hover:bg-accent-dim disabled:opacity-50">{saving ? saveStep || "保存中..." : "保存修改"}</button>
