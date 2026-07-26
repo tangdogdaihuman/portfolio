@@ -1,6 +1,6 @@
 import { expect, request } from "@playwright/test";
 
-export const ADMIN_SECRET = "e2e-admin-secret";
+export const ADMIN_SECRET = process.env.ADMIN_SECRET_KEY || "e2e-admin-secret";
 
 export function toAdminBaseURL(baseURL: string) {
   return baseURL.replace("127.0.0.1", "localhost");
