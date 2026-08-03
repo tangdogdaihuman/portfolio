@@ -38,14 +38,30 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
+function getImageOrigin() {
+  try {
+    const url = process.env.R2_PUBLIC_URL;
+    return url ? new URL(url).origin : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const imageOrigin = getImageOrigin();
   return (
     <html lang="zh-CN" data-scroll-behavior="smooth" className={`${bodoni.variable} ${zcoolXiaoWei.variable} ${inter.variable}`} suppressHydrationWarning>
       <head>
+        {imageOrigin && (
+          <>
+            <link rel="preconnect" href={imageOrigin} crossOrigin="anonymous" />
+            <link rel="dns-prefetch" href={imageOrigin} />
+          </>
+        )}
         <script
           dangerouslySetInnerHTML={{
             __html: `(()=>{try{var t=localStorage.getItem("theme"),c=document.documentElement.classList;c.remove("light");c.remove("dark");c.add(t==="light"?"light":"dark")}catch(e){document.documentElement.classList.add("dark")}})()`,

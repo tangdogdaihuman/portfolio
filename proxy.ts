@@ -16,17 +16,13 @@ function proxy(req: NextRequest) {
     return NextResponse.next();
   }
 
-  if (pathname === "/admin/login" || pathname === "/api/auth/login") {
-    return NextResponse.next();
-  }
-
   const keyParam = url.searchParams.get("key");
   if (keyParam) {
     const a = Buffer.from(keyParam);
     const b = Buffer.from(secret);
     if (a.length === b.length && crypto.timingSafeEqual(a, b)) {
       const token = signToken(secret);
-      const targetPathname = pathname.startsWith("/admin") ? pathname : "/admin";
+      const targetPathname = pathname === "/admin/login" ? "/admin" : (pathname.startsWith("/admin") ? pathname : "/admin");
       const response = NextResponse.redirect(new URL(targetPathname, req.url));
       response.headers.set("Cache-Control", "no-store");
       response.cookies.set(COOKIE_NAME, token, {
@@ -39,6 +35,10 @@ function proxy(req: NextRequest) {
       return response;
     }
     return NextResponse.redirect(new URL("/admin/login?error=invalid_key", req.url));
+  }
+
+  if (pathname === "/admin/login") {
+    return NextResponse.next();
   }
 
   const token = req.cookies.get(COOKIE_NAME);

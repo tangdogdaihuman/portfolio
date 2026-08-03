@@ -187,53 +187,68 @@ export default function WorkDetailGallery({
 
   return (
     <>
-      <div className="space-y-6 md:space-y-10">
-        {images.map((image, index) => (
-          <button
-            key={image.id || index}
-            ref={(element) => { triggerRefs.current[index] = element; }}
-            type="button"
-            onClick={() => openViewer(index)}
-            tabIndex={activeImage ? -1 : 0}
-            className="block w-full bg-surface cursor-zoom-in border border-border/35 relative"
-          >
-            {image.media_type === "video" ? (
-              <video
-                src={image.image_url}
-                poster={image.thumb_url !== image.image_url ? image.thumb_url : undefined}
-                controls
-                playsInline
-                muted
-                preload="metadata"
-                className="w-full h-auto"
-                onClick={(e) => e.stopPropagation()}
-                onLoadedMetadata={() => {
-                  const key = image.id || String(index);
-                  setReadyMap((current) => (current[key] ? current : { ...current, [key]: true }));
-                }}
-              />
-            ) : (
-              <Image
-                ref={(element) => {
-                  const key = image.id || String(index);
-                  if (element?.complete && element.naturalWidth > 0) {
-                    requestAnimationFrame(() => markReady(key));
-                  }
-                }}
-                src={image.image_url}
-                alt={`${workTitle} ${index + 1}`}
-                width={2400}
-                height={3000}
-                unoptimized
-                sizes="(max-width: 768px) 98vw, 96vw"
-                className={`w-full h-auto object-contain transition-opacity duration-500 ${readyMap[image.id || String(index)] ? "opacity-100" : "opacity-0"}`}
-                priority={index < 2}
-                onLoad={() => markReady(image.id || String(index))}
-                onError={() => markReady(image.id || String(index))}
-              />
-            )}
-          </button>
-        ))}
+      <div className="space-y-8 md:space-y-14">
+        {images.map((image, index) => {
+          const imageKey = image.id || String(index);
+          const isReady = Boolean(readyMap[imageKey]);
+          const isVideo = image.media_type === "video";
+
+          return (
+            <figure key={imageKey} className="group">
+              <button
+                ref={(element) => { triggerRefs.current[index] = element; }}
+                type="button"
+                onClick={() => openViewer(index)}
+                tabIndex={activeImage ? -1 : 0}
+                className="block w-full bg-surface cursor-zoom-in border border-border/35 relative overflow-hidden transition-colors duration-500 group-hover:border-accent/45"
+              >
+                {isVideo ? (
+                  <video
+                    src={image.image_url}
+                    poster={image.thumb_url !== image.image_url ? image.thumb_url : undefined}
+                    controls
+                    playsInline
+                    muted
+                    preload="metadata"
+                    className="w-full h-auto"
+                    onClick={(e) => e.stopPropagation()}
+                    onLoadedMetadata={() => markReady(imageKey)}
+                  />
+                ) : (
+                  <>
+                    {!isReady && <span className="gallery-shimmer" aria-hidden="true" />}
+                    <Image
+                      ref={(element) => {
+                        if (element?.complete && element.naturalWidth > 0) {
+                          requestAnimationFrame(() => markReady(imageKey));
+                        }
+                      }}
+                      src={image.image_url}
+                      alt={`${workTitle} ${index + 1}`}
+                      width={2400}
+                      height={3000}
+                      unoptimized
+                      sizes="(max-width: 768px) 98vw, 96vw"
+                      className={`w-full h-auto object-contain transition-[opacity,transform] duration-700 ease-out will-change-transform ${isReady ? "opacity-100 scale-100" : "opacity-0 scale-[1.015]"}`}
+                      priority={index < 2}
+                      onLoad={() => markReady(imageKey)}
+                      onError={() => markReady(imageKey)}
+                    />
+                  </>
+                )}
+              </button>
+              <figcaption className="mt-3 flex items-baseline justify-between text-[0.62rem] tracking-[0.22em] uppercase">
+                <span className="text-accent-dim">
+                  {String(index + 1).padStart(2, "0")}
+                  <span className="text-text-muted/50"> / {String(images.length).padStart(2, "0")}</span>
+                </span>
+                <span className="hidden sm:inline text-text-muted/60 transition-colors duration-300 group-hover:text-accent">
+                  {isVideo ? "视频 · 点击播放" : "点击放大查看"}
+                </span>
+              </figcaption>
+            </figure>
+          );
+        })}
       </div>
 
       {activeImage && (
@@ -241,7 +256,7 @@ export default function WorkDetailGallery({
           role="dialog"
           aria-modal="true"
           aria-label={`${workTitle} 图片查看器`}
-          className="fixed inset-0 z-[90] bg-bg/96 flex items-center justify-center"
+          className="fixed inset-0 z-[90] bg-bg/97 backdrop-blur-md flex items-center justify-center"
           onClick={closeViewer}
         >
           <button
@@ -250,7 +265,7 @@ export default function WorkDetailGallery({
               event.stopPropagation();
               closeViewer();
             }}
-            className="absolute top-6 right-6 text-text-muted hover:text-text z-20 w-11 h-11 inline-flex items-center justify-center bg-bg/75 border border-border/50"
+            className="absolute top-6 right-6 text-text-muted z-20 w-11 h-11 inline-flex items-center justify-center bg-surface/70 backdrop-blur-sm border border-border/60 transition-colors duration-300 hover:text-accent hover:border-accent/60"
             aria-label="关闭大图"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
@@ -262,7 +277,7 @@ export default function WorkDetailGallery({
                 event.stopPropagation();
                 goPrev();
               }}
-              className="hidden md:inline-flex absolute left-4 top-1/2 -translate-y-1/2 text-text-muted hover:text-text z-20 w-11 h-11 items-center justify-center bg-bg/75 border border-border/50"
+              className="hidden md:inline-flex absolute left-4 top-1/2 -translate-y-1/2 text-text-muted z-20 w-11 h-11 items-center justify-center bg-surface/70 backdrop-blur-sm border border-border/60 transition-colors duration-300 hover:text-accent hover:border-accent/60"
               aria-label="上一张"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><polyline points="15 18 9 12 15 6" /></svg>
@@ -275,14 +290,14 @@ export default function WorkDetailGallery({
                 event.stopPropagation();
                 goNext();
               }}
-              className="hidden md:inline-flex absolute right-4 top-1/2 -translate-y-1/2 text-text-muted hover:text-text z-20 w-11 h-11 items-center justify-center bg-bg/75 border border-border/50"
+              className="hidden md:inline-flex absolute right-4 top-1/2 -translate-y-1/2 text-text-muted z-20 w-11 h-11 items-center justify-center bg-surface/70 backdrop-blur-sm border border-border/60 transition-colors duration-300 hover:text-accent hover:border-accent/60"
               aria-label="下一张"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1"><polyline points="9 18 15 12 9 6" /></svg>
             </button>
           )}
 
-          <div className="absolute left-4 top-6 z-20 text-[0.62rem] tracking-[0.15em] uppercase text-text-muted bg-bg/75 border border-border/50 px-3 py-2">
+          <div className="absolute left-4 top-6 z-20 text-[0.62rem] tracking-[0.18em] uppercase text-text-muted/90 bg-surface/70 backdrop-blur-sm border border-border/60 px-3 py-2">
             双指缩放/平移 · 单指滑动切图
           </div>
 
@@ -438,14 +453,14 @@ export default function WorkDetailGallery({
             </motion.div>
           </div>
 
-          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-bg/78 border border-border/55 px-2 py-1.5">
+          <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-surface/75 backdrop-blur-sm border border-border/60 px-2 py-1.5">
             <button
               type="button"
               onClick={(event) => {
                 event.stopPropagation();
                 setZoomSafe(zoom - 0.25);
               }}
-              className="w-11 h-11 text-text-muted hover:text-text border border-border/40"
+              className="w-11 h-11 text-text-muted border border-border/40 transition-colors duration-300 hover:text-accent hover:border-accent/60"
               aria-label="缩小"
             >
               −
@@ -456,7 +471,7 @@ export default function WorkDetailGallery({
                 event.stopPropagation();
                 resetView();
               }}
-              className="px-3 h-11 text-[0.65rem] tracking-[0.15em] uppercase text-text-muted hover:text-text border border-border/40"
+              className="px-3 h-11 text-[0.65rem] tracking-[0.15em] uppercase text-text-muted border border-border/40 transition-colors duration-300 hover:text-accent hover:border-accent/60"
             >
               重置
             </button>
@@ -466,7 +481,7 @@ export default function WorkDetailGallery({
                 event.stopPropagation();
                 setZoomSafe(zoom + 0.25);
               }}
-              className="w-11 h-11 text-text-muted hover:text-text border border-border/40"
+              className="w-11 h-11 text-text-muted border border-border/40 transition-colors duration-300 hover:text-accent hover:border-accent/60"
               aria-label="放大"
             >
               +
@@ -474,8 +489,9 @@ export default function WorkDetailGallery({
           </div>
 
           {openIndex !== null && images.length > 1 && (
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-xs text-text-muted/50 tracking-wider">
-              {openIndex + 1} / {images.length}
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-xs tracking-[0.25em]">
+              <span className="text-accent">{String(openIndex + 1).padStart(2, "0")}</span>
+              <span className="text-text-muted/50"> / {String(images.length).padStart(2, "0")}</span>
             </div>
           )}
         </div>

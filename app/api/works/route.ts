@@ -38,7 +38,9 @@ const workSchema = z.object({
 export async function GET() {
   const result = await db.execute(
     `SELECT w.*, (SELECT COUNT(*) FROM work_images WHERE work_id = w.id) as image_count,
-     COALESCE((SELECT SUM(image_size) FROM work_images WHERE work_id = w.id), w.image_size) as total_size
+     CASE WHEN (SELECT COALESCE(SUM(image_size), 0) FROM work_images WHERE work_id = w.id) = 0
+          THEN w.image_size
+          ELSE (SELECT SUM(image_size) FROM work_images WHERE work_id = w.id) END as total_size
      FROM works w ORDER BY w.pinned DESC, w.sort_order DESC, w.created_at DESC`
   );
   const works = result.rows.map((row) => rowToWork(row as Record<string, unknown>));

@@ -552,6 +552,6 @@ test.describe("手机端相册式滑动预览", () => {
     expect(nextBox.x + nextBox.width).toBeGreaterThan(box.x + box.width * 0.55);
 
     await page.mouse.up();
-    await expect(page.locator("text=2 / 3")).toBeVisible();
+    await expect(page.getByRole("dialog").locator("text=02 / 03")).toBeVisible();
   });
 });

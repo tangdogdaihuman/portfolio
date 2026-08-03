@@ -45,28 +45,31 @@ export function useHomeDataRefresh({
       const worksRes = await worksRequest;
       if (!worksRes.ok) throw new Error("refresh failed");
 
-      if (introRequest && sectionsRequest) {
-        const [introRes, sectionsRes] = await Promise.all([introRequest, sectionsRequest]);
-        if (!introRes.ok || !sectionsRes.ok) throw new Error("refresh failed");
-        const [introData, nextSections] = await Promise.all([
-          introRes.json() as Promise<{ content?: string; tagline?: string }>,
-          sectionsRes.json() as Promise<Section[]>,
-        ]);
-        setIntro(introData.content || "");
-        setTagline((introData.tagline || "").trim() || defaultTagline);
-        setDetailSections(nextSections);
-        setExpandedSection((current) => {
-          if (nextSections.length === 0) return null;
-          if (!current) return nextSections[0].id;
-          return nextSections.some((section) => section.id === current) ? current : nextSections[0].id;
-        });
-        lastMetaRefreshAtRef.current = Date.now();
-      }
-
       const nextWorks = (await worksRes.json()) as Work[];
       setWorks(nextWorks);
       setLoadError(false);
       lastWorksRefreshAtRef.current = Date.now();
+
+      if (introRequest && sectionsRequest) {
+        try {
+          const [introRes, sectionsRes] = await Promise.all([introRequest, sectionsRequest]);
+          if (!introRes.ok || !sectionsRes.ok) return;
+          const [introData, nextSections] = await Promise.all([
+            introRes.json() as Promise<{ content?: string; tagline?: string }>,
+            sectionsRes.json() as Promise<Section[]>,
+          ]);
+          setIntro(introData.content || "");
+          setTagline((introData.tagline || "").trim() || defaultTagline);
+          setDetailSections(nextSections);
+          setExpandedSection((current) => {
+            if (nextSections.length === 0) return null;
+            if (!current) return nextSections[0].id;
+            return nextSections.some((section) => section.id === current) ? current : nextSections[0].id;
+          });
+          lastMetaRefreshAtRef.current = Date.now();
+        } catch {
+        }
+      }
     } catch {
       setLoadError(true);
     } finally {

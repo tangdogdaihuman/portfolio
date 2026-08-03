@@ -85,25 +85,34 @@ export default async function WorkDetailPage(
     <main className="min-h-screen bg-bg text-text">
       <section className="max-w-[112rem] mx-auto px-2 md:px-4 py-6 md:py-12">
         <div className="sticky top-3 z-20 inline-block">
-          <Link href="/#works" className="inline-flex bg-bg/80 backdrop-blur-sm border border-border px-4 py-2 text-xs tracking-[0.2em] uppercase text-text-muted hover:border-accent hover:text-accent transition-colors">
+          <Link href="/#works" className="group inline-flex items-center gap-2.5 bg-bg/80 backdrop-blur-sm border border-border/70 px-4 py-2 text-[0.68rem] tracking-[0.22em] uppercase text-text-muted hover:border-accent/70 hover:text-accent transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="transition-transform duration-300 group-hover:-translate-x-0.5"><polyline points="15 18 9 12 15 6" /></svg>
             返回作品集
           </Link>
         </div>
 
-        <header className="mt-8 md:mt-10 mb-10 md:mb-14 border-b border-border/40 pb-8 md:pb-10">
-          <div className="grid md:grid-cols-12 gap-8 items-end">
+        <header className="mt-10 md:mt-14 mb-12 md:mb-16 border-b border-border/40 pb-10 md:pb-12">
+          <div className="grid md:grid-cols-12 gap-8 md:gap-10 items-end">
             <div className="md:col-span-8">
-              <h1 className="font-display text-4xl md:text-7xl text-accent leading-[0.92]">{work.title}</h1>
+              <div className="flex items-center gap-3 mb-6 md:mb-8 animate-fade-up">
+                <span className="divider-line" />
+                <span className="text-[0.62rem] md:text-[0.68rem] tracking-[0.3em] uppercase text-text-muted">Work Detail / 作品详情</span>
+              </div>
+              <h1 className="font-display text-4xl md:text-7xl text-accent leading-[0.95] tracking-tight animate-fade-up [animation-delay:0.08s]">{work.title}</h1>
               {work.description && (
-                <p className="mt-5 max-w-2xl text-sm md:text-base text-text-muted leading-[1.75] whitespace-pre-wrap">
+                <p className="mt-6 max-w-2xl text-sm md:text-base text-text-muted leading-[1.9] whitespace-pre-wrap animate-fade-up [animation-delay:0.16s]">
                   {work.description}
                 </p>
               )}
             </div>
-            <div className="md:col-span-4 md:justify-self-end">
-              <div className="flex flex-wrap md:justify-end items-center gap-2.5 text-[0.68rem] uppercase tracking-[0.16em]">
-                {work.work_date && <span className="border border-border/70 px-2.5 py-1 text-accent-dim">{work.work_date}</span>}
-                {work.tags.map((tag) => <span key={tag} className="border border-border/70 px-2.5 py-1 text-text-muted">{tag}</span>)}
+            <div className="md:col-span-4 md:justify-self-end md:self-end">
+              <div className="flex flex-wrap md:justify-end items-center gap-2 text-[0.66rem] uppercase tracking-[0.18em]">
+                {work.work_date && (
+                  <span className="px-3 py-1.5 border border-accent/45 bg-accent/[0.06] text-accent">{work.work_date}</span>
+                )}
+                {work.tags.map((tag) => (
+                  <span key={tag} className="px-3 py-1.5 border border-border/70 bg-surface/50 text-text-muted transition-colors hover:border-accent/50 hover:text-accent">{tag}</span>
+                ))}
               </div>
             </div>
           </div>
@@ -112,11 +121,14 @@ export default async function WorkDetailPage(
         <WorkDetailGallery workTitle={work.title} images={galleryImages} />
 
         {work.software.length > 0 && (
-          <section className="mt-10 md:mt-14 border-t border-border/40 pt-6 md:pt-8">
-            <h2 className="text-xs tracking-[0.2em] uppercase text-text-muted mb-3">使用软件：</h2>
-            <div className="flex flex-wrap gap-2.5">
+          <section className="mt-12 md:mt-16 border-t border-border/40 pt-8 md:pt-10">
+            <div className="flex items-center gap-3 mb-5">
+              <span className="divider-line" />
+              <h2 className="text-[0.68rem] tracking-[0.28em] uppercase text-text-muted">Software / 使用软件</h2>
+            </div>
+            <div className="flex flex-wrap gap-2">
               {work.software.map((item) => (
-                <span key={item} className="border border-border/70 px-2.5 py-1 text-[0.7rem] tracking-[0.08em] text-text-muted">
+                <span key={item} className="px-3 py-1.5 border border-border/70 bg-surface/50 text-[0.7rem] tracking-[0.1em] text-text-muted transition-colors hover:border-accent/50 hover:text-accent">
                   {item}
                 </span>
               ))}

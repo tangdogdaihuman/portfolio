@@ -37,7 +37,8 @@ export function collectRemovedImageUrls(
 
 export function chooseCoverImage(nextImages: PreparedWorkImage[], currentCover?: CoverImage): PreparedWorkImage {
   return (
-    nextImages.find((image) => image.imageUrl === currentCover?.image_url || image.thumbUrl === currentCover?.thumb_url) ||
+    nextImages.find((image) => image.imageUrl === currentCover?.image_url) ||
+    nextImages.find((image) => image.thumbUrl === currentCover?.thumb_url) ||
     [...nextImages].sort((a, b) => a.sortOrder - b.sortOrder)[0]
   );
 }

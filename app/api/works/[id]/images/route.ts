@@ -82,34 +82,45 @@ export async function POST(
   }
 
   if (valid.length > 0) {
-    const work = await db.execute({
-      sql: "SELECT image_url FROM works WHERE id = ?",
-      args: [workId],
-    });
-    if (work.rows.length === 0) {
-      return fail("NOT_FOUND", "Work not found", 404);
-    }
-
-    const maxSort = await db.execute({
-      sql: "SELECT COALESCE(MAX(sort_order), -1) as max_sort FROM work_images WHERE work_id = ?",
-      args: [workId],
-    });
-    const startSort = Number(maxSort.rows[0]?.max_sort ?? -1) + 1;
-
-    await db.batch(
-      valid.map((it, i) => ({
-        sql: `INSERT INTO work_images (id, work_id, image_url, thumb_url, media_type, sort_order, image_size)
-              VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        args: [it.id, workId, it.imageUrl, it.thumbUrl, it.mediaType, startSort + i, it.imageSize],
-      }))
-    );
-
-    if (!work.rows[0].image_url) {
-      const first = valid[0];
-      await db.execute({
-        sql: "UPDATE works SET image_url = ?, thumb_url = ? WHERE id = ?",
-        args: [first.imageUrl, first.thumbUrl, workId],
+    const transaction = await db.transaction("write");
+    try {
+      const work = await transaction.execute({
+        sql: "SELECT image_url FROM works WHERE id = ?",
+        args: [workId],
       });
+      if (work.rows.length === 0) {
+        await transaction.rollback();
+        return fail("NOT_FOUND", "Work not found", 404);
+      }
+
+      const maxSort = await transaction.execute({
+        sql: "SELECT COALESCE(MAX(sort_order), -1) as max_sort FROM work_images WHERE work_id = ?",
+        args: [workId],
+      });
+      const startSort = Number(maxSort.rows[0]?.max_sort ?? -1) + 1;
+
+      await transaction.batch(
+        valid.map((it, i) => ({
+          sql: `INSERT INTO work_images (id, work_id, image_url, thumb_url, media_type, sort_order, image_size)
+                VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          args: [it.id, workId, it.imageUrl, it.thumbUrl, it.mediaType, startSort + i, it.imageSize],
+        }))
+      );
+
+      if (!work.rows[0].image_url) {
+        const first = valid[0];
+        await transaction.execute({
+          sql: "UPDATE works SET image_url = ?, thumb_url = ? WHERE id = ?",
+          args: [first.imageUrl, first.thumbUrl, workId],
+        });
+      }
+
+      await transaction.commit();
+    } catch (error) {
+      if (!transaction.closed) await transaction.rollback();
+      throw error;
+    } finally {
+      if (!transaction.closed) transaction.close();
     }
   }
 

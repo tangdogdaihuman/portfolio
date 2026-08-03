@@ -214,9 +214,8 @@ export default function BgCanvas() {
     };
 
     const onMove = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      mouse.x = e.clientX - rect.left;
-      mouse.y = e.clientY - rect.top;
+      mouse.x = e.clientX;
+      mouse.y = e.clientY;
       target.x = mouse.x;
       target.y = mouse.y;
       runIfNeeded();
@@ -224,9 +223,8 @@ export default function BgCanvas() {
 
     const onPointerDown = (e: PointerEvent) => {
       if (e.pointerType === "mouse") return;
-      const rect = canvas.getBoundingClientRect();
-      const x = clamp(e.clientX - rect.left, 0, w);
-      const y = clamp(e.clientY - rect.top, 0, h);
+      const x = clamp(e.clientX, 0, w);
+      const y = clamp(e.clientY, 0, h);
       ripples.push({ x, y, birth: performance.now() });
       runIfNeeded();
     };

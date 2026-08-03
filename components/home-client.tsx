@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { memo, useState, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
-import { motion, AnimatePresence, useScroll, useTransform, MotionConfig, type MotionValue } from "framer-motion";
+import { memo, useState, useEffect, useMemo, useRef, useSyncExternalStore, type CSSProperties } from "react";
+import { LazyMotion, domAnimation, m, AnimatePresence, useScroll, useTransform, MotionConfig, type MotionValue } from "framer-motion";
 import type { Section, Work } from "@/lib/types";
 import BgCanvas from "@/components/particle-bg";
 import AuroraCanvas from "@/components/aurora-canvas";
@@ -13,6 +13,8 @@ import { useActiveHomeSection, useCustomCursor, useHomeDataRefresh } from "@/com
 
 const spring = { type: "spring" as const, damping: 28, stiffness: 200, mass: 0.8 };
 const DEFAULT_TAGLINE = "Hard Surface / Stylized Character / Game Art";
+const HERO_NAME_CHARS = ["唐", "子", "航"];
+const HERO_SUBTITLE_WORDS = ["Tang", "Zihang", "CG", "Portfolio"];
 
 function subscribeCoarsePointer(callback: () => void) {
   const mql = window.matchMedia("(pointer: coarse)");
@@ -69,20 +71,20 @@ function IntroLine({
   const filter = useTransform(blur, (value: number) => `blur(${value}px)`);
 
   return (
-    <motion.div style={{ opacity, scale, filter }}>
-      <motion.p
+    <m.div style={{ opacity, scale, filter }}>
+      <m.p
         initial={{ opacity: 0, y: 18, filter: "blur(8px)" }}
         animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
         transition={{ duration: 0.7, delay: index * 0.08, ease: [0.2, 0.9, 0.3, 1] }}
         className="text-[clamp(0.95rem,2vw,1.12rem)] text-text/75 leading-[1.85] mb-3.5 hero-copy-shadow"
       >
         {line}
-      </motion.p>
-    </motion.div>
+      </m.p>
+    </m.div>
   );
 }
 
-function WorkThumbImage({ work, priority }: { work: Work; priority: boolean }) {
+function WorkThumbImage({ work }: { work: Work }) {
   const imageRef = useRef<HTMLImageElement>(null);
   const [ready, setReady] = useState(false);
 
@@ -105,8 +107,7 @@ function WorkThumbImage({ work, priority }: { work: Work; priority: boolean }) {
       unoptimized
       className={`work-thumb ${ready ? "work-thumb-ready" : ""} block mx-auto w-full h-auto max-h-[32rem] object-contain object-center`}
       sizes="(max-width: 768px) 92vw, (max-width: 1280px) 50vw, 36vw"
-      priority={priority}
-      loading={priority ? "eager" : "lazy"}
+      loading="lazy"
       onLoad={(event) => {
         if (event.currentTarget.naturalWidth > 0) {
           setReady(true);
@@ -114,6 +115,19 @@ function WorkThumbImage({ work, priority }: { work: Work; priority: boolean }) {
       }}
       onError={() => setReady(true)}
     />
+  );
+}
+
+function SectionHeader({ index, label, title }: { index: string; label: string; title: string }) {
+  return (
+    <div className="reveal">
+      <div className="flex items-center gap-4 mb-4">
+        <span className="font-display italic text-accent text-2xl leading-none">{index}</span>
+        <div className="divider-line" />
+        <span className="text-xs tracking-[0.4em] uppercase text-text-muted">{label}</span>
+      </div>
+      <h2 className="font-display text-2xl md:text-4xl text-accent mb-8 md:mb-10">{title}</h2>
+    </div>
   );
 }
 
@@ -263,6 +277,7 @@ export default function HomeClient({
 
   return (
     <MotionConfig reducedMotion="user">
+    <LazyMotion features={domAnimation}>
     <>
       <div ref={cursorRef} className="cursor hidden md:block" />
       <div ref={ringRef} className="cursor-ring hidden md:block" />
@@ -278,49 +293,67 @@ export default function HomeClient({
           <div className="hero-contrast-scrim z-[1] pointer-events-none" />
 
           <div className="relative z-10 flex flex-col items-center justify-center w-full max-w-6xl mx-auto">
-            <motion.div
+            <m.div
               style={{ opacity: portfolioOpacity, scale: portfolioScale, filter: portfolioFilter }}
               className="text-center pointer-events-none"
             >
-              <motion.p
+              <m.p
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.7, ease: [0.2, 0.9, 0.3, 1] }}
                 className="text-xs text-accent-dim uppercase mb-6 tracking-[0.2em] hero-copy-shadow"
               >
                 CG Artist Portfolio
-              </motion.p>
-              <h1 className="font-display leading-[1.02] text-text hero-title-shadow">
-                <span className="block overflow-hidden px-[6px] pt-[4px] pb-[0.06em]">
-                  <motion.span
-                    initial={{ y: "110%" }}
-                    animate={{ y: 0 }}
-                    transition={{ duration: 0.95, ease: [0.2, 0.9, 0.3, 1] }}
-                    className="inline-block font-display-sc text-[clamp(2.8rem,9vw,6.2rem)]"
-                  >
-                    唐子航
-                  </motion.span>
+              </m.p>
+              <h1 className="font-display leading-[1.02] text-text hero-title-shadow" aria-label="唐子航 Tang Zihang CG Portfolio">
+                <span className="block px-[6px] pt-[4px] pb-[0.06em]" aria-hidden="true">
+                  {HERO_NAME_CHARS.map((char, i) => (
+                    <span key={`${char}-${i}`} className="inline-block overflow-hidden align-top pb-[0.05em]">
+                      <m.span
+                        initial={{ y: "115%" }}
+                        animate={{ y: 0 }}
+                        transition={{ duration: 1.1, ease: [0.2, 0.9, 0.3, 1], delay: 0.08 + i * 0.08 }}
+                        className="inline-block font-display-sc text-[clamp(2.8rem,9vw,6.2rem)]"
+                      >
+                        {char}
+                      </m.span>
+                    </span>
+                  ))}
                 </span>
-                <span className="block overflow-hidden px-[6px] pt-[4px] mt-1.5 pb-[0.14em]">
-                  <motion.span
-                    initial={{ y: "110%" }}
-                    animate={{ y: 0 }}
-                    transition={{ duration: 0.95, ease: [0.2, 0.9, 0.3, 1], delay: 0.12 }}
-                    className="inline-block text-[clamp(1.05rem,3.8vw,2.25rem)] text-accent hero-subtitle-shadow"
-                  >
-                    Tang Zihang CG Portfolio
-                  </motion.span>
+                <span className="block px-[6px] pt-[4px] mt-1.5 pb-[0.14em]" aria-hidden="true">
+                  {HERO_SUBTITLE_WORDS.map((word, i) => (
+                    <span key={`${word}-${i}`}>
+                      <span className="inline-block overflow-hidden align-top pb-[0.08em]">
+                        <m.span
+                          initial={{ y: "115%" }}
+                          animate={{ y: 0 }}
+                          transition={{ duration: 0.95, ease: [0.2, 0.9, 0.3, 1], delay: 0.34 + i * 0.06 }}
+                          className="inline-block text-[clamp(1.05rem,3.8vw,2.25rem)] text-accent hero-subtitle-shadow"
+                        >
+                          {word}
+                        </m.span>
+                      </span>
+                      {i < HERO_SUBTITLE_WORDS.length - 1 ? " " : ""}
+                    </span>
+                  ))}
                 </span>
               </h1>
-              <motion.p
+              <m.div
+                initial={{ scaleX: 0, opacity: 0 }}
+                animate={{ scaleX: 1, opacity: 1 }}
+                transition={{ duration: 1, delay: 0.72, ease: [0.2, 0.9, 0.3, 1] }}
+                className="hero-rule mt-7 mx-auto"
+                aria-hidden="true"
+              />
+              <m.p
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.7, delay: 0.22, ease: [0.2, 0.9, 0.3, 1] }}
+                transition={{ duration: 0.7, delay: 0.8, ease: [0.2, 0.9, 0.3, 1] }}
                 className="mt-4 text-[0.7rem] uppercase tracking-[0.18em] text-text/70 hero-copy-shadow"
               >
                 {tagline}
-              </motion.p>
-            </motion.div>
+              </m.p>
+            </m.div>
 
             {intro && (
                <div className="mt-6 max-w-[46rem] mx-auto text-center px-3">
@@ -336,30 +369,31 @@ export default function HomeClient({
               </div>
             )}
 
-            <motion.div
+            <m.div
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.35, ease: [0.2, 0.9, 0.3, 1] }}
-              className="mt-7 flex items-center gap-3"
+              transition={{ duration: 0.7, delay: 0.95, ease: [0.2, 0.9, 0.3, 1] }}
+              className="mt-9 flex flex-wrap items-center justify-center gap-x-5 gap-y-3"
             >
-              <a href="#works" className="min-h-11 inline-flex items-center justify-center px-5 py-2.5 text-xs uppercase text-text border border-border/70 hover:border-accent hover:text-accent transition-colors">
+              <a href="#works" className="cta-btn min-h-11 inline-flex items-center justify-center gap-2.5 px-7 py-2.5 text-[0.68rem] tracking-[0.22em] uppercase text-text border border-border/80" data-hover>
                 浏览作品
+                <span className="cta-arrow" aria-hidden="true">→</span>
               </a>
-              <a href="#contact" className="min-h-11 inline-flex items-center justify-center px-5 py-2.5 text-xs uppercase text-text-muted border border-border/50 hover:text-text transition-colors">
+              <a href="#contact" className="cta-ghost min-h-11 inline-flex items-center justify-center px-2 py-2.5 text-[0.68rem] tracking-[0.22em] uppercase text-text-muted hover:text-text transition-colors" data-hover>
                 联系我
               </a>
-            </motion.div>
+            </m.div>
           </div>
 
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2 }}>
-            <motion.div
+          <m.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.2 }}>
+            <m.div
               style={{ opacity: portfolioOpacity }}
               className="absolute bottom-12 left-1/2 -translate-x-1/2 text-center"
             >
               <p className="text-[0.6rem] tracking-[0.35em] uppercase text-text-muted mb-4">Scroll</p>
               <span className="scroll-line" />
-            </motion.div>
-          </motion.div>
+            </m.div>
+          </m.div>
         </section>
 
       {/* Marquee */}
@@ -381,17 +415,10 @@ export default function HomeClient({
 
       {/* Works */}
       <section id="works" className="scroll-mt-24 md:scroll-mt-28 px-4 md:px-6 pt-14 md:pt-16 pb-20 md:pb-24 max-w-7xl mx-auto">
-        <div className="reveal">
-          <div className="flex items-center gap-4 mb-4">
-            <span className="font-display italic text-accent text-2xl">01</span>
-            <div className="divider-line" />
-            <span className="text-xs tracking-[0.4em] uppercase text-text-muted">Portfolio</span>
-          </div>
-          <h2 className="font-display text-2xl md:text-4xl text-accent mb-10">作品集</h2>
-        </div>
+        <SectionHeader index="01" label="Portfolio" title="作品集" />
 
         {tags.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 md:gap-2.5 mb-10 reveal">
+          <div className="flex flex-wrap items-center gap-2 md:gap-2.5 mb-10 md:mb-14 reveal">
             <button onClick={() => setActiveTag(null)} className={`min-h-11 px-3.5 py-2 text-[0.64rem] tracking-[0.12em] uppercase transition-colors border ${activeTag === null ? "text-accent border-accent/70 bg-surface" : "text-text-muted border-border/60 hover:text-text"}`}>All</button>
             {tags.map((t) => (
               <button key={t} onClick={() => setActiveTag(t)} className={`min-h-11 px-3.5 py-2 text-[0.64rem] tracking-[0.12em] uppercase transition-colors border ${activeTag === t ? "text-accent border-accent/70 bg-surface" : "text-text-muted border-border/60 hover:text-text"}`}>{t}</button>
@@ -418,13 +445,15 @@ export default function HomeClient({
         )}
 
         {loadingWorks ? (
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-x-6 gap-y-14 md:gap-x-10 md:gap-y-24">
             {Array.from({ length: 4 }).map((_, i) => {
               const colSpan = i % 3 === 0 ? "md:col-span-8" : i % 3 === 1 ? "md:col-span-5" : "md:col-span-7";
               return (
                 <div key={`skeleton-${i}`} className={`reveal ${colSpan}`}>
-                  <div className="bg-surface h-64 md:h-80 animate-pulse" />
-                  <div className="mt-3 space-y-2">
+                  <div className="work-card-frame">
+                    <div className="h-64 md:h-80 bg-surface/70 animate-pulse" />
+                  </div>
+                  <div className="card-meta space-y-2">
                     <div className="h-3 w-28 bg-surface animate-pulse" />
                     <div className="h-6 w-2/3 bg-surface animate-pulse" />
                     <div className="h-3 w-1/2 bg-surface animate-pulse" />
@@ -446,39 +475,45 @@ export default function HomeClient({
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-x-6 gap-y-14 md:gap-x-10 md:gap-y-24">
             <AnimatePresence mode="popLayout">
             {sorted.map((work, i) => {
               const w = work.size_weight ?? 1;
-              const colSpan = w >= 1.5 ? "md:col-span-8" : w >= 1.0 ? (i % 2 === 0 ? "md:col-span-7" : "md:col-span-5") : "md:col-span-4";
+              const colSpan = w >= 1.5 ? "md:col-span-8" : w >= 1.0 ? "md:col-span-7" : "md:col-span-4";
               return (
-                <motion.div
+                <m.div
                   key={work.id}
                   layout={coarsePointer ? false : true}
-                  initial={{ opacity: 0 }}
-                  whileInView={{ opacity: 1 }}
-                  viewport={{ once: true, margin: "-40px" }}
-                  exit={{ opacity: 0, scale: 0.96 }}
-                  transition={{ duration: 0.35, ease: [0.2, 0.9, 0.3, 1] }}
+                  initial={{ opacity: 0, y: 34, scale: 0.985 }}
+                  whileInView={{ opacity: 1, y: 0, scale: 1, transition: { duration: 0.75, ease: [0.2, 0.9, 0.3, 1], delay: (i % 3) * 0.08 } }}
+                  viewport={{ once: true, margin: "-60px" }}
+                  exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.3, ease: "easeIn" } }}
+                  transition={{ duration: 0.45, ease: [0.2, 0.9, 0.3, 1] }}
                   className={`work-card group ${colSpan}`}
                 >
                   <Link href={`/work/${work.id}`} className="block" data-hover>
-                    <div className="overflow-hidden">
-                      <WorkThumbImage work={work} priority={i < 2} />
+                    <div className="work-card-frame">
+                      <WorkThumbImage work={work} />
+                      <div className="work-card-veil" aria-hidden="true" />
+                      <span className="work-card-cta" aria-hidden="true">
+                        查看作品
+                        <span className="cta-arrow">↗</span>
+                      </span>
                     </div>
                     <div className="card-meta">
-                      <div className="flex items-center gap-2.5 text-[0.58rem] tracking-[0.28em] uppercase text-accent-dim">
+                      <div className="flex items-baseline gap-3 text-[0.58rem] tracking-[0.28em] uppercase text-accent-dim">
+                        <span className="text-text-muted/50">{String(i + 1).padStart(2, "0")}</span>
                         {work.pinned && <span className="text-accent">Featured</span>}
                         {work.work_date && <span>{work.work_date}</span>}
                       </div>
-                      <h3 className="font-display text-[1.15rem] md:text-[1.45rem] text-text mt-1 leading-[1.1] group-hover:text-accent transition-colors">{work.title}</h3>
-                      <div className="flex items-center gap-2.5 flex-wrap text-[0.7rem] text-text-muted tracking-[0.11em] mt-1.5">
+                      <h3 className="font-display text-[1.2rem] md:text-[1.5rem] text-text mt-2 leading-[1.12] group-hover:text-accent transition-colors duration-300">{work.title}</h3>
+                      <div className="flex items-center gap-2.5 flex-wrap text-[0.68rem] text-text-muted tracking-[0.11em] mt-2">
                         {work.tags.slice(0, 2).map((t) => <span key={t} className="text-accent-dim/90">{t}</span>)}
                         <span className="text-text-muted/60">{(work.image_count || 1) > 1 ? `${work.image_count} 张图集` : "单图展示"}</span>
                       </div>
                     </div>
                   </Link>
-                </motion.div>
+                </m.div>
               );
             })}
             </AnimatePresence>
@@ -489,60 +524,63 @@ export default function HomeClient({
       {/* About */}
       {detailSections.length > 0 && (
         <section id="about" className="scroll-mt-24 md:scroll-mt-28 px-4 md:px-6 pb-14 md:pb-16 max-w-7xl mx-auto">
-          <div className="reveal">
-            <div className="flex items-center gap-4 mb-4">
-              <span className="font-display italic text-accent text-2xl">02</span>
-              <div className="divider-line" />
-              <span className="text-xs tracking-[0.4em] uppercase text-text-muted">About</span>
-            </div>
-            <h2 className="font-display text-2xl md:text-4xl text-accent mb-8 md:mb-10">详细介绍</h2>
-          </div>
-          <div className="max-w-2xl space-y-2">
+          <SectionHeader index="02" label="About" title="详细介绍" />
+          <div className="max-w-2xl">
             {detailSections.map((s, i) => {
               const isOpen = expandedSection === s.id;
               return (
-                <motion.div
+                <m.div
                   key={s.id}
-                  initial={{ opacity: 0, y: 16 }}
+                  initial={{ opacity: 0, y: 18 }}
                   whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ ...spring, delay: i * 0.06 }}
-                  className="border-b border-border/30 overflow-hidden"
-                  whileHover={{ scale: 1.005 }}
+                  viewport={{ once: true, margin: "-40px" }}
+                  transition={{ ...spring, delay: i * 0.05 }}
+                  className="about-row group border-b border-border/30"
                 >
                   <button
                     onClick={() => setExpandedSection(isOpen ? null : s.id)}
                     aria-expanded={isOpen}
                     aria-controls={`about-panel-${s.id}`}
-                    className="w-full min-h-11 flex items-center justify-between py-4 text-left group"
+                    className="w-full min-h-11 flex items-center justify-between gap-4 py-5 px-3 -mx-3 text-left transition-colors duration-300 hover:bg-surface/60"
                     data-hover
                   >
-                    <span className="font-display text-lg text-text-muted group-hover:text-accent transition-colors duration-300">{s.title}</span>
-                    <motion.span
+                    <span className="flex items-baseline gap-4">
+                      <span className="font-display italic text-[0.7rem] text-accent-dim/70">{String(i + 1).padStart(2, "0")}</span>
+                      <span className={`font-display text-lg md:text-xl transition-colors duration-300 ${isOpen ? "text-accent" : "text-text-muted group-hover:text-text"}`}>{s.title}</span>
+                    </span>
+                    <m.span
                       animate={{ rotate: isOpen ? 45 : 0 }}
                       transition={spring}
-                      className="text-accent-dim text-lg flex-shrink-0 ml-4"
+                      className={`about-plus ${isOpen ? "about-plus-open" : ""}`}
                     >
                       +
-                    </motion.span>
+                    </m.span>
                   </button>
                   <AnimatePresence initial={false}>
                     {isOpen && (
-                      <motion.div
+                      <m.div
                         id={`about-panel-${s.id}`}
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: "auto", opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.4, ease: [0.2, 0.9, 0.3, 1] }}
+                        transition={{ duration: 0.45, ease: [0.2, 0.9, 0.3, 1] }}
                         className="overflow-hidden"
                       >
-                        <div className="pb-5 text-sm text-text-muted leading-relaxed whitespace-pre-wrap">
-                          {renderBoldContent(s.content)}
-                        </div>
-                      </motion.div>
+                        <m.div
+                          initial={{ y: -10, opacity: 0 }}
+                          animate={{ y: 0, opacity: 1 }}
+                          exit={{ y: -6, opacity: 0 }}
+                          transition={{ duration: 0.35, ease: [0.2, 0.9, 0.3, 1] }}
+                          className="pb-6 px-3 -mx-3"
+                        >
+                          <div className="border-l border-accent-dim/40 pl-5 text-sm text-text-muted leading-[1.9] whitespace-pre-wrap">
+                            {renderBoldContent(s.content)}
+                          </div>
+                        </m.div>
+                      </m.div>
                     )}
                   </AnimatePresence>
-                </motion.div>
+                </m.div>
               );
             })}
           </div>
@@ -553,29 +591,42 @@ export default function HomeClient({
       <section id="contact" className="scroll-mt-24 md:scroll-mt-28 px-4 md:px-6 py-14 md:py-20 border-t border-border/20">
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-12 gap-12">
-            <div className="md:col-span-7 reveal">
-              <div className="flex items-center gap-4 mb-4">
-                <span className="font-display italic text-accent text-2xl">03</span>
-                <div className="divider-line" />
-                <span className="text-xs tracking-[0.4em] uppercase text-text-muted">Contact</span>
-              </div>
-              <h2 className="font-display text-base md:text-xl text-accent leading-[0.95] mb-10">
-                联系方式
-              </h2>
-              <div className="space-y-3 text-text-muted text-sm">
-                <p><span className="text-text-muted">邮箱：</span><a href="mailto:1193662756@qq.com" className="nav-link inline text-text-muted hover:text-accent transition-colors">1193662756@qq.com</a></p>
-                <p><span className="text-text-muted">微信号：</span><span className="nav-link cursor-default">T15918177465</span></p>
-                <p><span className="text-text-muted">电话：</span><span className="nav-link cursor-default">15918177465</span></p>
+            <div className="md:col-span-7">
+              <SectionHeader index="03" label="Contact" title="联系方式" />
+              <div className="reveal" style={{ "--reveal-delay": "0.12s" } as CSSProperties}>
+                <p className="text-text-muted text-sm leading-[1.9] max-w-md mb-9">
+                  有项目合作、工作机会，或任何关于 3D 艺术的想法，欢迎随时联系。
+                </p>
+                <a href="mailto:1193662756@qq.com" className="nav-link font-display text-[clamp(1.4rem,3.4vw,2.2rem)] leading-tight text-text hover:text-accent transition-colors break-all" data-hover>
+                  1193662756@qq.com
+                </a>
               </div>
             </div>
-            <div className="md:col-span-5 md:pt-24">
-              <div className="space-y-8">
-                <div className="reveal">
-                  <div className="text-xs tracking-[0.3em] uppercase text-text-muted mb-3">Follow</div>
-                  <div className="space-y-3">
-                    <a href="https://github.com/tangdogdaihuman" target="_blank" rel="noopener noreferrer" className="nav-link font-display text-lg text-text-muted hover:text-accent transition-colors block">GitHub ↗</a>
-                    <a href="https://www.artstation.com/uuey7" target="_blank" rel="noopener noreferrer" className="nav-link font-display text-lg text-text-muted hover:text-accent transition-colors block">ArtStation ↗</a>
+            <div className="md:col-span-5 md:pt-32">
+              <div className="reveal" style={{ "--reveal-delay": "0.08s" } as CSSProperties}>
+                <div className="text-xs tracking-[0.3em] uppercase text-text-muted mb-4">其他方式</div>
+                <div className="border-t border-border/50">
+                  <div className="contact-row">
+                    <span className="contact-row-label">微信</span>
+                    <span className="text-text">T15918177465</span>
                   </div>
+                  <div className="contact-row">
+                    <span className="contact-row-label">电话</span>
+                    <span className="text-text">15918177465</span>
+                  </div>
+                </div>
+              </div>
+              <div className="reveal mt-11" style={{ "--reveal-delay": "0.16s" } as CSSProperties}>
+                <div className="text-xs tracking-[0.3em] uppercase text-text-muted mb-4">Follow</div>
+                <div className="border-t border-border/50">
+                  <a href="https://github.com/tangdogdaihuman" target="_blank" rel="noopener noreferrer" className="contact-row font-display text-base" data-hover>
+                    <span>GitHub</span>
+                    <span className="cta-arrow text-accent-dim" aria-hidden="true">↗</span>
+                  </a>
+                  <a href="https://www.artstation.com/uuey7" target="_blank" rel="noopener noreferrer" className="contact-row font-display text-base" data-hover>
+                    <span>ArtStation</span>
+                    <span className="cta-arrow text-accent-dim" aria-hidden="true">↗</span>
+                  </a>
                 </div>
               </div>
             </div>
@@ -583,14 +634,18 @@ export default function HomeClient({
         </div>
       </section>
 
-      <footer className="py-10 text-center">
-        <div className="divider-line mx-auto mb-6" />
-        <p className="text-[0.6rem] tracking-[0.3em] uppercase text-text-muted/30">&copy; {new Date().getFullYear()} · All Rights Reserved</p>
+      <footer className="border-t border-border/20">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-10 flex flex-col md:flex-row items-center justify-between gap-3 text-[0.6rem] tracking-[0.28em] uppercase text-text-muted/60">
+          <p>&copy; {new Date().getFullYear()} 唐子航 · Tang Zihang</p>
+          <p className="hidden md:block">Hard Surface · Stylized Character · Game Art</p>
+          <p>All Rights Reserved</p>
+        </div>
       </footer>
 
       <BackToTopButton />
       </div>
     </>
+    </LazyMotion>
     </MotionConfig>
   );
 }

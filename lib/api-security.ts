@@ -36,7 +36,7 @@ export function requireSameOrigin(req: NextRequest): NextResponse | null {
   }
 
   const host = req.headers.get("host") || new URL(req.url).host;
-  if (originHost === host) return null;
+  if (hostnameFromHost(originHost) === hostnameFromHost(host)) return null;
 
   if (process.env.NODE_ENV !== "production" && isLoopbackHost(originHost) && isLoopbackHost(host)) {
     return null;
