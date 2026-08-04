@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
-import { Bodoni_Moda, Inter, ZCOOL_XiaoWei } from "next/font/google";
+import { Bodoni_Moda, Inter, JetBrains_Mono, ZCOOL_XiaoWei } from "next/font/google";
 import "./globals.css";
+import AmbientBackground from "@/components/ambient-background";
+import SmoothScroll from "@/components/smooth-scroll";
+import GlassCursor from "@/components/cursor";
 
 const bodoni = Bodoni_Moda({
   variable: "--font-display-en",
@@ -17,6 +20,12 @@ const zcoolXiaoWei = ZCOOL_XiaoWei({
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
+});
+
+const jbMono = JetBrains_Mono({
+  variable: "--font-jbmono",
+  subsets: ["latin"],
+  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
@@ -54,7 +63,7 @@ export default function RootLayout({
 }) {
   const imageOrigin = getImageOrigin();
   return (
-    <html lang="zh-CN" data-scroll-behavior="smooth" className={`${bodoni.variable} ${zcoolXiaoWei.variable} ${inter.variable}`} suppressHydrationWarning>
+    <html lang="zh-CN" className={`${bodoni.variable} ${zcoolXiaoWei.variable} ${inter.variable} ${jbMono.variable}`} suppressHydrationWarning>
       <head>
         {imageOrigin && (
           <>
@@ -68,7 +77,12 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-screen bg-bg text-text antialiased">{children}</body>
+      <body className="min-h-screen bg-bg text-text antialiased">
+        <AmbientBackground />
+        <SmoothScroll />
+        <GlassCursor />
+        {children}
+      </body>
     </html>
   );
 }

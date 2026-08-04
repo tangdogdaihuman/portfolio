@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Section, Work } from "@/lib/types";
 
 const WORKS_REFRESH_MIN_INTERVAL = 30000;
@@ -104,90 +104,6 @@ export function useHomeDataRefresh({
     works,
     refreshData,
   };
-}
-
-export function useCustomCursor(
-  cursorRef: RefObject<HTMLDivElement | null>,
-  ringRef: RefObject<HTMLDivElement | null>
-) {
-  useEffect(() => {
-    document.body.classList.add("home-vignette");
-    const finePointer = window.matchMedia("(pointer: fine)").matches;
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (finePointer && !reducedMotion) {
-      document.body.style.cursor = "none";
-    }
-    return () => {
-      document.body.style.cursor = "";
-      document.body.classList.remove("home-vignette");
-    };
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const finePointer = window.matchMedia("(pointer: fine)").matches;
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (!finePointer || reducedMotion) return;
-    const cursor = cursorRef.current, ring = ringRef.current;
-    if (!cursor || !ring) return;
-    let mx = 0, my = 0, rx = 0, ry = 0;
-    let cursorScale = 1, ringScale = 1;
-    let cursorScaleTarget = 1, ringScaleTarget = 1;
-    let hasRingPosition = false;
-    let raf = 0;
-    const setCursorVisibility = (visible: boolean) => {
-      const opacity = visible ? "1" : "0";
-      cursor.style.opacity = opacity;
-      ring.style.opacity = opacity;
-    };
-    const cursorTransform = () => `translate3d(${mx}px, ${my}px, 0) translate(-50%, -50%) scale(${cursorScale})`;
-    const ringTransform = () => `translate3d(${rx}px, ${ry}px, 0) translate(-50%, -50%) scale(${ringScale})`;
-    const animate = () => {
-      raf = 0;
-      rx += (mx - rx) * 0.15;
-      ry += (my - ry) * 0.15;
-      ringScale += (ringScaleTarget - ringScale) * 0.2;
-      cursorScale += (cursorScaleTarget - cursorScale) * 0.2;
-      ring.style.transform = ringTransform();
-      cursor.style.transform = cursorTransform();
-      const settled =
-        Math.abs(mx - rx) < 0.05 && Math.abs(my - ry) < 0.05 &&
-        Math.abs(ringScaleTarget - ringScale) < 0.005 &&
-        Math.abs(cursorScaleTarget - cursorScale) < 0.005;
-      if (!settled) raf = requestAnimationFrame(animate);
-    };
-    const wake = () => {
-      if (!raf && hasRingPosition) raf = requestAnimationFrame(animate);
-    };
-    const onScroll = () => {
-      if (!hasRingPosition) return;
-      setCursorVisibility(false);
-    };
-    const onMove = (e: MouseEvent) => {
-      mx = e.clientX; my = e.clientY;
-      if (!hasRingPosition || Math.hypot(mx - rx, my - ry) > 180) {
-        hasRingPosition = true;
-        rx = mx; ry = my;
-        ring.style.transform = ringTransform();
-      }
-      cursor.style.transform = cursorTransform();
-      setCursorVisibility(true);
-      const hovering = (e.target as HTMLElement).closest(".work-card, a, button, [data-hover]");
-      ringScaleTarget = hovering ? 2 : 1;
-      cursorScaleTarget = hovering ? 0 : 1;
-      if (hovering) { ring.classList.add("hover"); }
-      else { ring.classList.remove("hover"); }
-      wake();
-    };
-    setCursorVisibility(false);
-    window.addEventListener("mousemove", onMove, { passive: true });
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("scroll", onScroll);
-      if (raf) cancelAnimationFrame(raf);
-    };
-  }, [cursorRef, ringRef]);
 }
 
 export function useActiveHomeSection(worksLength: number, detailSectionLength: number) {

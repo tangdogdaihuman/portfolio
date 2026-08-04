@@ -6,6 +6,7 @@ import db from "@/lib/db";
 import type { Work, WorkImage } from "@/lib/types";
 import WorkDetailGallery from "@/components/work-detail-gallery";
 import BackToTopButton from "@/components/back-to-top-button";
+import ThemeToggle from "@/components/theme-toggle";
 import { rowToWork, rowToWorkImage } from "@/lib/work-mappers";
 
 export const revalidate = 30;
@@ -82,60 +83,83 @@ export default async function WorkDetailPage(
   }));
 
   return (
-    <main className="min-h-screen bg-bg text-text">
-      <section className="max-w-[112rem] mx-auto px-2 md:px-4 py-6 md:py-12">
-        <div className="sticky top-3 z-20 inline-block">
-          <Link href="/#works" className="group inline-flex items-center gap-2.5 bg-bg/80 backdrop-blur-sm border border-border/70 px-4 py-2 text-[0.68rem] tracking-[0.22em] uppercase text-text-muted hover:border-accent/70 hover:text-accent transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="transition-transform duration-300 group-hover:-translate-x-0.5"><polyline points="15 18 9 12 15 6" /></svg>
-            返回作品集
+    <main className="relative min-h-screen">
+      <header className="animate-fade-up fixed left-1/2 top-4 z-[70] w-[calc(100%-2rem)] max-w-3xl -translate-x-1/2">
+        <nav className="glass-strong flex items-center justify-between gap-2 rounded-full py-1.5 pl-2 pr-1.5">
+          <Link
+            href="/#works"
+            data-hover
+            className="glass-chip inline-flex h-10 shrink-0 items-center gap-2 rounded-full px-4 text-[0.72rem] tracking-[0.12em] text-text transition-colors duration-300 hover:text-accent-strong"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+            返回作品
           </Link>
-        </div>
+          <span className="meta-label hidden min-w-0 flex-1 truncate text-center sm:block">{work.title}</span>
+          <ThemeToggle />
+        </nav>
+      </header>
 
-        <header className="mt-10 md:mt-14 mb-12 md:mb-16 border-b border-border/40 pb-10 md:pb-12">
-          <div className="grid md:grid-cols-12 gap-8 md:gap-10 items-end">
-            <div className="md:col-span-8">
-              <div className="flex items-center gap-3 mb-6 md:mb-8 animate-fade-up">
-                <span className="divider-line" />
-                <span className="text-[0.62rem] md:text-[0.68rem] tracking-[0.3em] uppercase text-text-muted">Work Detail / 作品详情</span>
-              </div>
-              <h1 className="font-display text-4xl md:text-7xl text-accent leading-[0.95] tracking-tight animate-fade-up [animation-delay:0.08s]">{work.title}</h1>
-              {work.description && (
-                <p className="mt-6 max-w-2xl text-sm md:text-base text-text-muted leading-[1.9] whitespace-pre-wrap animate-fade-up [animation-delay:0.16s]">
-                  {work.description}
-                </p>
-              )}
-            </div>
-            <div className="md:col-span-4 md:justify-self-end md:self-end">
-              <div className="flex flex-wrap md:justify-end items-center gap-2 text-[0.66rem] uppercase tracking-[0.18em]">
-                {work.work_date && (
-                  <span className="px-3 py-1.5 border border-accent/45 bg-accent/[0.06] text-accent">{work.work_date}</span>
-                )}
-                {work.tags.map((tag) => (
-                  <span key={tag} className="px-3 py-1.5 border border-border/70 bg-surface/50 text-text-muted transition-colors hover:border-accent/50 hover:text-accent">{tag}</span>
-                ))}
-              </div>
-            </div>
-          </div>
+      <article className="mx-auto max-w-6xl px-5 pb-24 pt-32 md:px-8 md:pt-40">
+        <header>
+          <p className="meta-label animate-fade-up">
+            Work Detail{work.work_date ? ` — ${work.work_date}` : ""}
+          </p>
+          <h1 className="animate-fade-up font-display mt-5 text-[clamp(2.4rem,7vw,5.2rem)] leading-[1.02] tracking-tight text-text [animation-delay:0.06s]">
+            {work.title}
+          </h1>
+          {work.description && (
+            <p className="animate-fade-up mt-6 max-w-2xl whitespace-pre-wrap text-[0.95rem] leading-[1.9] text-text-muted [animation-delay:0.12s]">
+              {work.description}
+            </p>
+          )}
         </header>
 
-        <WorkDetailGallery workTitle={work.title} images={galleryImages} />
+        <dl className="glass animate-fade-up mt-10 flex flex-wrap gap-x-12 gap-y-7 rounded-[24px] p-6 [animation-delay:0.18s] md:p-7">
+          {work.work_date && (
+            <div>
+              <dt className="meta-label">创作日期</dt>
+              <dd className="mt-2.5 font-display text-lg text-text">{work.work_date}</dd>
+            </div>
+          )}
+          <div>
+            <dt className="meta-label">媒体数量</dt>
+            <dd className="mt-2.5 font-display text-lg text-text">
+              {images.length} <span className="text-sm text-text-muted">件</span>
+            </dd>
+          </div>
+          {work.tags.length > 0 && (
+            <div className="min-w-40">
+              <dt className="meta-label">标签</dt>
+              <dd className="mt-2.5 flex flex-wrap gap-1.5">
+                {work.tags.map((tag) => (
+                  <span key={tag} className="glass-chip rounded-full px-3 py-1 text-[0.7rem] tracking-[0.08em] text-text-muted">
+                    {tag}
+                  </span>
+                ))}
+              </dd>
+            </div>
+          )}
+          {work.software.length > 0 && (
+            <div className="min-w-40">
+              <dt className="meta-label">使用软件</dt>
+              <dd className="mt-2.5 flex flex-wrap gap-1.5">
+                {work.software.map((item) => (
+                  <span key={item} className="glass-chip rounded-full px-3 py-1 text-[0.7rem] tracking-[0.08em] text-text-muted">
+                    {item}
+                  </span>
+                ))}
+              </dd>
+            </div>
+          )}
+        </dl>
 
-        {work.software.length > 0 && (
-          <section className="mt-12 md:mt-16 border-t border-border/40 pt-8 md:pt-10">
-            <div className="flex items-center gap-3 mb-5">
-              <span className="divider-line" />
-              <h2 className="text-[0.68rem] tracking-[0.28em] uppercase text-text-muted">Software / 使用软件</h2>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {work.software.map((item) => (
-                <span key={item} className="px-3 py-1.5 border border-border/70 bg-surface/50 text-[0.7rem] tracking-[0.1em] text-text-muted transition-colors hover:border-accent/50 hover:text-accent">
-                  {item}
-                </span>
-              ))}
-            </div>
-          </section>
-        )}
-      </section>
+        <section className="mt-14 md:mt-20">
+          <WorkDetailGallery workTitle={work.title} images={galleryImages} />
+        </section>
+      </article>
+
       <BackToTopButton />
     </main>
   );

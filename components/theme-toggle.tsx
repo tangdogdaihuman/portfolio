@@ -1,53 +1,110 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
-import { toggleResolvedTheme, useResolvedTheme } from "@/lib/theme-client";
+import { useSyncExternalStore, type MouseEvent } from "react";
+import { AnimatePresence, m } from "framer-motion";
 
-function subscribeToNothing() {
-  return () => {};
+type Theme = "dark" | "light";
+
+const themeListeners = new Set<() => void>();
+
+function subscribeTheme(callback: () => void) {
+  themeListeners.add(callback);
+  return () => {
+    themeListeners.delete(callback);
+  };
 }
 
-export default function ThemeToggle() {
-  const theme = useResolvedTheme();
-  const dark = theme === "dark";
-  const mounted = useSyncExternalStore(subscribeToNothing, () => true, () => false);
+function readTheme(): Theme {
+  return document.documentElement.classList.contains("light") ? "light" : "dark";
+}
 
-  if (!mounted) {
-    return (
-      <span
-        aria-hidden="true"
-        className="w-8 h-8 inline-flex items-center justify-center border border-border text-transparent"
-      />
-    );
-  }
+function writeTheme(theme: Theme) {
+  const root = document.documentElement;
+  root.classList.remove("light", "dark");
+  root.classList.add(theme);
+  try {
+    localStorage.setItem("theme", theme);
+  } catch {}
+  themeListeners.forEach((listener) => listener());
+}
+
+export default function ThemeToggle({ className = "" }: { className?: string }) {
+  const theme = useSyncExternalStore(subscribeTheme, readTheme, () => null);
+
+  const toggle = (event: MouseEvent<HTMLButtonElement>) => {
+    const next: Theme = readTheme() === "dark" ? "light" : "dark";
+    const doc = document as Document & {
+      startViewTransition?: (update: () => void) => void;
+    };
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (doc.startViewTransition && !reduced) {
+      const root = document.documentElement;
+      root.style.setProperty("--vt-x", `${event.clientX}px`);
+      root.style.setProperty("--vt-y", `${event.clientY}px`);
+      root.classList.add("vt-theme");
+      doc.startViewTransition(() => {
+        writeTheme(next);
+      });
+      window.setTimeout(() => root.classList.remove("vt-theme"), 900);
+    } else {
+      writeTheme(next);
+    }
+  };
 
   return (
     <button
       type="button"
-      onClick={toggleResolvedTheme}
-      aria-label={dark ? "切换到浅色模式" : "切换到深色模式"}
-      aria-pressed={dark}
-      data-theme-toggle
-      title={dark ? "切换到浅色模式" : "切换到深色模式"}
-      className="w-8 h-8 inline-flex items-center justify-center border border-border text-text-muted hover:text-accent hover:border-accent-dim transition-colors"
+      onClick={toggle}
+      aria-label={theme === "dark" ? "切换为浅色模式" : "切换为深色模式"}
+      data-hover
+      className={`glass-chip relative inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full text-text transition-transform duration-300 hover:scale-105 active:scale-95 ${className}`}
     >
-      {dark ? (
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <circle cx="12" cy="12" r="5" />
-          <line x1="12" y1="1" x2="12" y2="3" />
-          <line x1="12" y1="21" x2="12" y2="23" />
-          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-          <line x1="1" y1="12" x2="3" y2="12" />
-          <line x1="21" y1="12" x2="23" y2="12" />
-          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-        </svg>
-      ) : (
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-        </svg>
-      )}
+      <AnimatePresence mode="wait" initial={false}>
+        {theme === "light" ? (
+          <m.svg
+            key="sun"
+            initial={{ rotate: -70, opacity: 0, scale: 0.6 }}
+            animate={{ rotate: 0, opacity: 1, scale: 1 }}
+            exit={{ rotate: 70, opacity: 0, scale: 0.6 }}
+            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          >
+            <circle cx="12" cy="12" r="4.2" />
+            <line x1="12" y1="2.5" x2="12" y2="5" />
+            <line x1="12" y1="19" x2="12" y2="21.5" />
+            <line x1="2.5" y1="12" x2="5" y2="12" />
+            <line x1="19" y1="12" x2="21.5" y2="12" />
+            <line x1="5.2" y1="5.2" x2="6.9" y2="6.9" />
+            <line x1="17.1" y1="17.1" x2="18.8" y2="18.8" />
+            <line x1="5.2" y1="18.8" x2="6.9" y2="17.1" />
+            <line x1="17.1" y1="6.9" x2="18.8" y2="5.2" />
+          </m.svg>
+        ) : (
+          <m.svg
+            key="moon"
+            initial={{ rotate: 70, opacity: 0, scale: 0.6 }}
+            animate={{ rotate: 0, opacity: 1, scale: 1 }}
+            exit={{ rotate: -70, opacity: 0, scale: 0.6 }}
+            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M20.4 14.2A8.4 8.4 0 0 1 9.8 3.6a8.4 8.4 0 1 0 10.6 10.6Z" />
+          </m.svg>
+        )}
+      </AnimatePresence>
     </button>
   );
 }

@@ -1,8 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { AnimatePresence, LazyMotion, domAnimation, m } from "framer-motion";
 import type { Work } from "@/lib/types";
+import ThemeToggle from "@/components/theme-toggle";
+import { EASE_OUT, SPRING_SOFT } from "@/components/reveal";
 import AddWorkForm from "@/components/admin/add-work-form";
 import ConfirmDialog from "@/components/admin/confirm-dialog";
 import DetailSectionsEditor from "@/components/admin/detail-sections-editor";
@@ -207,108 +211,134 @@ export default function AdminPageClient() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8">
-      {message && (
-        <div
-          className={`mb-6 px-4 py-3 text-sm ${
-            message.ok
-              ? "bg-accent/20 text-accent border border-accent-dim"
-              : "bg-red-500/20 text-red-300 border border-red-500/30"
-          }`}
-        >
-          {message.text}
-        </div>
-      )}
+    <LazyMotion features={domAnimation}>
+      <div className="mx-auto max-w-4xl px-5 pb-16 pt-24 md:px-6">
+        <header className="animate-fade-up fixed left-1/2 top-4 z-[70] w-[calc(100%-2rem)] max-w-3xl -translate-x-1/2">
+          <nav className="glass-strong flex items-center justify-between gap-2 rounded-full py-1.5 pl-5 pr-1.5">
+            <Link href="/" data-hover className="font-display text-[0.95rem] tracking-wide text-text">
+              TZH<span className="text-accent">.</span>
+            </Link>
+            <span className="meta-label hidden sm:block">Admin Console</span>
+            <ThemeToggle />
+          </nav>
+        </header>
 
-      <div className="mb-8 overflow-x-auto border-b border-border">
-        <div role="tablist" aria-label="后台功能" className="flex min-w-max gap-1">
-          {MAIN_TABS.map((item) => (
-            <button
-              key={item}
-              id={`admin-tab-${item}`}
-              role="tab"
-              aria-selected={tab === item}
-              aria-controls={`admin-panel-${item}`}
-              onClick={() => setMainTab(item)}
-              className={`px-5 py-2.5 text-sm tracking-wide transition-colors ${
-                tab === item
-                  ? "text-accent border-b-2 border-accent"
-                  : "text-text-muted hover:text-text"
+        <AnimatePresence>
+          {message && (
+            <m.div
+              initial={{ opacity: 0, y: 16, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.97 }}
+              transition={{ duration: 0.35, ease: EASE_OUT }}
+              className={`glass-strong fixed bottom-6 left-1/2 z-[80] -translate-x-1/2 rounded-full border px-5 py-2.5 text-[0.78rem] tracking-wide ${
+                message.ok
+                  ? "border-accent/40 text-accent-strong"
+                  : "border-red-400/40 text-red-300"
               }`}
             >
-              {getTabLabel(item)}
-            </button>
-          ))}
-        </div>
-      </div>
+              {message.text}
+            </m.div>
+          )}
+        </AnimatePresence>
 
-      {tab === "intro" && (
-        <div id="admin-panel-intro" role="tabpanel" aria-labelledby="admin-tab-intro">
-          <IntroForm intro={intro} setIntro={setIntro} tagline={tagline} setTagline={setTagline} onSave={saveIntro} loading={loading} />
+        <div className="animate-fade-up mb-8 overflow-x-auto [animation-delay:0.08s]">
+          <div role="tablist" aria-label="后台功能" className="glass-chip flex min-w-max gap-1 rounded-full p-1">
+            {MAIN_TABS.map((item) => (
+              <button
+                key={item}
+                id={`admin-tab-${item}`}
+                role="tab"
+                aria-selected={tab === item}
+                aria-controls={`admin-panel-${item}`}
+                onClick={() => setMainTab(item)}
+                data-hover
+                className={`relative min-h-10 rounded-full px-5 text-[0.75rem] tracking-[0.08em] transition-colors duration-300 ${
+                  tab === item ? "text-text" : "text-text-muted hover:text-text"
+                }`}
+              >
+                {tab === item && (
+                  <m.span
+                    layoutId="admin-tab-bubble"
+                    transition={SPRING_SOFT}
+                    className="absolute inset-0 rounded-full border border-accent/40 bg-accent/12"
+                  />
+                )}
+                <span className="relative">{getTabLabel(item)}</span>
+              </button>
+            ))}
+          </div>
         </div>
-      )}
-      {tab === "detail" && (
-        <div id="admin-panel-detail" role="tabpanel" aria-labelledby="admin-tab-detail">
-          <DetailSectionsEditor showMsg={showMsg} />
-        </div>
-      )}
-      {tab === "add" && (
-        <div id="admin-panel-add" role="tabpanel" aria-labelledby="admin-tab-add">
-          <AddWorkForm
-            formState={formState}
-            setFormState={setFormState}
-            onDone={() => {
-              refresh();
-              setMainTab("works");
-            }}
-            showMsg={showMsg}
-          />
-        </div>
-      )}
-      {tab === "works" && (
-        <div id="admin-panel-works" role="tabpanel" aria-labelledby="admin-tab-works">
-          <WorkList
-            works={works}
-            onDelete={setPendingDelete}
-            onTogglePin={togglePin}
-            onEdit={(id) => {
-              setEditingId(id);
-              setTab("edit");
-            }}
-            onReorder={moveWork}
-            reordering={reordering}
-          />
-        </div>
-      )}
-      {tab === "edit" && editingId && (
-        <EditWorkForm
-          workId={editingId}
-          onDone={() => {
-            refresh();
-            setEditingId(null);
-            setMainTab("works");
-          }}
-          onCancel={() => {
-            setEditingId(null);
-            setMainTab("works");
-          }}
-          showMsg={showMsg}
+
+        {tab === "intro" && (
+          <div id="admin-panel-intro" role="tabpanel" aria-labelledby="admin-tab-intro" className="animate-fade-up">
+            <IntroForm intro={intro} setIntro={setIntro} tagline={tagline} setTagline={setTagline} onSave={saveIntro} loading={loading} />
+          </div>
+        )}
+        {tab === "detail" && (
+          <div id="admin-panel-detail" role="tabpanel" aria-labelledby="admin-tab-detail" className="animate-fade-up">
+            <DetailSectionsEditor showMsg={showMsg} />
+          </div>
+        )}
+        {tab === "add" && (
+          <div id="admin-panel-add" role="tabpanel" aria-labelledby="admin-tab-add" className="animate-fade-up">
+            <AddWorkForm
+              formState={formState}
+              setFormState={setFormState}
+              onDone={() => {
+                refresh();
+                setMainTab("works");
+              }}
+              showMsg={showMsg}
+            />
+          </div>
+        )}
+        {tab === "works" && (
+          <div id="admin-panel-works" role="tabpanel" aria-labelledby="admin-tab-works" className="animate-fade-up">
+            <WorkList
+              works={works}
+              onDelete={setPendingDelete}
+              onTogglePin={togglePin}
+              onEdit={(id) => {
+                setEditingId(id);
+                setTab("edit");
+              }}
+              onReorder={moveWork}
+              reordering={reordering}
+            />
+          </div>
+        )}
+        {tab === "edit" && editingId && (
+          <div className="animate-fade-up">
+            <EditWorkForm
+              workId={editingId}
+              onDone={() => {
+                refresh();
+                setEditingId(null);
+                setMainTab("works");
+              }}
+              onCancel={() => {
+                setEditingId(null);
+                setMainTab("works");
+              }}
+              showMsg={showMsg}
+            />
+          </div>
+        )}
+        {tab === "storage" && (
+          <div id="admin-panel-storage" role="tabpanel" aria-labelledby="admin-tab-storage" className="animate-fade-up">
+            <StoragePanel works={works} />
+          </div>
+        )}
+
+        <ConfirmDialog
+          open={!!pendingDelete}
+          title="删除作品"
+          body={pendingDelete ? `将删除《${pendingDelete.title}》以及关联的 R2 图片，此操作无法在后台撤销。` : ""}
+          confirmText="删除"
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => pendingDelete && deleteWork(pendingDelete)}
         />
-      )}
-      {tab === "storage" && (
-        <div id="admin-panel-storage" role="tabpanel" aria-labelledby="admin-tab-storage">
-          <StoragePanel works={works} />
-        </div>
-      )}
-
-      <ConfirmDialog
-        open={!!pendingDelete}
-        title="删除作品"
-        body={pendingDelete ? `将删除《${pendingDelete.title}》以及关联的 R2 图片，此操作无法在后台撤销。` : ""}
-        confirmText="删除"
-        onCancel={() => setPendingDelete(null)}
-        onConfirm={() => pendingDelete && deleteWork(pendingDelete)}
-      />
-    </div>
+      </div>
+    </LazyMotion>
   );
 }
