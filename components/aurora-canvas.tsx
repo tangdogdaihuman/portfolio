@@ -17,19 +17,21 @@ const RANGE_TTL = 100;
 const NOISE_STRENGTH = 100;
 const BASE_HUE = 186;
 const RANGE_HUE = 44;
+const LIGHT_HUE_BASE = 168;
+const LIGHT_HUE_RANGE = 152;
 const X_OFF = 0.0015;
 const Y_OFF = 0.0015;
 const Z_OFF = 0.0015;
 
 const cssRibbons = [
-  { left: "3%", width: "9%", opacity: 0.44, delay: "0s", duration: "18s" },
-  { left: "14%", width: "7%", opacity: 0.24, delay: "-5s", duration: "22s" },
-  { left: "24%", width: "11%", opacity: 0.3, delay: "-2s", duration: "20s" },
-  { left: "38%", width: "8%", opacity: 0.2, delay: "-9s", duration: "24s" },
-  { left: "49%", width: "12%", opacity: 0.27, delay: "-4s", duration: "19s" },
-  { left: "64%", width: "8%", opacity: 0.18, delay: "-11s", duration: "25s" },
-  { left: "74%", width: "12%", opacity: 0.31, delay: "-7s", duration: "21s" },
-  { left: "89%", width: "8%", opacity: 0.36, delay: "-6s", duration: "18s" },
+  { left: "3%", width: "9%", opacity: 0.44, delay: "0s", duration: "18s", hue: 0 },
+  { left: "14%", width: "7%", opacity: 0.24, delay: "-5s", duration: "22s", hue: 55 },
+  { left: "24%", width: "11%", opacity: 0.3, delay: "-2s", duration: "20s", hue: 115 },
+  { left: "38%", width: "8%", opacity: 0.2, delay: "-9s", duration: "24s", hue: -35 },
+  { left: "49%", width: "12%", opacity: 0.27, delay: "-4s", duration: "19s", hue: 145 },
+  { left: "64%", width: "8%", opacity: 0.18, delay: "-11s", duration: "25s", hue: 75 },
+  { left: "74%", width: "12%", opacity: 0.31, delay: "-7s", duration: "21s", hue: -15 },
+  { left: "89%", width: "8%", opacity: 0.36, delay: "-6s", duration: "18s", hue: 125 },
 ];
 
 let cssFallbackCache: boolean | null = null;
@@ -136,6 +138,7 @@ function CssAurora() {
             opacity: ribbon.opacity,
             animationDelay: ribbon.delay,
             animationDuration: ribbon.duration,
+            filter: `blur(32px) hue-rotate(${ribbon.hue}deg)`,
           }}
         />
       ))}
@@ -254,8 +257,13 @@ export default function AuroraCanvas() {
       const y2Base = yBase - len;
       const n = noise3D(x * X_OFF, yBase * Y_OFF, tick * Z_OFF) * NOISE_STRENGTH;
       const speed = (BASE_SPEED + rand(RANGE_SPEED)) * profile.speedQuality * (Math.round(rand(1)) ? 1 : -1);
-      const hue = BASE_HUE + rand(RANGE_HUE);
-      props.set([x, yBase + n, y2Base + n, 0, BASE_TTL + rand(RANGE_TTL), BASE_WIDTH + rand(RANGE_WIDTH), speed, hue], i);
+      const hueBase = lightMode ? LIGHT_HUE_BASE : BASE_HUE;
+      const hueRange = lightMode ? LIGHT_HUE_RANGE : RANGE_HUE;
+      const hue = hueBase + rand(hueRange);
+      const rayWidth = lightMode
+        ? (BASE_WIDTH + rand(RANGE_WIDTH)) * 2.1
+        : BASE_WIDTH + rand(RANGE_WIDTH);
+      props.set([x, yBase + n, y2Base + n, 0, BASE_TTL + rand(RANGE_TTL), rayWidth, speed, hue], i);
     };
 
     const rebuildRays = () => {
@@ -268,12 +276,14 @@ export default function AuroraCanvas() {
     const HUE_BUCKETS = 8;
     const raySprites: Array<HTMLCanvasElement | null> = new Array(HUE_BUCKETS).fill(null);
     const getRaySprite = (hue: number) => {
-      const bucket = Math.max(0, Math.min(HUE_BUCKETS - 1, Math.floor(((hue - BASE_HUE) / RANGE_HUE) * HUE_BUCKETS)));
+      const hueBase = lightMode ? LIGHT_HUE_BASE : BASE_HUE;
+      const hueRange = lightMode ? LIGHT_HUE_RANGE : RANGE_HUE;
+      const bucket = Math.max(0, Math.min(HUE_BUCKETS - 1, Math.floor(((hue - hueBase) / hueRange) * HUE_BUCKETS)));
       const cached = raySprites[bucket];
       if (cached) return cached;
-      const bucketHue = BASE_HUE + ((bucket + 0.5) / HUE_BUCKETS) * RANGE_HUE;
-      const sat = Math.min(100, profile.saturation + (lightMode ? 16 : 0));
-      const lum = lightMode ? 55 : 66;
+      const bucketHue = hueBase + ((bucket + 0.5) / HUE_BUCKETS) * hueRange;
+      const sat = lightMode ? Math.min(92, profile.saturation + 30) : profile.saturation;
+      const lum = lightMode ? 52 : 66;
       const sprite = document.createElement("canvas");
       sprite.width = 1;
       sprite.height = 256;
@@ -322,7 +332,7 @@ export default function AuroraCanvas() {
       ctxB.save();
       ctxB.filter = `blur(${profile.mainBlur}px)`;
       ctxB.globalCompositeOperation = lightMode ? "multiply" : "lighter";
-      if (lightMode) ctxB.globalAlpha = 0.62;
+      if (lightMode) ctxB.globalAlpha = 0.78;
       ctxB.drawImage(raysLayer, 0, 0, w, h);
       ctxB.restore();
 
@@ -332,7 +342,7 @@ export default function AuroraCanvas() {
       ctxBloom.filter = "none";
 
       ctxB.save();
-      ctxB.globalAlpha = lightMode ? Math.min(0.34, profile.bloomAlpha + 0.1) : profile.bloomAlpha;
+      ctxB.globalAlpha = lightMode ? 0.45 : profile.bloomAlpha;
       ctxB.globalCompositeOperation = lightMode ? "multiply" : "screen";
       ctxB.drawImage(bloomLayer, 0, 0, w, h);
       ctxB.restore();
