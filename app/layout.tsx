@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Anton, JetBrains_Mono, Space_Grotesk } from "next/font/google";
+import { Anton, JetBrains_Mono, Space_Grotesk, ZCOOL_XiaoWei } from "next/font/google";
 import "./globals.css";
 import FluidBackground from "@/components/fluid-background";
 import SmoothScroll from "@/components/smooth-scroll";
@@ -21,6 +21,12 @@ const jbMono = JetBrains_Mono({
   variable: "--font-jbmono",
   subsets: ["latin"],
   weight: ["400", "500"],
+});
+
+const zcoolXiaoWei = ZCOOL_XiaoWei({
+  variable: "--font-display-cn",
+  subsets: ["latin"],
+  weight: "400",
 });
 
 export const metadata: Metadata = {
@@ -58,13 +64,13 @@ export default function RootLayout({
 }) {
   const imageOrigin = getImageOrigin();
   return (
-    <html lang="zh-CN" className={`${anton.variable} ${spaceGrotesk.variable} ${jbMono.variable}`} suppressHydrationWarning>
+    <html lang="zh-CN" className={`${anton.variable} ${spaceGrotesk.variable} ${jbMono.variable} ${zcoolXiaoWei.variable}`} suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
         <link
-          href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700;900&family=Noto+Sans+SC:wght@400;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700;900&family=Noto+Sans+SC:wght@400;700;900&display=swap"
           rel="stylesheet"
         />
         {imageOrigin && (

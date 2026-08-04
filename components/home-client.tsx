@@ -231,7 +231,7 @@ function WorkCard({ work, index, priority }: { work: Work; index: number; priori
         )}
       </div>
       <div className="mt-5 flex items-end justify-between gap-4 px-1">
-        <h3 className="font-display min-w-0 text-[clamp(1.4rem,2.6vw,2.2rem)] uppercase leading-[1.08] text-text transition-colors duration-300 group-hover:text-accent-strong">
+        <h3 className="font-impact font-extrabold min-w-0 text-[clamp(1.4rem,2.6vw,2.2rem)] uppercase leading-[1.08] text-text transition-colors duration-300 group-hover:text-accent-strong">
           {work.title}
         </h3>
         <div className="meta-label flex shrink-0 items-baseline gap-3 pb-1 text-right">
@@ -529,7 +529,7 @@ export default function HomeClient({
               <div className="flex items-end justify-between gap-6">
                 <div>
                   <p className="meta-label">01 / Selected Works</p>
-                  <h2 className="font-display mt-3 text-[clamp(2.4rem,7vw,5.2rem)] leading-none text-text">作品集</h2>
+                  <h2 className="font-display mt-3 font-extrabold text-[clamp(2.4rem,7vw,5.2rem)] leading-none text-text">作品集</h2>
                 </div>
                 <p className="meta-label hidden pb-1 md:block">
                   {String(sorted.length).padStart(2, "0")} / {String(works.length).padStart(2, "0")} 件
@@ -539,7 +539,7 @@ export default function HomeClient({
 
             {tags.length > 0 && (
               <Reveal delay={0.08}>
-                <div className="glass-solid sticky top-[84px] z-40 mt-9 flex flex-wrap items-center gap-2 rounded-[24px] p-2 md:rounded-full">
+                <div className="glass-solid sticky top-[10px] z-40 mt-9 flex flex-wrap items-center gap-2 rounded-[24px] p-2 md:rounded-full">
                   <div className="flex flex-wrap items-center gap-1.5">
                     <button
                       type="button"
@@ -659,7 +659,7 @@ export default function HomeClient({
             <section id="about" className="relative mx-auto max-w-7xl scroll-mt-28 px-5 pb-24 md:px-8">
               <Reveal>
                 <p className="meta-label">02 / About</p>
-                <h2 className="font-display mt-3 text-[clamp(2.4rem,7vw,5.2rem)] leading-none text-text">关于我</h2>
+                <h2 className="font-display mt-3 font-extrabold text-[clamp(2.4rem,7vw,5.2rem)] leading-none text-text">关于我</h2>
               </Reveal>
               <div className="mt-12 max-w-4xl space-y-4">
                 {detailSections.map((section, i) => {
@@ -682,7 +682,7 @@ export default function HomeClient({
                           <span className="flex items-baseline gap-4 md:gap-5">
                             <span className="meta-label text-accent!">{String(i + 1).padStart(2, "0")}</span>
                             <span
-                              className={`font-display text-xl transition-colors duration-300 md:text-3xl ${
+                              className={`font-display text-xl font-extrabold transition-colors duration-300 md:text-3xl ${
                                 isOpen ? "text-accent-strong" : "text-text"
                               }`}
                             >
@@ -728,7 +728,7 @@ export default function HomeClient({
           <section id="contact" className="relative mx-auto max-w-7xl scroll-mt-28 px-5 pb-20 md:px-8">
             <Reveal>
               <p className="meta-label">03 / Contact</p>
-              <h2 className="font-display mt-3 text-[clamp(2.4rem,7vw,5.2rem)] leading-none text-text">联系我</h2>
+              <h2 className="font-display mt-3 font-extrabold text-[clamp(2.4rem,7vw,5.2rem)] leading-none text-text">联系我</h2>
             </Reveal>
             <Reveal delay={0.06}>
               <p className="mt-10 max-w-2xl text-base leading-[1.9] text-text-muted md:text-lg">

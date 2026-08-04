@@ -48,16 +48,19 @@ void main(){
   vec3 p=ro+rd*hit;vec3 n=norm(p);
   float fre=pow(1.-max(dot(n,-rd),0.),3.);
   float m=fbm(p*1.4+uTime*.18);
-  vec2 ruv=uv+n.xy*(.34+.2*m);
-  vec3 through=background(ruv,s);
+  vec2 disp=n.xy*(.30+.20*m);
+  vec3 through;
+  through.r=background(uv+disp*1.10,s).r;
+  through.g=background(uv+disp,s).g;
+  through.b=background(uv+disp*.90,s).b;
   vec3 l=normalize(vec3(.6,.8,.5));
   vec3 l2=normalize(vec3(-.5,-.2,.6));
   float sp1=pow(max(dot(reflect(-l,n),-rd),0.),70.);
   float sp2=pow(max(dot(reflect(-l2,n),-rd),0.),22.);
-  vec3 rim=azure(m*.9+n.y*.3+s*.5+.08);
-  rim=mix(rim,vec3(0.,.83,1.),.3);
-  vec3 darkCol=through*vec3(.42,.54,.62)+rim*fre*1.3+(sp1+sp2*.35)*vec3(.75,.95,1.);
-  vec3 lightCol=through*vec3(.93,.965,1.03)+vec3(.02,.42,.7)*fre*1.05+(sp1+sp2*.3)*vec3(1.);
+  vec3 rim=azure(fre*1.4+m*.7+s*.5);
+  rim=mix(rim,vec3(0.,.83,1.),.22);
+  vec3 darkCol=through*vec3(.80,.88,.97)+rim*fre*1.25+(sp1+sp2*.35)*vec3(.85,.95,1.);
+  vec3 lightCol=through*vec3(.98,1.0,1.05)+rim*fre*.8+(sp1+sp2*.3)*vec3(1.);
   col=mix(darkCol,lightCol,uTheme);
  }else{
   float glow=pow(max(0.,1.-dmin*1.2),6.);

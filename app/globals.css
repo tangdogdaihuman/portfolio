@@ -10,7 +10,7 @@
   --color-on-accent: var(--theme-on-accent);
   --color-border: var(--theme-border);
   --font-display: var(--font-display-en), "Noto Serif SC", serif;
-  --font-display-sc: "Noto Serif SC", serif;
+  --font-display-sc: var(--font-display-cn), "Noto Serif SC", serif;
   --font-body: var(--font-inter), "Noto Sans SC", sans-serif;
   --font-mono: var(--font-jbmono);
   --animate-fade-up: fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -159,6 +159,10 @@ body {
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--color-text-muted);
+}
+
+.font-impact {
+  font-family: Impact, Charcoal, var(--font-display-en), "Noto Sans SC", sans-serif;
 }
 
 .skeleton {
