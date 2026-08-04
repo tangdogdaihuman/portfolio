@@ -40,6 +40,7 @@
   --blob-4: 145, 226, 255;
   --blob-opacity: 0.34;
   --scrim: rgba(8, 8, 12, 0.62);
+  --atmosphere: 8,8,12;
 }
 
 .light {
@@ -64,6 +65,7 @@
   --blob-4: 186, 230, 253;
   --blob-opacity: 0.85;
   --scrim: rgba(242, 242, 245, 0.66);
+  --atmosphere: 242,242,245;
 }
 
 @keyframes fade-up {
@@ -165,6 +167,56 @@ body {
   font-family: Impact, Charcoal, var(--font-display-en), "Noto Sans SC", sans-serif;
 }
 
+@keyframes aurora-float {
+  0% { transform: translate3d(-8%, 1%, 0) scaleY(0.98); }
+  50% { transform: translate3d(8%, -2.5%, 0) scaleY(1.08); }
+  100% { transform: translate3d(-8%, 1%, 0) scaleY(0.98); }
+}
+
+.aurora-shell {
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(140, 205, 255, 0.12) 0%, rgba(140, 205, 255, 0.05) 26%, rgba(var(--atmosphere), 0) 58%),
+    linear-gradient(to bottom, rgba(var(--atmosphere), 0.18) 0%, rgba(var(--atmosphere), 0.02) 38%, rgba(var(--atmosphere), 0.46) 100%);
+}
+
+.aurora-ribbon {
+  position: absolute;
+  top: 6%;
+  bottom: -8%;
+  border-radius: 999px;
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(150, 214, 255, 0) 0%,
+      rgba(150, 214, 255, 0.6) 18%,
+      rgba(96, 170, 235, 0.44) 46%,
+      rgba(40, 90, 150, 0.16) 72%,
+      rgba(var(--atmosphere), 0) 100%
+    );
+  filter: blur(32px);
+  transform-origin: center center;
+  animation: aurora-float 20s ease-in-out infinite;
+  will-change: transform;
+}
+
+.aurora-haze {
+  position: absolute;
+  inset: 0;
+}
+
+.aurora-haze-top {
+  background: linear-gradient(to bottom, rgba(var(--atmosphere), 0.12) 0%, rgba(var(--atmosphere), 0.04) 28%, rgba(var(--atmosphere), 0) 54%);
+}
+
+.aurora-haze-center {
+  background: radial-gradient(ellipse at 50% 48%, rgba(140, 205, 255, 0.08) 0%, rgba(140, 205, 255, 0.04) 28%, rgba(var(--atmosphere), 0) 66%);
+}
+
+.aurora-haze-edge {
+  background: linear-gradient(to bottom, rgba(var(--atmosphere), 0) 0%, rgba(var(--atmosphere), 0.12) 68%, rgba(var(--atmosphere), 0.58) 100%);
+}
+
 .skeleton {
   position: relative;
   overflow: hidden;
@@ -264,7 +316,8 @@ html.vt-theme::view-transition-new(root) {
   .scroll-cue-dot {
     animation: none;
   }
-  .animate-marquee {
+  .animate-marquee,
+  .aurora-ribbon {
     animation: none;
   }
 }

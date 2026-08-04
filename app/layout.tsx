@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Anton, JetBrains_Mono, Space_Grotesk, ZCOOL_XiaoWei } from "next/font/google";
 import "./globals.css";
-import FluidBackground from "@/components/fluid-background";
+import AuroraCanvas from "@/components/aurora-canvas";
 import SmoothScroll from "@/components/smooth-scroll";
 import GlassCursor from "@/components/cursor";
 
@@ -86,7 +86,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen bg-bg text-text antialiased">
-        <FluidBackground />
+        <AuroraCanvas />
         <SmoothScroll />
         <GlassCursor />
         {children}
