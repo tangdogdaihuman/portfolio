@@ -1,25 +1,20 @@
 import type { Metadata } from "next";
-import { Bodoni_Moda, Inter, JetBrains_Mono, ZCOOL_XiaoWei } from "next/font/google";
+import { Anton, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import FluidBackground from "@/components/fluid-background";
 import SmoothScroll from "@/components/smooth-scroll";
 import GlassCursor from "@/components/cursor";
 
-const bodoni = Bodoni_Moda({
+const anton = Anton({
   variable: "--font-display-en",
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
-});
-
-const zcoolXiaoWei = ZCOOL_XiaoWei({
-  variable: "--font-display-cn",
   weight: "400",
-  subsets: ["latin"],
 });
 
-const inter = Inter({
+const spaceGrotesk = Space_Grotesk({
   variable: "--font-inter",
   subsets: ["latin"],
+  weight: ["400", "500", "700"],
 });
 
 const jbMono = JetBrains_Mono({
@@ -63,8 +58,15 @@ export default function RootLayout({
 }) {
   const imageOrigin = getImageOrigin();
   return (
-    <html lang="zh-CN" className={`${bodoni.variable} ${zcoolXiaoWei.variable} ${inter.variable} ${jbMono.variable}`} suppressHydrationWarning>
+    <html lang="zh-CN" className={`${anton.variable} ${spaceGrotesk.variable} ${jbMono.variable}`} suppressHydrationWarning>
       <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
+        <link
+          href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700;900&family=Noto+Sans+SC:wght@400;700&display=swap"
+          rel="stylesheet"
+        />
         {imageOrigin && (
           <>
             <link rel="preconnect" href={imageOrigin} crossOrigin="anonymous" />

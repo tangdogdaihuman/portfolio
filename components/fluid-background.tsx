@@ -25,6 +25,11 @@ float map(vec3 p){
 vec3 norm(vec3 p){vec2 e=vec2(.003,0.);
  return normalize(vec3(map(p+e.xyy)-map(p-e.xyy),map(p+e.yxy)-map(p-e.yxy),map(p+e.yyx)-map(p-e.yyx)));}
 vec3 azure(float t){return .5+.5*cos(6.28318*(t+vec3(.58,.30,.16)));}
+vec3 background(vec2 uv,float s){
+ vec3 col=mix(vec3(.031,.031,.047),vec3(.949,.949,.961),uTheme);
+ vec3 wash=azure(uv.y*.25+s*.6+.55)*(1.-clamp(length(uv),0.,1.)*.7);
+ col+=mix(.025*wash,-.05*wash,uTheme);
+ return col;}
 void main(){
  vec2 uv=(gl_FragCoord.xy-.5*uRes)/min(uRes.x,uRes.y);
  float s=uScroll;
@@ -38,21 +43,21 @@ void main(){
   dmin=min(dmin,d);
   if(d<.002){hit=tt;break;}
   tt+=d;if(tt>8.)break;}
- vec3 col=mix(vec3(.031,.031,.047),vec3(.949,.949,.961),uTheme);
- vec3 wash=azure(uv.y*.25+s*.6+.55)*(1.-length(uv)*.7);
- col+=mix(.02*wash,-.05*wash,uTheme);
+ vec3 col=background(uv,s);
  if(hit>0.){
   vec3 p=ro+rd*hit;vec3 n=norm(p);
-  float fre=pow(1.-max(dot(n,-rd),0.),2.4);
+  float fre=pow(1.-max(dot(n,-rd),0.),3.);
   float m=fbm(p*1.4+uTime*.18);
-  vec3 iri=azure(m*.85+n.y*.25+s*.5+.08);
-  iri=mix(iri,vec3(0.,.83,1.),.25*smoothstep(.45,.9,fre));
+  vec2 ruv=uv+n.xy*(.34+.2*m);
+  vec3 through=background(ruv,s);
   vec3 l=normalize(vec3(.6,.8,.5));
-  float dif=max(dot(n,l),0.);
-  float spec=pow(max(dot(reflect(-l,n),-rd),0.),40.);
-  vec3 darkCol=vec3(.012,.012,.023)+iri*(fre*1.15+.06)+vec3(0.,.83,1.)*spec*.85+iri*dif*.1;
-  vec3 lightCol=mix(vec3(.80,.89,.99),vec3(.05,.44,.74),fre*.92);
-  lightCol+=vec3(.35,.55,.75)*dif*.22+vec3(1.)*spec*.28;
+  vec3 l2=normalize(vec3(-.5,-.2,.6));
+  float sp1=pow(max(dot(reflect(-l,n),-rd),0.),70.);
+  float sp2=pow(max(dot(reflect(-l2,n),-rd),0.),22.);
+  vec3 rim=azure(m*.9+n.y*.3+s*.5+.08);
+  rim=mix(rim,vec3(0.,.83,1.),.3);
+  vec3 darkCol=through*vec3(.42,.54,.62)+rim*fre*1.3+(sp1+sp2*.35)*vec3(.75,.95,1.);
+  vec3 lightCol=through*vec3(.93,.965,1.03)+vec3(.02,.42,.7)*fre*1.05+(sp1+sp2*.3)*vec3(1.);
   col=mix(darkCol,lightCol,uTheme);
  }else{
   float glow=pow(max(0.,1.-dmin*1.2),6.);
@@ -61,7 +66,7 @@ void main(){
  col*=1.-.35*pow(length(uv*vec2(.8,1.)),2.2)*mix(1.,.3,uTheme);
  gl_FragColor=vec4(col,1.);}`;
 
-const FRAME_MS = 1000 / 30;
+const FRAME_MS = 1000 / 120;
 
 export default function FluidBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);

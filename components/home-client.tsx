@@ -204,36 +204,37 @@ function WorkCard({ work, index, priority }: { work: Work; index: number; priori
     >
       <div className="relative overflow-hidden rounded-[24px] border border-border/60 bg-surface/40 shadow-[0_18px_50px_-24px_rgba(0,0,0,0.45)] transition-[border-color,box-shadow] duration-500 group-hover:border-accent/35 group-hover:shadow-[0_28px_70px_-24px_color-mix(in_srgb,var(--color-accent)_35%,transparent)]">
         <div className="overflow-hidden">
-          <div className="transition-transform duration-[1.1s] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.045]">
+          <div className="transition-transform duration-[1.1s] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.05]">
             <WorkThumbImage work={work} priority={priority} />
           </div>
         </div>
+        <span className="meta-label pointer-events-none absolute left-4 top-4 text-[0.68rem] tracking-[0.2em] text-white/85">
+          №&nbsp;{String(index + 1).padStart(2, "0")}
+        </span>
+        <span className="meta-label pointer-events-none absolute bottom-4 right-4 text-[0.68rem] tracking-[0.2em] text-white/85">
+          {(work.image_count || 1) > 1 ? `${work.image_count}P` : "单图"}
+        </span>
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-black/0 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100"
         />
-        <div className="pointer-events-none absolute inset-x-3 bottom-3 translate-y-3 opacity-0 transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-y-0 group-hover:opacity-100">
+        <div className="pointer-events-none absolute inset-x-4 bottom-4 translate-y-3 opacity-0 transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-y-0 group-hover:opacity-100">
           <div className="glass-strong flex items-center justify-between gap-3 rounded-2xl px-4 py-3">
             <span className="truncate text-sm font-medium text-white">{work.title}</span>
-            <span className="meta-label shrink-0 text-white/70!">
-              {(work.image_count || 1) > 1 ? `${work.image_count}P` : "单图"}
-            </span>
+            <span className="meta-label shrink-0 text-white/70!">查看 ↗</span>
           </div>
         </div>
         {work.pinned && (
-          <span className="glass-chip absolute left-3 top-3 rounded-full px-3 py-1.5 text-[0.58rem] font-medium tracking-[0.2em] text-accent-strong">
+          <span className="glass-chip absolute right-3 top-3 rounded-full px-3 py-1.5 text-[0.58rem] font-medium tracking-[0.2em] text-accent-strong">
             FEATURED
           </span>
         )}
       </div>
-      <div className="mt-3.5 flex items-baseline justify-between gap-3 px-1">
-        <div className="flex min-w-0 items-baseline gap-3">
-          <span className="meta-label shrink-0 text-accent!">{String(index + 1).padStart(2, "0")}</span>
-          <span className="truncate text-[0.95rem] text-text transition-colors duration-300 group-hover:text-accent-strong">
-            {work.title}
-          </span>
-        </div>
-        <div className="meta-label flex shrink-0 items-baseline gap-3">
+      <div className="mt-5 flex items-end justify-between gap-4 px-1">
+        <h3 className="font-display min-w-0 text-[clamp(1.4rem,2.6vw,2.2rem)] uppercase leading-[1.08] text-text transition-colors duration-300 group-hover:text-accent-strong">
+          {work.title}
+        </h3>
+        <div className="meta-label flex shrink-0 items-baseline gap-3 pb-1 text-right">
           {work.tags.slice(0, 2).map((tag) => (
             <span key={tag}>{tag}</span>
           ))}
@@ -482,6 +483,47 @@ export default function HomeClient({
             </m.div>
           </section>
 
+          <div
+            aria-hidden="true"
+            className="relative overflow-hidden border-y border-border/50 py-4 md:py-5"
+            style={{
+              background: "color-mix(in srgb, var(--theme-bg) 45%, transparent)",
+              WebkitBackdropFilter: "blur(6px)",
+              backdropFilter: "blur(6px)",
+            }}
+          >
+            <div className="animate-marquee inline-flex whitespace-nowrap will-change-transform">
+              {[0, 1].map((dup) => (
+                <span key={dup} className="inline-flex items-center">
+                  {[
+                    { text: "HARD SURFACE", outline: false },
+                    { text: "硬表面建模", outline: true },
+                    { text: "STYLIZED CHARACTER", outline: true },
+                    { text: "风格化角色", outline: false },
+                    { text: "GAME ART", outline: true },
+                    { text: "游戏美术", outline: false },
+                    { text: "3D ARTIST", outline: false },
+                    { text: "三维艺术家", outline: true },
+                  ].map((item) => (
+                    <span key={item.text} className="inline-flex items-center">
+                      <span
+                        className="font-display mx-9 text-[clamp(1.35rem,3.4vw,2.6rem)] uppercase leading-none tracking-[0.03em]"
+                        style={
+                          item.outline
+                            ? { color: "transparent", WebkitTextStroke: "1px var(--color-text-muted)" }
+                            : { color: "var(--color-text)" }
+                        }
+                      >
+                        {item.text}
+                      </span>
+                      <span className="text-[0.7rem] text-accent">●</span>
+                    </span>
+                  ))}
+                </span>
+              ))}
+            </div>
+          </div>
+
           <section id="works" className="relative mx-auto max-w-7xl scroll-mt-28 px-5 pb-24 pt-20 md:px-8 md:pt-24">
             <Reveal>
               <div className="flex items-end justify-between gap-6">
@@ -582,11 +624,11 @@ export default function HomeClient({
                   )}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 gap-x-8 gap-y-12 md:grid-cols-12 md:gap-y-16">
+                <div className="grid grid-cols-1 gap-x-8 gap-y-12 md:grid-cols-12 md:gap-y-24">
                   <AnimatePresence mode="popLayout">
                     {sorted.map((work, i) => {
                       const weight = work.size_weight ?? 1;
-                      const span = weight >= 1.5 ? 8 : weight >= 1 ? 7 : 4;
+                      const span = weight >= 1.5 ? 8 : weight >= 1 ? 7 : 5;
                       return (
                         <m.div
                           key={work.id}
@@ -596,7 +638,7 @@ export default function HomeClient({
                           viewport={{ once: true, margin: "-40px" }}
                           exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.28, ease: "easeIn" } }}
                           transition={{ duration: 0.7, ease: EASE_OUT }}
-                          className="md:col-span-12"
+                          className={`md:col-span-12 ${i % 3 === 1 ? "md:mt-20" : i % 3 === 2 ? "md:mt-8" : ""}`}
                           style={{ gridColumn: `span 12 / span 12` }}
                           data-span={span}
                           ref={(el) => {
@@ -753,18 +795,32 @@ export default function HomeClient({
           </section>
 
           <footer className="relative overflow-hidden border-t border-border/40">
-            <div aria-hidden="true" className="pointer-events-none select-none px-5 pt-16 text-center md:pt-24">
-              <p
-                className="font-display text-[clamp(2.6rem,11vw,10rem)] leading-[0.95] tracking-tight"
-                style={{
-                  color: "transparent",
-                  WebkitTextStroke: "1px color-mix(in srgb, var(--color-text) 16%, transparent)",
-                }}
-              >
-                TANG&nbsp;ZIHANG
-              </p>
+            <div className="px-5 pb-14 pt-20 text-center md:pt-28">
+              <Reveal>
+                <p className="font-display-sc text-[clamp(0.95rem,2vw,1.4rem)] font-bold tracking-[0.5em] text-text-muted">
+                  有项目？一起创造
+                </p>
+              </Reveal>
+              <Reveal delay={0.08}>
+                <p className="font-display mt-6 text-[clamp(3.2rem,13vw,12rem)] uppercase leading-[0.92] tracking-[0.01em] text-text">
+                  Let&apos;s{" "}
+                  <span style={{ color: "transparent", WebkitTextStroke: "1.5px var(--color-text)" }}>
+                    Build
+                  </span>
+                </p>
+              </Reveal>
+              <Reveal delay={0.16}>
+                <a
+                  href="mailto:1193662756@qq.com"
+                  data-hover
+                  className="group mt-10 inline-flex min-h-13 items-center gap-3 rounded-full border border-border px-8 py-3.5 font-mono text-[0.72rem] uppercase tracking-[0.24em] text-text transition-colors duration-300 hover:border-accent/50 hover:text-accent-strong"
+                >
+                  1193662756@qq.com
+                  <span className="transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5">↗</span>
+                </a>
+              </Reveal>
             </div>
-            <div className="meta-label mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-5 py-8 md:flex-row md:px-8">
+            <div className="meta-label mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 border-t border-border/40 px-5 py-8 md:flex-row md:px-8">
               <p>&copy; {new Date().getFullYear()} 唐子航 · Tang Zihang</p>
               <p className="hidden md:block">Hard Surface · Stylized Character · Game Art</p>
               <p>All Rights Reserved</p>

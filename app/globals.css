@@ -9,14 +9,12 @@
   --color-accent-strong: var(--theme-accent-strong);
   --color-on-accent: var(--theme-on-accent);
   --color-border: var(--theme-border);
-  --font-display: var(--font-display-en);
-  --font-display-sc: var(--font-display-cn);
-  --font-body: var(--font-inter);
+  --font-display: var(--font-display-en), "Noto Serif SC", serif;
+  --font-display-sc: "Noto Serif SC", serif;
+  --font-body: var(--font-inter), "Noto Sans SC", sans-serif;
   --font-mono: var(--font-jbmono);
   --animate-fade-up: fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
-  --animate-blob-a: blob-a 26s ease-in-out infinite;
-  --animate-blob-b: blob-b 32s ease-in-out infinite;
-  --animate-blob-c: blob-c 38s ease-in-out infinite;
+  --animate-marquee: marquee-x 28s linear infinite;
 }
 
 :root,
@@ -73,21 +71,9 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes blob-a {
-  0%, 100% { transform: translate3d(-6%, -4%, 0) scale(1); }
-  33% { transform: translate3d(9%, 6%, 0) scale(1.14); }
-  66% { transform: translate3d(-3%, 10%, 0) scale(0.92); }
-}
-
-@keyframes blob-b {
-  0%, 100% { transform: translate3d(8%, 6%, 0) scale(1.06); }
-  40% { transform: translate3d(-10%, -2%, 0) scale(0.94); }
-  75% { transform: translate3d(4%, -9%, 0) scale(1.12); }
-}
-
-@keyframes blob-c {
-  0%, 100% { transform: translate3d(2%, 10%, 0) scale(0.96); }
-  50% { transform: translate3d(-7%, -8%, 0) scale(1.1); }
+@keyframes marquee-x {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
 }
 
 @keyframes scroll-dot {
@@ -274,7 +260,7 @@ html.vt-theme::view-transition-new(root) {
   .scroll-cue-dot {
     animation: none;
   }
-  .animate-blob-a, .animate-blob-b, .animate-blob-c {
-    animation: none !important;
+  .animate-marquee {
+    animation: none;
   }
 }
