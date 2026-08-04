@@ -18,29 +18,29 @@ export default function StoragePanel({ works }: { works: Work[] }) {
 
   return (
     <div>
-      <div className="bg-bg border border-border p-6 mb-6">
+      <div className="glass-strong rounded-[28px] p-6 md:p-7 mb-6">
         <div className="flex items-end justify-between mb-4">
           <div>
             <p className="text-2xl font-display text-text">{formatSize(totalBytes)}</p>
             <p className="text-xs text-text-muted mt-1">已用 / {maxGB} GB 总额</p>
           </div>
-          <p className="text-sm text-accent-dim">{usedGB.toFixed(2)} GB</p>
+          <p className="text-sm text-accent">{usedGB.toFixed(2)} GB</p>
         </div>
-        <div className="h-2 bg-surface overflow-hidden">
+        <div className="glass-chip h-2 overflow-hidden rounded-full">
           <div
-            className="h-full transition-all duration-700"
+            className="h-full rounded-full transition-all duration-700"
             style={{
               width: `${pct}%`,
               background: pct > 80
-                ? "linear-gradient(90deg, #d4a574, #c44)"
-                : "linear-gradient(90deg, #d4a574, #8b6b4a)",
+                ? "linear-gradient(90deg, #f59e0b, #ef4444)"
+                : "linear-gradient(90deg, var(--color-accent), var(--color-accent-strong))",
             }}
           />
         </div>
         <p className="text-xs text-text-muted mt-2">{pct.toFixed(1)}% 已使用</p>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-3">
         <p className="text-sm text-text-muted mb-4">各作品占用</p>
         {works
           .filter((w) => getSize(w) > 0)
@@ -49,16 +49,16 @@ export default function StoragePanel({ works }: { works: Work[] }) {
             const size = getSize(work);
             const wpct = totalBytes > 0 ? (size / totalBytes) * 100 : 0;
             return (
-              <div key={work.id} className="bg-bg border border-border p-3">
-                <div className="flex items-center justify-between mb-1">
+              <div key={work.id} className="glass rounded-[24px] p-4">
+                <div className="flex items-center justify-between mb-2">
                   <span className="text-sm text-text truncate mr-4">{work.title}</span>
-                  <span className="text-xs text-accent-dim whitespace-nowrap">
+                  <span className="text-xs text-accent whitespace-nowrap">
                     {formatSize(size)} ({wpct.toFixed(1)}%)
                   </span>
                 </div>
-                <div className="h-1.5 bg-surface overflow-hidden">
+                <div className="glass-chip h-1.5 overflow-hidden rounded-full">
                   <div
-                    className="h-full bg-accent-dim/40"
+                    className="h-full rounded-full bg-accent/50"
                     style={{ width: `${Math.max(wpct, 1)}%` }}
                   />
                 </div>

@@ -239,13 +239,13 @@ export default function EditWorkForm({
   if (loading) return <div className="text-text-muted text-sm">加载中...</div>;
 
   return (
-    <div className="space-y-5">
+    <div className="glass space-y-5 rounded-[28px] p-5 md:p-7">
       <div className="flex items-center gap-4 mb-2">
         <button onClick={onCancel} className="text-sm text-text-muted hover:text-text">← 返回</button>
         <span className="text-sm text-text">编辑作品</span>
       </div>
       {conflict && (
-        <div className="flex items-center gap-3 border border-red-400/50 bg-surface px-4 py-3" role="alert">
+        <div className="flex items-center gap-3 rounded-2xl border border-red-400/30 bg-red-400/10 px-4 py-3" role="alert">
           <span className="flex-1 text-sm text-text-muted">检测到他人已修改该作品，当前编辑内容已过期。</span>
           <button
             type="button"
@@ -261,15 +261,15 @@ export default function EditWorkForm({
       )}
       <div>
         <label htmlFor="edit-work-title" className="block text-sm text-text-muted mb-1">标题</label>
-        <input id="edit-work-title" value={title} onChange={(event) => updateForm({ title: event.target.value })} className="w-full bg-bg border border-border text-text px-4 py-2 text-sm focus:outline-none focus:border-accent-dim" />
+        <input id="edit-work-title" value={title} onChange={(event) => updateForm({ title: event.target.value })} className="glass-chip w-full rounded-2xl px-4 py-3 text-sm text-text transition-colors focus:border-accent/50 focus:outline-none" />
       </div>
       <div>
         <label htmlFor="edit-work-description" className="block text-sm text-text-muted mb-1">简介</label>
-        <textarea id="edit-work-description" value={description} onChange={(event) => updateForm({ description: event.target.value })} rows={4} className="w-full bg-bg border border-border text-text px-4 py-3 text-sm focus:outline-none focus:border-accent-dim resize-y" />
+        <textarea id="edit-work-description" value={description} onChange={(event) => updateForm({ description: event.target.value })} rows={4} className="glass-chip w-full rounded-2xl px-4 py-3 text-sm text-text transition-colors focus:border-accent/50 focus:outline-none resize-y" />
       </div>
       <div>
         <label htmlFor="edit-work-tags" className="block text-sm text-text-muted mb-1">标签</label>
-        <input id="edit-work-tags" value={tags} onChange={(event) => updateForm({ tags: event.target.value })} className="w-full bg-bg border border-border text-text px-4 py-2 text-sm focus:outline-none focus:border-accent-dim" />
+        <input id="edit-work-tags" value={tags} onChange={(event) => updateForm({ tags: event.target.value })} className="glass-chip w-full rounded-2xl px-4 py-3 text-sm text-text transition-colors focus:border-accent/50 focus:outline-none" />
       </div>
       <div>
         <span className="block text-sm text-text-muted mb-2">使用软件（可多选）</span>
@@ -282,7 +282,7 @@ export default function EditWorkForm({
       </div>
       <div>
         <label htmlFor="edit-work-date" className="block text-sm text-text-muted mb-1">时间</label>
-        <input id="edit-work-date" value={workDate} onChange={(event) => updateForm({ workDate: event.target.value })} className="w-full bg-bg border border-border text-text px-4 py-2 text-sm focus:outline-none focus:border-accent-dim" />
+        <input id="edit-work-date" value={workDate} onChange={(event) => updateForm({ workDate: event.target.value })} className="glass-chip w-full rounded-2xl px-4 py-3 text-sm text-text transition-colors focus:border-accent/50 focus:outline-none" />
       </div>
       <div>
         <label htmlFor="edit-work-size-weight" className="block text-sm text-text-muted mb-1">
@@ -323,7 +323,7 @@ export default function EditWorkForm({
         {uploading ? (
           <UploadProgressBar label="上传中" doneCount={doneCount} totalCount={totalCount} doneBytes={doneBytes} totalBytes={totalBytes} />
         ) : (
-          <label htmlFor="edit-work-files" className="inline-block px-6 py-6 border-2 border-dashed border-border text-text-muted text-sm cursor-pointer hover:border-accent-dim">
+          <label htmlFor="edit-work-files" className="block cursor-pointer rounded-[24px] border-2 border-dashed border-border/70 px-6 py-6 text-center text-sm text-text-muted transition-colors hover:border-accent/50 hover:text-text">
             点击选择（可多选）
           </label>
         )}
@@ -331,8 +331,8 @@ export default function EditWorkForm({
         <UploadFailureList failures={failures} onRetry={retryFailure} onDismiss={dismissFailure} />
       </div>
       <div className="flex gap-3">
-        <button onClick={handleSave} disabled={saving} className="px-8 py-2.5 bg-accent text-bg text-sm font-medium hover:bg-accent-dim disabled:opacity-50">{saving ? saveStep || "保存中..." : "保存修改"}</button>
-        <button onClick={onCancel} className="px-6 py-2.5 border border-border text-text-muted text-sm hover:text-text">取消</button>
+        <button onClick={handleSave} disabled={saving} className="min-h-11 rounded-full bg-accent px-8 py-2.5 text-sm font-medium text-on-accent shadow-[0_14px_36px_-10px_color-mix(in_srgb,var(--color-accent)_55%,transparent)] transition-[transform,box-shadow] duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50">{saving ? saveStep || "保存中..." : "保存修改"}</button>
+        <button onClick={onCancel} className="glass-chip rounded-full px-6 py-2.5 text-sm text-text-muted transition-colors hover:text-text">取消</button>
       </div>
     </div>
   );

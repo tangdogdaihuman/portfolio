@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Bodoni_Moda, Inter, JetBrains_Mono, ZCOOL_XiaoWei } from "next/font/google";
 import "./globals.css";
-import AmbientBackground from "@/components/ambient-background";
+import FluidBackground from "@/components/fluid-background";
 import SmoothScroll from "@/components/smooth-scroll";
 import GlassCursor from "@/components/cursor";
 
@@ -78,7 +78,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen bg-bg text-text antialiased">
-        <AmbientBackground />
+        <FluidBackground />
         <SmoothScroll />
         <GlassCursor />
         {children}

@@ -359,9 +359,21 @@ export default function HomeClient({
 
         <main className="relative">
           <section ref={heroRef} className="relative flex min-h-svh flex-col justify-center overflow-hidden px-5 md:px-12">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -right-28 top-[5%] z-0 md:-right-10 md:top-1/2 md:-translate-y-1/2"
+            >
+              <m.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 1.4, delay: 1.0, ease: EASE_OUT }}
+              >
+                <GlassOrb size={360} className="origin-center scale-[0.5] md:scale-100" />
+              </m.div>
+            </div>
             <m.div
               style={{ opacity: heroOpacity, scale: heroScale, filter: heroFilter }}
-              className="mx-auto w-full max-w-6xl"
+              className="relative z-10 mx-auto w-full max-w-6xl"
             >
               <div className="meta-label flex items-center justify-between gap-4 border-b border-border/50 pb-4">
                 <m.span
@@ -454,14 +466,6 @@ export default function HomeClient({
                 </a>
               </m.div>
 
-              <m.div
-                initial={{ opacity: 0, scale: 0.85, y: 24 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ duration: 1.3, delay: 1.1, ease: EASE_OUT }}
-                className="mt-14 md:mt-20"
-              >
-                <GlassOrb size={200} className="origin-top-left scale-[0.62] md:scale-100" />
-              </m.div>
             </m.div>
 
             <m.div
@@ -483,7 +487,7 @@ export default function HomeClient({
               <div className="flex items-end justify-between gap-6">
                 <div>
                   <p className="meta-label">01 / Selected Works</p>
-                  <h2 className="font-display mt-3 text-[clamp(2rem,5vw,3.4rem)] leading-none text-text">作品集</h2>
+                  <h2 className="font-display mt-3 text-[clamp(2.4rem,7vw,5.2rem)] leading-none text-text">作品集</h2>
                 </div>
                 <p className="meta-label hidden pb-1 md:block">
                   {String(sorted.length).padStart(2, "0")} / {String(works.length).padStart(2, "0")} 件
@@ -493,7 +497,7 @@ export default function HomeClient({
 
             {tags.length > 0 && (
               <Reveal delay={0.08}>
-                <div className="glass-strong sticky top-[84px] z-40 mt-9 flex flex-wrap items-center gap-2 rounded-[22px] p-2 md:rounded-full">
+                <div className="glass-solid sticky top-[84px] z-40 mt-9 flex flex-wrap items-center gap-2 rounded-[24px] p-2 md:rounded-full">
                   <div className="flex flex-wrap items-center gap-1.5">
                     <button
                       type="button"
@@ -613,15 +617,15 @@ export default function HomeClient({
             <section id="about" className="relative mx-auto max-w-7xl scroll-mt-28 px-5 pb-24 md:px-8">
               <Reveal>
                 <p className="meta-label">02 / About</p>
-                <h2 className="font-display mt-3 text-[clamp(2rem,5vw,3.4rem)] leading-none text-text">关于我</h2>
+                <h2 className="font-display mt-3 text-[clamp(2.4rem,7vw,5.2rem)] leading-none text-text">关于我</h2>
               </Reveal>
-              <div className="mt-10 max-w-3xl space-y-3">
+              <div className="mt-12 max-w-4xl space-y-4">
                 {detailSections.map((section, i) => {
                   const isOpen = expandedSection === section.id;
                   return (
                     <Reveal key={section.id} delay={i * 0.05}>
                       <div
-                        className={`glass overflow-hidden rounded-[22px] transition-[border-color] duration-500 ${
+                        className={`glass overflow-hidden rounded-[28px] transition-[border-color] duration-500 ${
                           isOpen ? "border-accent/35!" : ""
                         }`}
                       >
@@ -631,12 +635,12 @@ export default function HomeClient({
                           aria-expanded={isOpen}
                           aria-controls={`about-panel-${section.id}`}
                           data-hover
-                          className="flex min-h-[4.25rem] w-full items-center justify-between gap-4 px-5 py-4 text-left md:px-6"
+                          className="flex w-full items-center justify-between gap-4 px-6 py-6 text-left md:px-9 md:py-7"
                         >
-                          <span className="flex items-baseline gap-4">
+                          <span className="flex items-baseline gap-4 md:gap-5">
                             <span className="meta-label text-accent!">{String(i + 1).padStart(2, "0")}</span>
                             <span
-                              className={`font-display text-lg transition-colors duration-300 md:text-xl ${
+                              className={`font-display text-xl transition-colors duration-300 md:text-3xl ${
                                 isOpen ? "text-accent-strong" : "text-text"
                               }`}
                             >
@@ -646,7 +650,7 @@ export default function HomeClient({
                           <m.span
                             animate={{ rotate: isOpen ? 45 : 0 }}
                             transition={SPRING_SOFT}
-                            className={`glass-chip inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base ${
+                            className={`glass-chip inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-xl ${
                               isOpen ? "text-accent-strong" : "text-text-muted"
                             }`}
                           >
@@ -663,8 +667,8 @@ export default function HomeClient({
                               transition={{ duration: 0.5, ease: EASE_OUT }}
                               className="overflow-hidden"
                             >
-                              <div className="px-5 pb-6 md:px-6">
-                                <div className="border-l-2 border-accent/40 pl-5 text-sm leading-[1.95] text-text-muted whitespace-pre-wrap">
+                              <div className="px-6 pb-8 md:px-9">
+                                <div className="border-l-2 border-accent/40 pl-5 text-base leading-[2] text-text-muted whitespace-pre-wrap md:pl-6 md:text-lg">
                                   {renderBoldContent(section.content)}
                                 </div>
                               </div>
@@ -682,60 +686,84 @@ export default function HomeClient({
           <section id="contact" className="relative mx-auto max-w-7xl scroll-mt-28 px-5 pb-20 md:px-8">
             <Reveal>
               <p className="meta-label">03 / Contact</p>
-              <h2 className="font-display mt-3 text-[clamp(2rem,5vw,3.4rem)] leading-none text-text">联系我</h2>
+              <h2 className="font-display mt-3 text-[clamp(2.4rem,7vw,5.2rem)] leading-none text-text">联系我</h2>
             </Reveal>
-            <div className="mt-10 grid gap-10 md:grid-cols-12">
-              <Reveal delay={0.06} className="md:col-span-7">
-                <p className="max-w-md text-sm leading-[1.9] text-text-muted">
-                  有项目合作、工作机会，或任何关于 3D 艺术的想法，欢迎随时联系。
-                </p>
-                <a
-                  href="mailto:1193662756@qq.com"
-                  data-cursor="写信"
-                  className="font-display mt-7 inline-block break-all text-[clamp(1.5rem,3.6vw,2.6rem)] leading-tight text-text transition-colors duration-300 hover:text-accent-strong"
-                >
-                  1193662756@qq.com
-                </a>
+            <Reveal delay={0.06}>
+              <p className="mt-10 max-w-2xl text-base leading-[1.9] text-text-muted md:text-lg">
+                有项目合作、工作机会，或任何关于 3D 艺术的想法，欢迎随时联系。
+              </p>
+              <a
+                href="mailto:1193662756@qq.com"
+                data-cursor="写信"
+                className="font-display mt-8 inline-block break-all text-[clamp(1.8rem,6vw,4.2rem)] leading-[1.05] text-text transition-colors duration-300 hover:text-accent-strong"
+              >
+                1193662756@qq.com
+              </a>
+            </Reveal>
+            <div className="mt-14 grid gap-x-14 md:grid-cols-2">
+              <Reveal delay={0.1}>
+                <div className="border-t border-border/60 py-6 md:py-7">
+                  <p className="meta-label">微信 WeChat</p>
+                  <p className="font-display mt-3 text-[clamp(1.25rem,2.4vw,1.9rem)] text-text">T15918177465</p>
+                </div>
               </Reveal>
-              <Reveal delay={0.12} className="md:col-span-5">
-                <div className="glass rounded-[24px] p-6">
-                  <p className="meta-label mb-2">其他方式</p>
-                  <div className="divide-y divide-border/60">
-                    <div className="flex items-baseline justify-between gap-4 py-3.5 text-sm">
-                      <span className="meta-label">微信</span>
-                      <span className="text-text">T15918177465</span>
-                    </div>
-                    <div className="flex items-baseline justify-between gap-4 py-3.5 text-sm">
-                      <span className="meta-label">电话</span>
-                      <span className="text-text">15918177465</span>
-                    </div>
-                    <a
-                      href="https://github.com/tangdogdaihuman"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      data-hover
-                      className="group flex items-baseline justify-between gap-4 py-3.5 text-sm text-text transition-colors hover:text-accent-strong"
-                    >
-                      <span className="meta-label">GitHub</span>
-                      <span className="transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5">↗</span>
-                    </a>
-                    <a
-                      href="https://www.artstation.com/uuey7"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      data-hover
-                      className="group flex items-baseline justify-between gap-4 py-3.5 text-sm text-text transition-colors hover:text-accent-strong"
-                    >
-                      <span className="meta-label">ArtStation</span>
-                      <span className="transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5">↗</span>
-                    </a>
-                  </div>
+              <Reveal delay={0.14}>
+                <div className="border-t border-border/60 py-6 md:py-7">
+                  <p className="meta-label">电话 Phone</p>
+                  <a
+                    href="tel:15918177465"
+                    data-hover
+                    className="font-display mt-3 inline-block text-[clamp(1.25rem,2.4vw,1.9rem)] text-text transition-colors duration-300 hover:text-accent-strong"
+                  >
+                    15918177465
+                  </a>
+                </div>
+              </Reveal>
+              <Reveal delay={0.18}>
+                <div className="border-t border-border/60 py-6 md:py-7">
+                  <p className="meta-label">GitHub</p>
+                  <a
+                    href="https://github.com/tangdogdaihuman"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    data-hover
+                    className="group font-display mt-3 inline-flex items-baseline gap-2.5 text-[clamp(1.25rem,2.4vw,1.9rem)] text-text transition-colors duration-300 hover:text-accent-strong"
+                  >
+                    tangdogdaihuman
+                    <span className="text-[0.6em] text-text-muted transition-all duration-300 group-hover:-translate-y-1 group-hover:translate-x-1 group-hover:text-accent">↗</span>
+                  </a>
+                </div>
+              </Reveal>
+              <Reveal delay={0.22}>
+                <div className="border-t border-border/60 py-6 md:py-7">
+                  <p className="meta-label">ArtStation</p>
+                  <a
+                    href="https://www.artstation.com/uuey7"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    data-hover
+                    className="group font-display mt-3 inline-flex items-baseline gap-2.5 text-[clamp(1.25rem,2.4vw,1.9rem)] text-text transition-colors duration-300 hover:text-accent-strong"
+                  >
+                    artstation.com/uuey7
+                    <span className="text-[0.6em] text-text-muted transition-all duration-300 group-hover:-translate-y-1 group-hover:translate-x-1 group-hover:text-accent">↗</span>
+                  </a>
                 </div>
               </Reveal>
             </div>
           </section>
 
-          <footer className="border-t border-border/40">
+          <footer className="relative overflow-hidden border-t border-border/40">
+            <div aria-hidden="true" className="pointer-events-none select-none px-5 pt-16 text-center md:pt-24">
+              <p
+                className="font-display text-[clamp(2.6rem,11vw,10rem)] leading-[0.95] tracking-tight"
+                style={{
+                  color: "transparent",
+                  WebkitTextStroke: "1px color-mix(in srgb, var(--color-text) 16%, transparent)",
+                }}
+              >
+                TANG&nbsp;ZIHANG
+              </p>
+            </div>
             <div className="meta-label mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 px-5 py-8 md:flex-row md:px-8">
               <p>&copy; {new Date().getFullYear()} 唐子航 · Tang Zihang</p>
               <p className="hidden md:block">Hard Surface · Stylized Character · Game Art</p>

@@ -160,27 +160,27 @@ export default function DetailSectionsEditor({ showMsg }: { showMsg: (text: stri
   if (loading) return <div className="text-text-muted text-sm">加载中...</div>;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between mb-4">
+    <div className="glass space-y-4 rounded-[28px] p-5 md:p-7">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <p className="text-sm text-text-muted">共 {sections.length} 个子栏目，前台默认折叠，点击展开</p>
         <div className="flex gap-2">
-          <button onClick={addSection} className="px-4 py-1.5 border border-accent-dim text-accent text-xs hover:bg-accent/10 transition-colors">+ 添加子栏目</button>
-          <button onClick={saveAll} disabled={saving} className="px-5 py-1.5 bg-accent text-bg text-xs font-medium hover:bg-accent-dim disabled:opacity-50">{saving ? "保存中..." : "保存全部"}</button>
+          <button onClick={addSection} className="glass-chip rounded-full px-4 py-2 text-xs text-accent transition-colors hover:text-accent-strong">+ 添加子栏目</button>
+          <button onClick={saveAll} disabled={saving} className="rounded-full bg-accent px-5 py-2 text-xs font-medium text-on-accent transition-colors hover:bg-accent-strong disabled:pointer-events-none disabled:opacity-50">{saving ? "保存中..." : "保存全部"}</button>
         </div>
       </div>
       {sections.map((s, i) => (
-        <div key={s.id} className={`border bg-surface p-4 space-y-3 ${failedIds.includes(s.id) ? "border-red-400/60" : "border-border"}`}>
+        <div key={s.id} className={`glass space-y-3 rounded-[24px] p-4 md:p-5 ${failedIds.includes(s.id) ? "outline-2 outline-solid outline-red-400/60" : ""}`}>
           <div className="flex items-center gap-2">
-            <button onClick={() => moveSection(s.id, "up")} disabled={i === 0} className="text-xs text-text-muted hover:text-text disabled:opacity-30">↑</button>
-            <button onClick={() => moveSection(s.id, "down")} disabled={i === sections.length - 1} className="text-xs text-text-muted hover:text-text disabled:opacity-30">↓</button>
+            <button onClick={() => moveSection(s.id, "up")} disabled={i === 0} className="glass-chip h-8 w-8 shrink-0 rounded-full text-xs text-text-muted transition-colors hover:text-text disabled:opacity-30">↑</button>
+            <button onClick={() => moveSection(s.id, "down")} disabled={i === sections.length - 1} className="glass-chip h-8 w-8 shrink-0 rounded-full text-xs text-text-muted transition-colors hover:text-text disabled:opacity-30">↓</button>
             <input
               value={s.title}
               onChange={(e) => updateSection(s.id, "title", e.target.value)}
               aria-label="栏目标题"
-              className="flex-1 bg-bg border border-border text-text px-3 py-1.5 text-sm focus:outline-none focus:border-accent-dim"
+              className="glass-chip min-w-0 flex-1 rounded-xl px-3 py-2 text-sm text-text transition-colors focus:border-accent/50 focus:outline-none"
               placeholder="栏目标题"
             />
-            <button onClick={() => setPendingDelete(s)} className="px-2 py-1.5 text-xs text-red-400/70 hover:text-red-400">删除</button>
+            <button onClick={() => setPendingDelete(s)} className="shrink-0 rounded-full border border-red-400/30 px-3 py-1.5 text-xs text-red-300/80 transition-colors hover:border-red-400/50 hover:text-red-300">删除</button>
           </div>
           {failedIds.includes(s.id) && (
             <p className="text-xs text-red-400" role="alert">本条保存失败，点击右上角「保存全部」重试</p>
@@ -194,7 +194,7 @@ export default function DetailSectionsEditor({ showMsg }: { showMsg: (text: stri
               aria-multiline="true"
               aria-label={`${s.title || "栏目"} 内容`}
               onInput={(e) => updateSection(s.id, "content", e.currentTarget.innerHTML)}
-              className="w-full min-h-[6rem] bg-bg border border-border text-text px-3 py-2 text-sm focus:outline-none focus:border-accent-dim whitespace-pre-wrap"
+              className="glass-chip w-full min-h-[6rem] rounded-2xl px-4 py-3 text-sm text-text transition-colors focus:border-accent/50 focus:outline-none whitespace-pre-wrap"
             />
             <button
               type="button"
@@ -206,7 +206,7 @@ export default function DetailSectionsEditor({ showMsg }: { showMsg: (text: stri
                 toggleSelectionBold(el);
                 updateSection(s.id, "content", el.innerHTML);
               }}
-              className="shrink-0 w-8 h-8 border border-border text-text-muted text-xs font-bold hover:text-accent hover:border-accent-dim transition-colors"
+              className="glass-chip h-8 w-8 shrink-0 rounded-full text-xs font-bold text-text-muted transition-colors hover:text-accent"
             >
               B
             </button>

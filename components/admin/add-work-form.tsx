@@ -129,7 +129,7 @@ export default function AddWorkForm({
   };
 
   return (
-    <div className="space-y-5">
+    <div className="glass space-y-5 rounded-[28px] p-5 md:p-7">
       <div>
         <label htmlFor="add-work-files" className="block text-sm text-text-muted mb-1">
           图片（可多选，{UPLOAD_LIMIT_HINT}）
@@ -137,7 +137,7 @@ export default function AddWorkForm({
         {uploading ? (
           <UploadProgressBar label="上传中" doneCount={doneCount} totalCount={totalCount} doneBytes={doneBytes} totalBytes={totalBytes} />
         ) : (
-          <label htmlFor="add-work-files" className="inline-block px-6 py-10 border-2 border-dashed border-border text-text-muted text-sm cursor-pointer hover:border-accent-dim transition-colors">
+          <label htmlFor="add-work-files" className="block cursor-pointer rounded-[24px] border-2 border-dashed border-border/70 px-6 py-10 text-center text-sm text-text-muted transition-colors hover:border-accent/50 hover:text-text">
             点击选择图片（可多选）
           </label>
         )}
@@ -199,7 +199,7 @@ export default function AddWorkForm({
           id="add-work-title"
           value={title}
           onChange={(event) => updateForm({ title: event.target.value })}
-          className="w-full bg-bg border border-border text-text px-4 py-2 text-sm focus:outline-none focus:border-accent-dim transition-colors"
+          className="glass-chip w-full rounded-2xl px-4 py-3 text-sm text-text transition-colors placeholder:text-text-muted/50 focus:border-accent/50 focus:outline-none"
           placeholder="作品名称"
         />
       </div>
@@ -211,7 +211,7 @@ export default function AddWorkForm({
           value={description}
           onChange={(event) => updateForm({ description: event.target.value })}
           rows={4}
-          className="w-full bg-bg border border-border text-text px-4 py-3 text-sm focus:outline-none focus:border-accent-dim transition-colors resize-y"
+          className="glass-chip w-full rounded-2xl px-4 py-3 text-sm text-text transition-colors placeholder:text-text-muted/50 focus:border-accent/50 focus:outline-none resize-y"
           placeholder="作品描述"
         />
       </div>
@@ -224,7 +224,7 @@ export default function AddWorkForm({
           id="add-work-tags"
           value={tags}
           onChange={(event) => updateForm({ tags: event.target.value })}
-          className="w-full bg-bg border border-border text-text px-4 py-2 text-sm focus:outline-none focus:border-accent-dim transition-colors"
+          className="glass-chip w-full rounded-2xl px-4 py-3 text-sm text-text transition-colors placeholder:text-text-muted/50 focus:border-accent/50 focus:outline-none"
           placeholder="标签"
         />
       </div>
@@ -247,7 +247,7 @@ export default function AddWorkForm({
           id="add-work-date"
           value={workDate}
           onChange={(event) => updateForm({ workDate: event.target.value })}
-          className="w-full bg-bg border border-border text-text px-4 py-2 text-sm focus:outline-none focus:border-accent-dim transition-colors"
+          className="glass-chip w-full rounded-2xl px-4 py-3 text-sm text-text transition-colors placeholder:text-text-muted/50 focus:border-accent/50 focus:outline-none"
           placeholder="时间"
         />
       </div>
@@ -256,7 +256,7 @@ export default function AddWorkForm({
         <button
           onClick={createWork}
           disabled={submitting || uploading || uploadedFiles.length === 0}
-          className="min-h-11 px-8 py-2.5 bg-accent text-bg text-sm font-medium hover:bg-accent-dim transition-colors disabled:opacity-50"
+          className="min-h-11 rounded-full bg-accent px-8 py-2.5 text-sm font-medium text-on-accent shadow-[0_14px_36px_-10px_color-mix(in_srgb,var(--color-accent)_55%,transparent)] transition-[transform,box-shadow] duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50"
         >
           {submitting ? "提交中..." : uploadedFiles.length > 1 ? `发布作品（${uploadedFiles.length} 张图）` : "发布作品"}
         </button>

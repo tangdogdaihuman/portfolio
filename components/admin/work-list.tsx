@@ -34,7 +34,7 @@ export default function WorkList({
         return (
           <div
             key={work.id}
-            className="bg-bg border border-border p-4"
+            className="glass rounded-[24px] p-4 md:p-5"
           >
             <div className="flex items-start gap-4">
               <Image
@@ -43,44 +43,44 @@ export default function WorkList({
                 width={80}
                 height={64}
                 unoptimized
-                className="w-20 h-16 object-cover flex-shrink-0"
+                className="w-20 h-16 object-cover flex-shrink-0 rounded-xl"
               />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <h3 className="font-display text-text truncate">{work.title}</h3>
                   {work.pinned && (
-                    <span className="text-[10px] uppercase tracking-wider bg-accent text-bg px-1.5 py-0.5">
+                    <span className="text-[10px] uppercase tracking-wider bg-accent text-on-accent px-2 py-0.5 rounded-full">
                       Top
                     </span>
                   )}
                 </div>
                 <div className="flex items-center gap-3 mt-1">
                   {work.work_date && (
-                    <span className="text-xs text-accent-dim">{work.work_date}</span>
+                    <span className="text-xs text-accent">{work.work_date}</span>
                   )}
                   <p className="text-text-muted text-sm truncate">{work.description}</p>
                 </div>
                 {work.tags.length > 0 && (
-                  <div className="flex gap-1 mt-1.5">
+                  <div className="flex flex-wrap gap-1.5 mt-2">
                     {work.tags.map((tag) => (
                       <span
                         key={tag}
-                        className="text-[11px] text-accent-dim border border-accent-dim/20 px-1.5 py-0.5"
+                        className="text-[11px] text-text-muted border border-border/60 px-2.5 py-0.5 rounded-full"
                       >
                         {tag}
                       </span>
                     ))}
                   </div>
                 )}
-                <div className="mt-1.5 flex items-center gap-2">
-                  <div className="h-1 flex-1 bg-surface overflow-hidden">
-                    <div className="h-full bg-accent/50" style={{ width: `${Math.max(wpct, 1)}%` }} />
+                <div className="mt-2 flex items-center gap-2">
+                  <div className="glass-chip h-1.5 flex-1 overflow-hidden rounded-full">
+                    <div className="h-full rounded-full bg-accent/60" style={{ width: `${Math.max(wpct, 1)}%` }} />
                   </div>
-                  <span className="text-[10px] text-accent-dim">{wgt.toFixed(1)} / {wpct.toFixed(1)}%</span>
+                  <span className="text-[10px] text-text-muted">{wgt.toFixed(1)} / {wpct.toFixed(1)}%</span>
                 </div>
               </div>
               <div className="flex flex-col gap-1.5 flex-shrink-0">
-                <div className="inline-flex border border-border/80">
+                <div className="glass-chip inline-flex overflow-hidden rounded-full">
                   <button
                     onClick={() => onReorder(work, "up")}
                     disabled={reordering || !canMoveUp}
@@ -94,15 +94,15 @@ export default function WorkList({
                     onClick={() => onReorder(work, "down")}
                     disabled={reordering || !canMoveDown}
                     title={i < works.length - 1 && !canMoveDown ? "置顶作品和普通作品分开排序" : undefined}
-                    className="min-h-10 min-w-10 border-l border-border/80 text-xs text-text-muted hover:text-accent disabled:opacity-30"
+                    className="min-h-10 min-w-10 border-l border-border/60 text-xs text-text-muted hover:text-accent disabled:opacity-30"
                     aria-label="下移排序"
                   >
                     ↓
                   </button>
                 </div>
-                <button onClick={() => onTogglePin(work)} className="min-h-10 px-3 border border-border/80 text-xs text-text-muted hover:text-accent transition-colors">{work.pinned ? "取消置顶" : "置顶"}</button>
-                <button onClick={() => onEdit(work.id)} className="min-h-10 px-3 border border-border/80 text-xs text-text-muted hover:text-accent transition-colors">编辑</button>
-                <button onClick={() => onDelete(work)} className="min-h-10 px-3 border border-red-400/30 text-xs text-red-400/70 hover:text-red-400 transition-colors">删除</button>
+                <button onClick={() => onTogglePin(work)} className="glass-chip min-h-10 rounded-full px-3.5 text-xs text-text-muted hover:text-text transition-colors">{work.pinned ? "取消置顶" : "置顶"}</button>
+                <button onClick={() => onEdit(work.id)} className="glass-chip min-h-10 rounded-full px-3.5 text-xs text-text-muted hover:text-text transition-colors">编辑</button>
+                <button onClick={() => onDelete(work)} className="min-h-10 rounded-full border border-red-400/30 px-3.5 text-xs text-red-300/80 hover:border-red-400/50 hover:text-red-300 transition-colors">删除</button>
               </div>
             </div>
             <div className="mt-4 text-xs text-text-muted">
@@ -114,4 +114,3 @@ export default function WorkList({
     </div>
   );
 }
-
