@@ -177,6 +177,7 @@ export default function AuroraCanvas() {
     let raf = 0;
     let running = false;
     let lastFrameTs = 0;
+    let lightMode = document.documentElement.classList.contains("light");
     const frameBudget = profile.targetFps > 0 ? 1000 / profile.targetFps : 1000 / 60;
 
     function rand(r: number) {
@@ -212,27 +213,36 @@ export default function AuroraCanvas() {
       const { atmosphere, accent } = getThemePalette();
 
       const bgGradient = ctxS.createLinearGradient(0, 0, 0, h);
-      bgGradient.addColorStop(0, `rgba(${atmosphere},0.9)`);
-      bgGradient.addColorStop(0.45, `rgba(${atmosphere},0.72)`);
-      bgGradient.addColorStop(0.9, `rgba(${atmosphere},0.42)`);
-      bgGradient.addColorStop(0.97, `rgba(${atmosphere},0.12)`);
-      bgGradient.addColorStop(1, `rgba(${atmosphere},0)`);
+      if (lightMode) {
+        bgGradient.addColorStop(0, `rgba(${atmosphere},0.5)`);
+        bgGradient.addColorStop(0.45, `rgba(${atmosphere},0.3)`);
+        bgGradient.addColorStop(0.9, `rgba(${atmosphere},0.12)`);
+        bgGradient.addColorStop(0.97, `rgba(${atmosphere},0.04)`);
+        bgGradient.addColorStop(1, `rgba(${atmosphere},0)`);
+      } else {
+        bgGradient.addColorStop(0, `rgba(${atmosphere},0.9)`);
+        bgGradient.addColorStop(0.45, `rgba(${atmosphere},0.72)`);
+        bgGradient.addColorStop(0.9, `rgba(${atmosphere},0.42)`);
+        bgGradient.addColorStop(0.97, `rgba(${atmosphere},0.12)`);
+        bgGradient.addColorStop(1, `rgba(${atmosphere},0)`);
+      }
       ctxS.fillStyle = bgGradient;
       ctxS.fillRect(0, 0, w, h);
 
+      const glowBoost = lightMode ? 1.8 : 1;
       const focusGlow = ctxS.createRadialGradient(w * 0.5, h * 0.42, 0, w * 0.5, h * 0.42, Math.max(w * 0.58, h * 0.72, 520));
-      focusGlow.addColorStop(0, `rgba(${accent},0.04)`);
-      focusGlow.addColorStop(0.24, `rgba(${accent},0.026)`);
-      focusGlow.addColorStop(0.52, `rgba(${accent},0.012)`);
-      focusGlow.addColorStop(0.78, `rgba(${accent},0.004)`);
+      focusGlow.addColorStop(0, `rgba(${accent},${0.04 * glowBoost})`);
+      focusGlow.addColorStop(0.24, `rgba(${accent},${0.026 * glowBoost})`);
+      focusGlow.addColorStop(0.52, `rgba(${accent},${0.012 * glowBoost})`);
+      focusGlow.addColorStop(0.78, `rgba(${accent},${0.004 * glowBoost})`);
       focusGlow.addColorStop(1, `rgba(${accent},0)`);
       ctxS.fillStyle = focusGlow;
       ctxS.fillRect(0, 0, w, h);
 
       const bottomVignette = ctxS.createLinearGradient(0, h * 0.72, 0, h);
       bottomVignette.addColorStop(0, `rgba(${atmosphere},0)`);
-      bottomVignette.addColorStop(0.7, `rgba(${atmosphere},0.26)`);
-      bottomVignette.addColorStop(1, `rgba(${atmosphere},0.56)`);
+      bottomVignette.addColorStop(0.7, `rgba(${atmosphere},${lightMode ? 0.12 : 0.26})`);
+      bottomVignette.addColorStop(1, `rgba(${atmosphere},${lightMode ? 0.3 : 0.56})`);
       ctxS.fillStyle = bottomVignette;
       ctxS.fillRect(0, 0, w, h);
     };
@@ -262,15 +272,17 @@ export default function AuroraCanvas() {
       const cached = raySprites[bucket];
       if (cached) return cached;
       const bucketHue = BASE_HUE + ((bucket + 0.5) / HUE_BUCKETS) * RANGE_HUE;
+      const sat = Math.min(100, profile.saturation + (lightMode ? 16 : 0));
+      const lum = lightMode ? 55 : 66;
       const sprite = document.createElement("canvas");
       sprite.width = 1;
       sprite.height = 256;
       const sctx = sprite.getContext("2d");
       if (sctx) {
         const g = sctx.createLinearGradient(0, 0, 0, 256);
-        g.addColorStop(0, `hsla(${bucketHue}, ${profile.saturation}%, 66%, 0)`);
-        g.addColorStop(0.5, `hsla(${bucketHue}, ${profile.saturation}%, 66%, 1)`);
-        g.addColorStop(1, `hsla(${bucketHue}, ${profile.saturation}%, 66%, 0)`);
+        g.addColorStop(0, `hsla(${bucketHue}, ${sat}%, ${lum}%, 0)`);
+        g.addColorStop(0.5, `hsla(${bucketHue}, ${sat}%, ${lum}%, 1)`);
+        g.addColorStop(1, `hsla(${bucketHue}, ${sat}%, ${lum}%, 0)`);
         sctx.fillStyle = g;
         sctx.fillRect(0, 0, 1, 256);
       }
@@ -309,7 +321,8 @@ export default function AuroraCanvas() {
 
       ctxB.save();
       ctxB.filter = `blur(${profile.mainBlur}px)`;
-      ctxB.globalCompositeOperation = "lighter";
+      ctxB.globalCompositeOperation = lightMode ? "multiply" : "lighter";
+      if (lightMode) ctxB.globalAlpha = 0.62;
       ctxB.drawImage(raysLayer, 0, 0, w, h);
       ctxB.restore();
 
@@ -319,8 +332,8 @@ export default function AuroraCanvas() {
       ctxBloom.filter = "none";
 
       ctxB.save();
-      ctxB.globalAlpha = profile.bloomAlpha;
-      ctxB.globalCompositeOperation = "screen";
+      ctxB.globalAlpha = lightMode ? Math.min(0.34, profile.bloomAlpha + 0.1) : profile.bloomAlpha;
+      ctxB.globalCompositeOperation = lightMode ? "multiply" : "screen";
       ctxB.drawImage(bloomLayer, 0, 0, w, h);
       ctxB.restore();
     };
@@ -339,7 +352,7 @@ export default function AuroraCanvas() {
 
       tick++;
       ctxA.clearRect(0, 0, w, h);
-      ctxA.globalCompositeOperation = "lighter";
+      ctxA.globalCompositeOperation = lightMode ? "source-over" : "lighter";
       for (let i = 0; i < total; i += RAY_PROPS) {
         updateRay(i);
       }
@@ -384,6 +397,8 @@ export default function AuroraCanvas() {
     };
 
     const onThemeChange = () => {
+      lightMode = document.documentElement.classList.contains("light");
+      raySprites.fill(null);
       drawStaticBackground();
       composeFrame();
     };

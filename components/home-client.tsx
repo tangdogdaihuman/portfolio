@@ -14,7 +14,6 @@ import {
 } from "framer-motion";
 import type { Work } from "@/lib/types";
 import ThemeToggle from "@/components/theme-toggle";
-import GlassOrb from "@/components/glass-orb";
 import { EASE_OUT, SPRING_SOFT, Reveal } from "@/components/reveal";
 import { useActiveHomeSection, useHomeDataRefresh } from "@/components/home-hooks";
 
@@ -360,18 +359,6 @@ export default function HomeClient({
 
         <main className="relative">
           <section ref={heroRef} className="relative flex min-h-svh flex-col justify-center overflow-hidden px-5 md:px-12">
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute -right-28 top-[5%] z-0 md:-right-10 md:top-1/2 md:-translate-y-1/2"
-            >
-              <m.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 1.4, delay: 1.0, ease: EASE_OUT }}
-              >
-                <GlassOrb size={360} className="origin-center scale-[0.5] md:scale-100" />
-              </m.div>
-            </div>
             <m.div
               style={{ opacity: heroOpacity, scale: heroScale, filter: heroFilter }}
               className="relative z-10 mx-auto w-full max-w-6xl"
