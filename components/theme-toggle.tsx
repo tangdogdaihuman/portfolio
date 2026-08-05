@@ -1,38 +1,14 @@
 "use client";
 
-import { useSyncExternalStore, type MouseEvent } from "react";
+import type { MouseEvent } from "react";
 import { AnimatePresence, m } from "framer-motion";
-
-type Theme = "dark" | "light";
-
-const themeListeners = new Set<() => void>();
-
-function subscribeTheme(callback: () => void) {
-  themeListeners.add(callback);
-  return () => {
-    themeListeners.delete(callback);
-  };
-}
-
-function readTheme(): Theme {
-  return document.documentElement.classList.contains("light") ? "light" : "dark";
-}
-
-function writeTheme(theme: Theme) {
-  const root = document.documentElement;
-  root.classList.remove("light", "dark");
-  root.classList.add(theme);
-  try {
-    localStorage.setItem("theme", theme);
-  } catch {}
-  themeListeners.forEach((listener) => listener());
-}
+import { setResolvedTheme, useResolvedTheme } from "@/lib/theme-client";
 
 export default function ThemeToggle({ className = "" }: { className?: string }) {
-  const theme = useSyncExternalStore(subscribeTheme, readTheme, () => null);
+  const theme = useResolvedTheme();
 
   const toggle = (event: MouseEvent<HTMLButtonElement>) => {
-    const next: Theme = readTheme() === "dark" ? "light" : "dark";
+    const next = theme === "dark" ? "light" : "dark";
     const doc = document as Document & {
       startViewTransition?: (update: () => void) => void;
     };
@@ -43,11 +19,11 @@ export default function ThemeToggle({ className = "" }: { className?: string }) 
       root.style.setProperty("--vt-y", `${event.clientY}px`);
       root.classList.add("vt-theme");
       doc.startViewTransition(() => {
-        writeTheme(next);
+        setResolvedTheme(next);
       });
       window.setTimeout(() => root.classList.remove("vt-theme"), 900);
     } else {
-      writeTheme(next);
+      setResolvedTheme(next);
     }
   };
 
@@ -56,6 +32,8 @@ export default function ThemeToggle({ className = "" }: { className?: string }) 
       type="button"
       onClick={toggle}
       aria-label={theme === "dark" ? "切换为浅色模式" : "切换为深色模式"}
+      aria-pressed={theme === "dark"}
+      data-theme-toggle
       data-hover
       className={`glass-chip relative inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full text-text transition-transform duration-300 hover:scale-105 active:scale-95 ${className}`}
     >

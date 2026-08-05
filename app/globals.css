@@ -112,6 +112,12 @@ body {
   text-shadow: none;
 }
 
+@media (pointer: coarse) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
 ::selection {
   background: color-mix(in srgb, var(--color-accent) 82%, white);
   color: #fff;
@@ -123,44 +129,71 @@ body {
   border-radius: 6px;
 }
 
-.glass {
-  position: relative;
-  background: var(--glass-bg);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
-  backdrop-filter: blur(28px) saturate(180%);
-  border: 0.5px solid var(--glass-border);
-  box-shadow: inset 0 1px 0 0 var(--glass-inset), var(--glass-shadow);
-}
+@layer components {
+  .glass {
+    position: relative;
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    backdrop-filter: blur(28px) saturate(180%);
+    border: 0.5px solid var(--glass-border);
+    box-shadow: inset 0 1px 0 0 var(--glass-inset), var(--glass-shadow);
+  }
 
-.glass-strong {
-  position: relative;
-  background: var(--glass-bg-strong);
-  -webkit-backdrop-filter: blur(36px) saturate(190%);
-  backdrop-filter: blur(36px) saturate(190%);
-  border: 0.5px solid var(--glass-border);
-  box-shadow: inset 0 1px 0 0 var(--glass-inset), var(--glass-shadow);
-}
+  .glass-strong {
+    position: relative;
+    background: var(--glass-bg-strong);
+    -webkit-backdrop-filter: blur(36px) saturate(190%);
+    backdrop-filter: blur(36px) saturate(190%);
+    border: 0.5px solid var(--glass-border);
+    box-shadow: inset 0 1px 0 0 var(--glass-inset), var(--glass-shadow);
+  }
 
-.glass-chip {
-  background: var(--glass-chip-bg);
-  -webkit-backdrop-filter: blur(18px) saturate(160%);
-  backdrop-filter: blur(18px) saturate(160%);
-  border: 0.5px solid var(--glass-border);
-  box-shadow: inset 0 1px 0 0 var(--glass-inset);
-}
+  .glass-chip {
+    background: var(--glass-chip-bg);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    backdrop-filter: blur(18px) saturate(160%);
+    border: 0.5px solid var(--glass-border);
+    box-shadow: inset 0 1px 0 0 var(--glass-inset);
+  }
 
-.glass-solid {
-  position: relative;
-  background: color-mix(in srgb, var(--theme-bg) 80%, transparent);
-  -webkit-backdrop-filter: blur(40px) saturate(200%);
-  backdrop-filter: blur(40px) saturate(200%);
-  border: 0.5px solid var(--glass-border);
-  box-shadow: inset 0 1px 0 0 var(--glass-inset), var(--glass-shadow);
-}
+  .glass-solid {
+    position: relative;
+    background: color-mix(in srgb, var(--theme-bg) 80%, transparent);
+    -webkit-backdrop-filter: blur(40px) saturate(200%);
+    backdrop-filter: blur(40px) saturate(200%);
+    border: 0.5px solid var(--glass-border);
+    box-shadow: inset 0 1px 0 0 var(--glass-inset), var(--glass-shadow);
+  }
 
-.glass-refraction {
-  -webkit-backdrop-filter: var(--glass-filter, none) blur(1.5px) saturate(180%) brightness(1.06);
-  backdrop-filter: var(--glass-filter, none) blur(1.5px) saturate(180%) brightness(1.06);
+  .glass-refraction {
+    -webkit-backdrop-filter: var(--glass-filter, none) blur(1.5px) saturate(180%) brightness(1.06);
+    backdrop-filter: var(--glass-filter, none) blur(1.5px) saturate(180%) brightness(1.06);
+  }
+
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--theme-text) 6%, transparent);
+  }
+
+  @media (max-width: 768px) {
+    .glass {
+      -webkit-backdrop-filter: blur(16px) saturate(160%);
+      backdrop-filter: blur(16px) saturate(160%);
+    }
+    .glass-strong {
+      -webkit-backdrop-filter: blur(20px) saturate(170%);
+      backdrop-filter: blur(20px) saturate(170%);
+    }
+    .glass-solid {
+      -webkit-backdrop-filter: blur(22px) saturate(180%);
+      backdrop-filter: blur(22px) saturate(180%);
+    }
+    .glass-chip {
+      -webkit-backdrop-filter: blur(10px) saturate(150%);
+      backdrop-filter: blur(10px) saturate(150%);
+    }
+  }
 }
 
 .meta-label {
@@ -225,11 +258,6 @@ body {
   background: linear-gradient(to bottom, rgba(var(--atmosphere), 0) 0%, rgba(var(--atmosphere), 0.12) 68%, rgba(var(--atmosphere), 0.58) 100%);
 }
 
-.skeleton {
-  position: relative;
-  overflow: hidden;
-  background: color-mix(in srgb, var(--theme-text) 6%, transparent);
-}
 .skeleton::after {
   content: "";
   position: absolute;
@@ -280,6 +308,7 @@ body {
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--color-text);
+  transition: opacity 0.25s ease;
 }
 
 .bead-ring span {

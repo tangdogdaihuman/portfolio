@@ -12,6 +12,7 @@ declare global {
 export default function SmoothScroll() {
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (window.matchMedia("(pointer: coarse)").matches) return;
     const lenis = new Lenis({ lerp: 0.105, smoothWheel: true });
     window.__lenis = lenis;
 

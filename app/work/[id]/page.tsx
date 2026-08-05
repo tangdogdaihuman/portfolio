@@ -94,7 +94,7 @@ export default async function WorkDetailPage(
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="15 18 9 12 15 6" />
             </svg>
-            返回作品
+            返回作品集
           </Link>
           <span className="meta-label hidden min-w-0 flex-1 truncate text-center sm:block">{work.title}</span>
           <ThemeToggle />

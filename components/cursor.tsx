@@ -68,6 +68,7 @@ export default function GlassCursor() {
         ry = my;
       }
       cursor.style.opacity = "1";
+      ring.style.opacity = "1";
       const target = (event.target as HTMLElement).closest<HTMLElement>("[data-cursor], a, button");
       const nextLabel = target?.dataset.cursor ?? "";
       ringScaleTarget = target ? 1 : 0;
@@ -77,12 +78,14 @@ export default function GlassCursor() {
 
     const onLeave = () => {
       cursor.style.opacity = "0";
+      ring.style.opacity = "0";
       ringScaleTarget = 0;
       wake();
     };
 
     const onScroll = () => {
       cursor.style.opacity = "0";
+      ring.style.opacity = "0";
     };
 
     window.addEventListener("mousemove", onMove, { passive: true });
@@ -104,7 +107,7 @@ export default function GlassCursor() {
       <div
         ref={ringRef}
         className={`bead-ring ${label ? "bead-active" : ""}`}
-        style={{ transform: "translate3d(-100px, -100px, 0) scale(0)" }}
+        style={{ transform: "translate3d(-100px, -100px, 0) scale(0)", opacity: 0 }}
         aria-hidden="true"
       >
         <span>{label}</span>

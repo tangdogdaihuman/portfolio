@@ -68,11 +68,11 @@ test.describe("theme toggle", () => {
       await page.goto(baseURL ?? "/");
       const thumb = page.getByAltText(title).first();
       await expect.poll(() => thumb.evaluate((image) => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
-      await expect(thumb).toHaveClass(/work-thumb-ready/);
+      await expect(thumb).toHaveClass(/opacity-100/);
 
       await page.locator("[data-theme-toggle]:visible").click();
       await expect.poll(() => thumb.evaluate((image) => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
-      await expect(thumb).toHaveClass(/work-thumb-ready/);
+      await expect(thumb).toHaveClass(/opacity-100/);
     } finally {
       if (workId) await api.delete(`/api/works/${workId}`);
       await api.dispose();
@@ -91,7 +91,8 @@ test.describe("theme toggle", () => {
 
       Object.defineProperty(window, "__heroCanvasResetCount", { value: 0, writable: true });
 
-      const isHeroCanvas = (canvas: HTMLCanvasElement) => Boolean(canvas.closest(".hero-noise"));
+      const isHeroCanvas = (canvas: HTMLCanvasElement) =>
+        canvas.classList.contains("fixed") && canvas.classList.contains("inset-0");
 
       Object.defineProperty(HTMLCanvasElement.prototype, "width", {
         get: widthGet,
@@ -111,7 +112,7 @@ test.describe("theme toggle", () => {
     });
 
     await page.goto(baseURL ?? "/");
-    await expect(page.locator(".hero-noise canvas")).toBeVisible();
+    await expect(page.locator("canvas.fixed.inset-0")).toBeVisible();
     await page.waitForFunction(() => window.__heroCanvasResetCount > 0);
 
     const beforeToggle = await page.evaluate(() => window.__heroCanvasResetCount);

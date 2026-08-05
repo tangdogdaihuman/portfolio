@@ -588,7 +588,7 @@ export default function HomeClient({
               {loadingWorks ? (
                 <div className="grid grid-cols-1 gap-x-8 gap-y-12 md:grid-cols-12">
                   {[8, 4, 7, 5].map((span, i) => (
-                    <div key={i} className={`md:col-span-${span}`} style={{ gridColumn: `span ${Math.min(span, 12)} / span ${Math.min(span, 12)}` }}>
+                    <div key={i} className={span >= 8 ? "md:col-span-8" : span >= 7 ? "md:col-span-7" : span >= 5 ? "md:col-span-5" : "md:col-span-4"}>
                       <div className="skeleton h-72 rounded-[24px] md:h-96" />
                       <div className="skeleton mt-4 h-3 w-1/2 rounded-full" />
                     </div>
@@ -616,6 +616,7 @@ export default function HomeClient({
                     {sorted.map((work, i) => {
                       const weight = work.size_weight ?? 1;
                       const span = weight >= 1.5 ? 8 : weight >= 1 ? 7 : 5;
+                      const spanClass = span >= 8 ? "md:col-span-8" : span >= 7 ? "md:col-span-7" : "md:col-span-5";
                       return (
                         <m.div
                           key={work.id}
@@ -625,12 +626,7 @@ export default function HomeClient({
                           viewport={{ once: true, margin: "-40px" }}
                           exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.28, ease: "easeIn" } }}
                           transition={{ duration: 0.7, ease: EASE_OUT }}
-                          className={`md:col-span-12 ${i % 3 === 1 ? "md:mt-20" : i % 3 === 2 ? "md:mt-8" : ""}`}
-                          style={{ gridColumn: `span 12 / span 12` }}
-                          data-span={span}
-                          ref={(el) => {
-                            if (el) el.style.gridColumn = window.innerWidth >= 768 ? `span ${span} / span ${span}` : "span 12 / span 12";
-                          }}
+                          className={`${spanClass} ${i % 3 === 1 ? "md:mt-20" : i % 3 === 2 ? "md:mt-8" : ""}`}
                         >
                           <WorkCard work={work} index={i} priority={i < 3} />
                         </m.div>
