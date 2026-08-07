@@ -4,7 +4,7 @@ import { createId } from "@paralleldrive/cuid2";
 import { z } from "zod";
 import db from "@/lib/db";
 import { rateLimit, requireSameOrigin } from "@/lib/api-security";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, verifyAuthRequest } from "@/lib/auth";
 import { reportApiError } from "@/lib/monitoring";
 import { fail, ok } from "@/lib/api-response";
 import type { VisitStats } from "@/lib/types";
@@ -33,6 +33,10 @@ export async function POST(req: NextRequest) {
 
     const limited = await rateLimit(req, "visits.track", 30, 60_000);
     if (limited) return limited;
+
+    if (await verifyAuthRequest(req)) {
+      return ok({ tracked: false, reason: "admin" });
+    }
 
     const body = await req.json();
     const parsed = trackSchema.safeParse(body);
