@@ -7,6 +7,7 @@ import type { Work, WorkImage } from "@/lib/types";
 import WorkDetailGallery from "@/components/work-detail-gallery";
 import BackToTopButton from "@/components/back-to-top-button";
 import ThemeToggle from "@/components/theme-toggle";
+import VisitTracker from "@/components/visit-tracker";
 import { rowToWork, rowToWorkImage } from "@/lib/work-mappers";
 
 export const revalidate = 30;
@@ -84,6 +85,7 @@ export default async function WorkDetailPage(
 
   return (
     <main className="relative min-h-screen">
+      <VisitTracker />
       <header className="animate-fade-up fixed left-1/2 top-4 z-[70] w-[calc(100%-2rem)] max-w-3xl -translate-x-1/2">
         <nav className="glass-strong flex items-center justify-between gap-2 rounded-full py-1.5 pl-2 pr-1.5">
           <Link

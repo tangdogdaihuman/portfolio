@@ -13,10 +13,11 @@ import DetailSectionsEditor from "@/components/admin/detail-sections-editor";
 import EditWorkForm from "@/components/admin/edit-work-form";
 import IntroForm from "@/components/admin/intro-form";
 import StoragePanel from "@/components/admin/storage-panel";
+import VisitorsPanel from "@/components/admin/visitors-panel";
 import WorkList from "@/components/admin/work-list";
 import { createEmptyWorkFormState } from "@/components/admin/work-form-state";
 
-const MAIN_TABS = ["works", "add", "intro", "detail", "storage"] as const;
+const MAIN_TABS = ["works", "add", "intro", "detail", "visitors", "storage"] as const;
 
 type MainTab = typeof MAIN_TABS[number];
 type AdminTab = MainTab | "edit";
@@ -34,6 +35,7 @@ function getTabLabel(tab: MainTab) {
   if (tab === "add") return "新增作品";
   if (tab === "intro") return "个人介绍";
   if (tab === "detail") return "详细介绍";
+  if (tab === "visitors") return "访客";
   return "容量";
 }
 
@@ -322,6 +324,11 @@ export default function AdminPageClient() {
               }}
               showMsg={showMsg}
             />
+          </div>
+        )}
+        {tab === "visitors" && (
+          <div id="admin-panel-visitors" role="tabpanel" aria-labelledby="admin-tab-visitors" className="animate-fade-up">
+            <VisitorsPanel />
           </div>
         )}
         {tab === "storage" && (

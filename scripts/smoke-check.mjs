@@ -61,6 +61,10 @@ async function main() {
   assert.ok(setCookie, "Login should set admin cookie");
   const cookie = setCookie.split(";")[0];
 
+  const visitStats = await request("/api/visits", { headers: { Cookie: cookie } });
+  assert.equal(visitStats.res.status, 200, "GET /api/visits should return 200 for admin");
+  assert.ok(typeof visitStats.json?.totalVisits === "number", "Visit stats should include totalVisits");
+
   if (!allowAdminWrites) {
     const target = productionMode ? "production" : "remote";
     console.log(`smoke: public routes and admin login passed; ${target} admin CRUD skipped (set SMOKE_ALLOW_WRITES=1 to enable writes)`);
@@ -101,6 +105,13 @@ async function main() {
     headers: { Cookie: cookie },
   });
   assert.equal(removed.res.status, 200, "DELETE /api/works/:id should delete");
+
+  const tracked = await request("/api/visits", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path: "/", referrer: "" }),
+  });
+  assert.equal(tracked.res.status, 201, "POST /api/visits should record a visit");
 
   if (checkRateLimit) {
     let got429 = false;

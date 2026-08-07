@@ -2,6 +2,7 @@ import { unstable_cache } from "next/cache";
 import type { Section } from "@/lib/types";
 import db from "@/lib/db";
 import HomeClient from "@/components/home-client";
+import VisitTracker from "@/components/visit-tracker";
 import { rowToWork } from "@/lib/work-mappers";
 
 export const revalidate = 30;
@@ -37,5 +38,10 @@ const getData = unstable_cache(async () => {
 
 export default async function HomePage() {
   const { intro, tagline, works, sections, loadError } = await getData();
-  return <HomeClient initialIntro={intro} initialTagline={tagline} initialWorks={works} initialSections={sections} initialLoadError={loadError} />;
+  return (
+    <>
+      <VisitTracker />
+      <HomeClient initialIntro={intro} initialTagline={tagline} initialWorks={works} initialSections={sections} initialLoadError={loadError} />
+    </>
+  );
 }

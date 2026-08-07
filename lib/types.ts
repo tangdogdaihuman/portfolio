@@ -33,3 +33,34 @@ export interface Section {
   title: string;
   content: string;
 }
+
+export interface VisitDailyPoint {
+  date: string;
+  visits: number;
+  visitors: number;
+}
+
+export interface VisitTopPage {
+  path: string;
+  title: string;
+  visits: number;
+}
+
+export interface VisitRecord {
+  id: string;
+  path: string;
+  referrer: string;
+  userAgent: string;
+  createdAt: string;
+}
+
+export interface VisitStats {
+  totalVisits: number;
+  uniqueVisitors: number;
+  todayVisits: number;
+  todayVisitors: number;
+  weekVisits: number;
+  daily: VisitDailyPoint[];
+  topPages: VisitTopPage[];
+  recent: VisitRecord[];
+}

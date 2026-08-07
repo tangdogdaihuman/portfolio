@@ -86,6 +86,20 @@ export const BASE_SCHEMA_SQL = `
 
   CREATE INDEX IF NOT EXISTS idx_r2_delete_jobs_due
     ON r2_delete_jobs(next_run_at, attempts);
+
+  CREATE TABLE IF NOT EXISTS visits (
+    id TEXT PRIMARY KEY,
+    path TEXT NOT NULL DEFAULT '',
+    referrer TEXT NOT NULL DEFAULT '',
+    user_agent TEXT NOT NULL DEFAULT '',
+    ip_hash TEXT NOT NULL DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_visits_created_at
+    ON visits(created_at);
+  CREATE INDEX IF NOT EXISTS idx_visits_path_created
+    ON visits(path, created_at);
 `;
 
 export const COLUMN_PATCHES = [
@@ -104,6 +118,7 @@ export const RECORDED_MIGRATIONS = [
   "0003_indexes_and_audit_logs",
   "0004_r2_delete_retry_jobs",
   "0005_intro_tagline_and_work_software",
+  "0006_visits_table",
 ] as const;
 
 export async function addColumnIfMissing(
