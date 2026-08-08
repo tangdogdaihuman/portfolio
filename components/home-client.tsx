@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {
   AnimatePresence,
   LazyMotion,
@@ -18,6 +18,20 @@ import { EASE_OUT, SPRING_SOFT, Reveal } from "@/components/reveal";
 import { useActiveHomeSection, useHomeDataRefresh } from "@/components/home-hooks";
 
 const DEFAULT_TAGLINE = "Hard Surface / Stylized Character / Game Art";
+
+function subscribeCoarsePointer(callback: () => void) {
+  const mq = window.matchMedia("(pointer: coarse)");
+  mq.addEventListener("change", callback);
+  return () => mq.removeEventListener("change", callback);
+}
+
+function getCoarsePointerSnapshot() {
+  return window.matchMedia("(pointer: coarse)").matches;
+}
+
+function useCoarsePointer() {
+  return useSyncExternalStore(subscribeCoarsePointer, getCoarsePointerSnapshot, () => false);
+}
 
 type SortMode = "default" | "newest" | "oldest";
 
@@ -77,13 +91,13 @@ const SiteNav = memo(function SiteNav({
   ];
 
   return (
-    <m.header
-      initial={{ y: -64, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.9, delay: 0.2, ease: EASE_OUT }}
-      className="fixed top-4 left-1/2 z-[70] w-[calc(100%-2rem)] max-w-3xl -translate-x-1/2"
-    >
-      <nav className="glass-strong flex items-center justify-between gap-2 rounded-full py-1.5 pl-5 pr-1.5">
+    <header className="fixed top-4 left-1/2 z-[70] w-[calc(100%-2rem)] max-w-3xl -translate-x-1/2">
+      <m.nav
+        initial={{ y: -64, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.9, delay: 0.2, ease: EASE_OUT }}
+        className="glass-strong flex items-center justify-between gap-2 rounded-full py-1.5 pl-5 pr-1.5"
+      >
         <a href="#" data-hover className="font-display text-[0.95rem] tracking-wide text-text">
           TZH<span className="text-accent">.</span>
         </a>
@@ -132,7 +146,7 @@ const SiteNav = memo(function SiteNav({
             </svg>
           </button>
         </div>
-      </nav>
+      </m.nav>
       <AnimatePresence>
         {open && (
           <m.div
@@ -157,7 +171,7 @@ const SiteNav = memo(function SiteNav({
           </m.div>
         )}
       </AnimatePresence>
-    </m.header>
+    </header>
   );
 });
 
@@ -217,8 +231,8 @@ function WorkCard({ work, index, priority }: { work: Work; index: number; priori
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-black/0 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100"
         />
-        <div className="pointer-events-none absolute inset-x-4 bottom-4 translate-y-3 opacity-0 transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-y-0 group-hover:opacity-100">
-          <div className="glass-strong flex items-center justify-between gap-3 rounded-2xl px-4 py-3">
+        <div className="pointer-events-none absolute inset-x-4 bottom-4">
+          <div className="glass-strong flex translate-y-3 items-center justify-between gap-3 rounded-2xl px-4 py-3 opacity-0 transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-y-0 group-hover:opacity-100">
             <span className="truncate text-sm font-medium text-white">{work.title}</span>
             <span className="meta-label shrink-0 text-white/70!">查看 ↗</span>
           </div>
@@ -328,7 +342,9 @@ export default function HomeClient({
 
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>("default");
+  const [heroTitleSettled, setHeroTitleSettled] = useState(false);
   const heroRef = useRef<HTMLDivElement>(null);
+  const isCoarsePointer = useCoarsePointer();
 
   const tags = useMemo(() => [...new Set(works.flatMap((w) => w.tags))], [works]);
   const filtered = useMemo(
@@ -360,7 +376,7 @@ export default function HomeClient({
         <main className="relative">
           <section ref={heroRef} className="relative flex min-h-svh flex-col justify-center overflow-hidden px-5 md:px-12">
             <m.div
-              style={{ opacity: heroOpacity, scale: heroScale, filter: heroFilter }}
+              style={{ opacity: heroOpacity, scale: heroScale, filter: isCoarsePointer ? undefined : heroFilter }}
               className="relative z-10 mx-auto w-full max-w-6xl"
             >
               <div className="meta-label flex items-center justify-between gap-4 border-b border-border/50 pb-4">
@@ -381,7 +397,7 @@ export default function HomeClient({
               </div>
 
               <h1 className="mt-10 md:mt-14" aria-label="唐子航 Tang Zihang">
-                <span className="block overflow-hidden">
+                <span className={`block ${heroTitleSettled ? "" : "overflow-hidden"}`}>
                   <m.span
                     initial={{ y: "108%" }}
                     animate={{ y: 0 }}
@@ -391,11 +407,12 @@ export default function HomeClient({
                     唐子航
                   </m.span>
                 </span>
-                <span className="mt-2 block overflow-hidden">
+                <span className={`mt-2 block ${heroTitleSettled ? "" : "overflow-hidden"}`}>
                   <m.span
                     initial={{ y: "108%" }}
                     animate={{ y: 0 }}
                     transition={{ duration: 1.1, delay: 0.42, ease: EASE_OUT }}
+                    onAnimationComplete={() => setHeroTitleSettled(true)}
                     className="font-display block text-[clamp(1.6rem,4.6vw,3.4rem)] italic leading-[1.1] tracking-tight text-text-muted"
                   >
                     Tang Zihang<span className="not-italic text-accent"> — </span>CG Works
@@ -428,15 +445,13 @@ export default function HomeClient({
                 </div>
               )}
 
-              <m.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.95, ease: EASE_OUT }}
-                className="mt-10 flex flex-wrap items-center gap-3"
-              >
-                <a
+              <div className="mt-10 flex flex-wrap items-center gap-3">
+                <m.a
                   href="#works"
                   data-hover
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.95, ease: EASE_OUT }}
                   className="inline-flex min-h-12 items-center gap-2.5 rounded-full bg-accent px-7 text-[0.78rem] font-medium tracking-[0.14em] text-on-accent shadow-[0_14px_36px_-10px_color-mix(in_srgb,var(--color-accent)_55%,transparent)] transition-[transform,box-shadow] duration-400 hover:scale-[1.03] hover:shadow-[0_18px_44px_-10px_color-mix(in_srgb,var(--color-accent)_70%,transparent)] active:scale-[0.98]"
                 >
                   浏览作品
@@ -444,15 +459,18 @@ export default function HomeClient({
                     <line x1="5" y1="12" x2="19" y2="12" />
                     <polyline points="12 5 19 12 12 19" />
                   </svg>
-                </a>
-                <a
+                </m.a>
+                <m.a
                   href="#contact"
                   data-hover
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.95, ease: EASE_OUT }}
                   className="glass inline-flex min-h-12 items-center rounded-full px-7 text-[0.78rem] font-medium tracking-[0.14em] text-text transition-transform duration-400 hover:scale-[1.03] active:scale-[0.98]"
                 >
                   联系我
-                </a>
-              </m.div>
+                </m.a>
+              </div>
 
             </m.div>
 
@@ -525,8 +543,13 @@ export default function HomeClient({
             </Reveal>
 
             {tags.length > 0 && (
-              <Reveal delay={0.08}>
-                <div className="glass-solid sticky top-[10px] z-40 mt-9 flex flex-wrap items-center gap-2 rounded-[24px] p-2 md:rounded-full">
+              <m.div
+                initial={{ opacity: 0, y: 28 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-60px" }}
+                transition={{ duration: 0.85, delay: 0.08, ease: EASE_OUT }}
+                className="glass-solid sticky top-[10px] z-40 mt-9 flex flex-wrap items-center gap-2 rounded-[24px] p-2 md:rounded-full"
+              >
                   <div className="flex flex-wrap items-center gap-1.5">
                     <button
                       type="button"
@@ -580,8 +603,7 @@ export default function HomeClient({
                       </button>
                     ))}
                   </div>
-                </div>
-              </Reveal>
+              </m.div>
             )}
 
             <div className="mt-10 md:mt-14">
@@ -648,12 +670,16 @@ export default function HomeClient({
                 {detailSections.map((section, i) => {
                   const isOpen = expandedSection === section.id;
                   return (
-                    <Reveal key={section.id} delay={i * 0.05}>
-                      <div
-                        className={`glass overflow-hidden rounded-[28px] transition-[border-color] duration-500 ${
-                          isOpen ? "border-accent/35!" : ""
-                        }`}
-                      >
+                    <m.div
+                      key={section.id}
+                      initial={{ opacity: 0, y: 28 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true, margin: "-60px" }}
+                      transition={{ duration: 0.85, delay: i * 0.05, ease: EASE_OUT }}
+                      className={`glass overflow-hidden rounded-[28px] transition-[border-color] duration-500 ${
+                        isOpen ? "border-accent/35!" : ""
+                      }`}
+                    >
                         <button
                           type="button"
                           onClick={() => setExpandedSection(isOpen ? null : section.id)}
@@ -700,8 +726,7 @@ export default function HomeClient({
                             </m.div>
                           )}
                         </AnimatePresence>
-                      </div>
-                    </Reveal>
+                    </m.div>
                   );
                 })}
               </div>

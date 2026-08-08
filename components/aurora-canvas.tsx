@@ -68,8 +68,8 @@ function getPerformanceProfile() {
     reducedMotion,
     coarsePointer,
     lowEnd,
-    baseScale: lowEnd ? 0.86 : coarsePointer ? 0.6 : 1,
-    dynamicScale: lowEnd ? 0.72 : coarsePointer ? 0.5 : 0.96,
+    baseScale: lowEnd ? 0.5 : coarsePointer ? 0.45 : 1,
+    dynamicScale: lowEnd ? 0.7 : coarsePointer ? 0.5 : 0.96,
     targetFps: reducedMotion ? 0 : lowEnd ? 30 : coarsePointer ? 30 : 60,
     mainBlur: lowEnd ? 9 : coarsePointer ? 12 : 12,
     bloomBlur: lowEnd ? 16 : coarsePointer ? 18 : 20,
@@ -80,6 +80,11 @@ function getPerformanceProfile() {
     saturation: lowEnd ? 42 : coarsePointer ? 34 : 58,
   };
 }
+
+const LIGHT_SATURATION = 58;
+const LIGHT_LUMINANCE = 66;
+const LIGHT_MAIN_ALPHA = 0.6;
+const LIGHT_BLOOM_ALPHA = 0.28;
 
 function fadeInOut(t: number, m: number) {
   const hm = 0.5 * m;
@@ -182,6 +187,7 @@ export default function AuroraCanvas() {
     let lastFrameTs = 0;
     let lightMode = document.documentElement.classList.contains("light");
     const frameBudget = profile.targetFps > 0 ? 1000 / profile.targetFps : 1000 / 60;
+    const motionScale = profile.targetFps > 0 && profile.targetFps < 60 ? 60 / profile.targetFps : 1;
 
     function rand(r: number) {
       return Math.random() * r;
@@ -190,7 +196,7 @@ export default function AuroraCanvas() {
     const setCanvasResolution = () => {
       const dpr = window.devicePixelRatio || 1;
       baseRatio = Math.max(1, Math.min(dpr * profile.baseScale, 2));
-      effectRatio = Math.max(0.72, Math.min(baseRatio * profile.dynamicScale, baseRatio));
+      effectRatio = Math.max(0.35, Math.min(baseRatio * profile.dynamicScale, baseRatio));
 
       const pw = Math.max(1, Math.floor(w * baseRatio));
       const ph = Math.max(1, Math.floor(h * baseRatio));
@@ -232,7 +238,7 @@ export default function AuroraCanvas() {
       ctxS.fillStyle = bgGradient;
       ctxS.fillRect(0, 0, w, h);
 
-      const glowBoost = lightMode ? 1.8 : 1;
+      const glowBoost = lightMode ? 1.2 : 1;
       const focusGlow = ctxS.createRadialGradient(w * 0.5, h * 0.42, 0, w * 0.5, h * 0.42, Math.max(w * 0.58, h * 0.72, 520));
       focusGlow.addColorStop(0, `rgba(${accent},${0.04 * glowBoost})`);
       focusGlow.addColorStop(0.24, `rgba(${accent},${0.026 * glowBoost})`);
@@ -256,18 +262,19 @@ export default function AuroraCanvas() {
       const yBase = h * 0.5 + NOISE_STRENGTH;
       const y2Base = yBase - len;
       const n = noise3D(x * X_OFF, yBase * Y_OFF, tick * Z_OFF) * NOISE_STRENGTH;
-      const speed = (BASE_SPEED + rand(RANGE_SPEED)) * profile.speedQuality * (Math.round(rand(1)) ? 1 : -1);
+      const speed = (BASE_SPEED + rand(RANGE_SPEED)) * profile.speedQuality * motionScale * (Math.round(rand(1)) ? 1 : -1);
       const hueBase = lightMode ? LIGHT_HUE_BASE : BASE_HUE;
       const hueRange = lightMode ? LIGHT_HUE_RANGE : RANGE_HUE;
       const hue = hueBase + rand(hueRange);
       const rayWidth = lightMode
         ? (BASE_WIDTH + rand(RANGE_WIDTH)) * 2.1
         : BASE_WIDTH + rand(RANGE_WIDTH);
-      props.set([x, yBase + n, y2Base + n, 0, BASE_TTL + rand(RANGE_TTL), rayWidth, speed, hue], i);
+      props.set([x, yBase + n, y2Base + n, 0, (BASE_TTL + rand(RANGE_TTL)) / motionScale, rayWidth, speed, hue], i);
     };
 
     const rebuildRays = () => {
-      rayCount = Math.max(96, Math.floor(Math.min(RAY_COUNT, (w / 2.8) * profile.rayQuality)));
+      const densityQuality = lightMode ? 1 : profile.rayQuality;
+      rayCount = Math.max(96, Math.floor(Math.min(RAY_COUNT, (w / 2.8) * densityQuality)));
       total = rayCount * RAY_PROPS;
       props = new Float32Array(total);
       for (let i = 0; i < total; i += RAY_PROPS) initRay(i);
@@ -282,8 +289,8 @@ export default function AuroraCanvas() {
       const cached = raySprites[bucket];
       if (cached) return cached;
       const bucketHue = hueBase + ((bucket + 0.5) / HUE_BUCKETS) * hueRange;
-      const sat = lightMode ? Math.min(92, profile.saturation + 30) : profile.saturation;
-      const lum = lightMode ? 52 : 66;
+      const sat = lightMode ? LIGHT_SATURATION : profile.saturation;
+      const lum = lightMode ? LIGHT_LUMINANCE : 66;
       const sprite = document.createElement("canvas");
       sprite.width = 1;
       sprite.height = 256;
@@ -308,7 +315,7 @@ export default function AuroraCanvas() {
       const ttl = props[i + 4];
       const width = props[i + 5];
       const hue = props[i + 7];
-      const a = fadeInOut(life, ttl) * 0.44 * profile.alphaQuality;
+      const a = fadeInOut(life, ttl) * 0.44 * (lightMode ? 1 : profile.alphaQuality);
 
       ctxA.globalAlpha = a;
       ctxA.drawImage(getRaySprite(hue), x - width / 2, y2, width, Math.max(1, y1 - y2));
@@ -332,7 +339,7 @@ export default function AuroraCanvas() {
       ctxB.save();
       ctxB.filter = `blur(${profile.mainBlur}px)`;
       ctxB.globalCompositeOperation = lightMode ? "multiply" : "lighter";
-      if (lightMode) ctxB.globalAlpha = 0.78;
+      if (lightMode) ctxB.globalAlpha = LIGHT_MAIN_ALPHA;
       ctxB.drawImage(raysLayer, 0, 0, w, h);
       ctxB.restore();
 
@@ -342,7 +349,7 @@ export default function AuroraCanvas() {
       ctxBloom.filter = "none";
 
       ctxB.save();
-      ctxB.globalAlpha = lightMode ? 0.45 : profile.bloomAlpha;
+      ctxB.globalAlpha = lightMode ? LIGHT_BLOOM_ALPHA : profile.bloomAlpha;
       ctxB.globalCompositeOperation = lightMode ? "multiply" : "screen";
       ctxB.drawImage(bloomLayer, 0, 0, w, h);
       ctxB.restore();
@@ -360,7 +367,7 @@ export default function AuroraCanvas() {
       }
       lastFrameTs = ts;
 
-      tick++;
+      tick += motionScale;
       ctxA.clearRect(0, 0, w, h);
       ctxA.globalCompositeOperation = lightMode ? "source-over" : "lighter";
       for (let i = 0; i < total; i += RAY_PROPS) {
@@ -437,5 +444,11 @@ export default function AuroraCanvas() {
 
   if (useCssFallback) return <CssAurora />;
 
-  return <canvas ref={canvasRef} className="fixed inset-0 -z-10 h-full w-full pointer-events-none" />;
+  return (
+    <canvas
+      ref={canvasRef}
+      className="fixed inset-0 -z-10 h-full w-full pointer-events-none"
+      style={{ height: "100lvh" }}
+    />
+  );
 }
