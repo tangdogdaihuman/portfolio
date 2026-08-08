@@ -396,13 +396,16 @@ export default function HomeClient({
                 </m.span>
               </div>
 
-              <h1 className="mt-10 md:mt-14" aria-label="唐子航 Tang Zihang">
+              <h1
+                className={`hero-title mt-10 md:mt-14 ${heroTitleSettled ? "" : "is-revealing"}`}
+                aria-label="唐子航 Tang Zihang"
+              >
                 <span className={`block ${heroTitleSettled ? "" : "overflow-hidden"}`}>
                   <m.span
                     initial={{ y: "108%" }}
                     animate={{ y: 0 }}
                     transition={{ duration: 1.1, delay: 0.3, ease: EASE_OUT }}
-                    className="font-display-sc block text-[clamp(3.4rem,11vw,8.5rem)] leading-[1.04] text-text"
+                    className="hero-title-line font-display-sc block text-[clamp(3.4rem,11vw,8.5rem)] leading-[1.04] text-text"
                   >
                     唐子航
                   </m.span>
@@ -413,7 +416,7 @@ export default function HomeClient({
                     animate={{ y: 0 }}
                     transition={{ duration: 1.1, delay: 0.42, ease: EASE_OUT }}
                     onAnimationComplete={() => setHeroTitleSettled(true)}
-                    className="font-display block text-[clamp(1.6rem,4.6vw,3.4rem)] italic leading-[1.1] tracking-tight text-text-muted"
+                    className="hero-title-line font-display block text-[clamp(1.6rem,4.6vw,3.4rem)] italic leading-[1.1] tracking-tight text-text-muted"
                   >
                     Tang Zihang<span className="not-italic text-accent"> — </span>CG Works
                   </m.span>
@@ -548,7 +551,7 @@ export default function HomeClient({
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-60px" }}
                 transition={{ duration: 0.85, delay: 0.08, ease: EASE_OUT }}
-                className="glass-solid sticky top-[10px] z-40 mt-9 flex flex-wrap items-center gap-2 rounded-[24px] p-2 md:rounded-full"
+                className="glass-solid sticky top-[80px] z-40 mt-9 flex flex-wrap items-center gap-2 rounded-[24px] p-2 md:rounded-full"
               >
                   <div className="flex flex-wrap items-center gap-1.5">
                     <button

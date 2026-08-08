@@ -66,6 +66,8 @@ export default function RootLayout({
   return (
     <html lang="zh-CN" className={`${anton.variable} ${spaceGrotesk.variable} ${jbMono.variable} ${zcoolXiaoWei.variable}`} suppressHydrationWarning>
       <head>
+        <meta name="color-scheme" content="light dark" />
+        <meta name="nightmode" content="disable" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* eslint-disable-next-line @next/next/no-page-custom-font */}
