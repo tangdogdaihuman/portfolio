@@ -1,4 +1,4 @@
-import { createNoise3D } from "simplex-noise";
+"use strict";
 
 const RAY_COUNT = 500;
 const RAY_PROPS = 8;
@@ -24,63 +24,63 @@ const LIGHT_LUMINANCE = 66;
 const LIGHT_MAIN_ALPHA = 0.6;
 const LIGHT_BLOOM_ALPHA = 0.28;
 
-export type AuroraProfile = {
-  reducedMotion: boolean;
-  coarsePointer: boolean;
-  lowEnd: boolean;
-  baseScale: number;
-  dynamicScale: number;
-  targetFps: number;
-  mainBlur: number;
-  bloomBlur: number;
-  bloomAlpha: number;
-  rayQuality: number;
-  speedQuality: number;
-  alphaQuality: number;
-  saturation: number;
-};
+const perm = new Uint8Array(512);
+(function seedNoise() {
+  const p = new Uint8Array(256);
+  for (let i = 0; i < 256; i++) p[i] = i;
+  for (let i = 255; i > 0; i--) {
+    const j = (Math.random() * (i + 1)) | 0;
+    const t = p[i];
+    p[i] = p[j];
+    p[j] = t;
+  }
+  for (let i = 0; i < 512; i++) perm[i] = p[i & 255];
+})();
 
-export type AuroraPalette = { atmosphere: string; accent: string };
+function fadeNoise(t) {
+  return t * t * t * (t * (t * 6 - 15) + 10);
+}
 
-export type AuroraWorkerMessage =
-  | {
-      type: "init";
-      canvas: OffscreenCanvas;
-      width: number;
-      height: number;
-      dpr: number;
-      light: boolean;
-      palette: AuroraPalette;
-      profile: AuroraProfile;
-    }
-  | { type: "resize"; width: number; height: number; dpr: number }
-  | { type: "theme"; light: boolean; palette: AuroraPalette }
-  | { type: "hidden"; hidden: boolean }
-  | { type: "degrade"; level: number };
+function lerpNoise(a, b, t) {
+  return a + (b - a) * t;
+}
 
-function fadeInOut(t: number, m: number) {
+function cornerNoise(ix, iy, iz) {
+  return (perm[perm[perm[ix & 255] + (iy & 255)] + (iz & 255)] & 255) / 127.5 - 1;
+}
+
+function noise3D(x, y, z) {
+  const xi = Math.floor(x);
+  const yi = Math.floor(y);
+  const zi = Math.floor(z);
+  const u = fadeNoise(x - xi);
+  const v = fadeNoise(y - yi);
+  const w = fadeNoise(z - zi);
+  const x1 = lerpNoise(cornerNoise(xi, yi, zi), cornerNoise(xi + 1, yi, zi), u);
+  const x2 = lerpNoise(cornerNoise(xi, yi + 1, zi), cornerNoise(xi + 1, yi + 1, zi), u);
+  const x3 = lerpNoise(cornerNoise(xi, yi, zi + 1), cornerNoise(xi + 1, yi, zi + 1), u);
+  const x4 = lerpNoise(cornerNoise(xi, yi + 1, zi + 1), cornerNoise(xi + 1, yi + 1, zi + 1), u);
+  return lerpNoise(lerpNoise(x1, x2, v), lerpNoise(x3, x4, v), w);
+}
+
+function fadeInOut(t, m) {
   const hm = 0.5 * m;
   return Math.abs(((t + hm) % m) - hm) / hm;
 }
 
-function rand(r: number) {
+function rand(r) {
   return Math.random() * r;
 }
 
-const postToMain = (msg: unknown) => {
-  (self as unknown as Worker).postMessage(msg);
-};
+function postToMain(msg) {
+  self.postMessage(msg);
+}
 
-type Renderer = {
-  resize: (width: number, height: number, dpr: number) => void;
-  setTheme: (light: boolean, palette: AuroraPalette) => void;
-  setHidden: (hidden: boolean) => void;
-  degrade: (level: number) => void;
-};
+let renderer = null;
 
-function createRenderer(init: Extract<AuroraWorkerMessage, { type: "init" }>): Renderer | null {
+function createRenderer(init) {
   const canvas = init.canvas;
-  const ctxB = canvas.getContext("2d", { alpha: false, desynchronized: true });
+  const ctxB = canvas.getContext("2d", { desynchronized: true });
   if (!ctxB) return null;
 
   const profile = init.profile;
@@ -91,8 +91,6 @@ function createRenderer(init: Extract<AuroraWorkerMessage, { type: "init" }>): R
   const ctxS = staticLayer.getContext("2d");
   const ctxBloom = bloomLayer.getContext("2d");
   if (!ctxA || !ctxS || !ctxBloom) return null;
-
-  const noise3D = createNoise3D();
 
   let w = Math.max(1, init.width);
   let h = Math.max(1, init.height);
@@ -109,18 +107,18 @@ function createRenderer(init: Extract<AuroraWorkerMessage, { type: "init" }>): R
   let props = new Float32Array(0);
   let tick = 0;
   let frameCounter = 0;
-  let timer: ReturnType<typeof setTimeout> | null = null;
+  let timer = null;
   let running = false;
   let budget = 1000 / 24;
   let motionScale = 2.5;
 
-  const applyTiming = () => {
+  function applyTiming() {
     const fps = profile.targetFps > 0 ? profile.targetFps : 60;
     budget = 1000 / fps;
     motionScale = fps < 60 ? 60 / fps : 1;
-  };
+  }
 
-  const setCanvasResolution = () => {
+  function setCanvasResolution() {
     baseRatio = Math.max(1, Math.min(dpr * profile.baseScale, 2));
     effectRatio = Math.max(0.35, Math.min(baseRatio * profile.dynamicScale * degradeScale, baseRatio));
 
@@ -141,48 +139,49 @@ function createRenderer(init: Extract<AuroraWorkerMessage, { type: "init" }>): R
     ctxB.setTransform(baseRatio, 0, 0, baseRatio, 0, 0);
     ctxA.setTransform(effectRatio, 0, 0, effectRatio, 0, 0);
     ctxS.setTransform(baseRatio, 0, 0, baseRatio, 0, 0);
-  };
+  }
 
-  const drawStaticBackground = () => {
+  function drawStaticBackground() {
     ctxS.clearRect(0, 0, w, h);
-    const { atmosphere, accent } = palette;
+    const atmosphere = palette.atmosphere;
+    const accent = palette.accent;
 
     const bgGradient = ctxS.createLinearGradient(0, 0, 0, h);
     if (lightMode) {
-      bgGradient.addColorStop(0, `rgba(${atmosphere},0.5)`);
-      bgGradient.addColorStop(0.45, `rgba(${atmosphere},0.3)`);
-      bgGradient.addColorStop(0.9, `rgba(${atmosphere},0.12)`);
-      bgGradient.addColorStop(0.97, `rgba(${atmosphere},0.04)`);
-      bgGradient.addColorStop(1, `rgba(${atmosphere},0)`);
+      bgGradient.addColorStop(0, "rgba(" + atmosphere + ",0.5)");
+      bgGradient.addColorStop(0.45, "rgba(" + atmosphere + ",0.3)");
+      bgGradient.addColorStop(0.9, "rgba(" + atmosphere + ",0.12)");
+      bgGradient.addColorStop(0.97, "rgba(" + atmosphere + ",0.04)");
+      bgGradient.addColorStop(1, "rgba(" + atmosphere + ",0)");
     } else {
-      bgGradient.addColorStop(0, `rgba(${atmosphere},0.9)`);
-      bgGradient.addColorStop(0.45, `rgba(${atmosphere},0.72)`);
-      bgGradient.addColorStop(0.9, `rgba(${atmosphere},0.42)`);
-      bgGradient.addColorStop(0.97, `rgba(${atmosphere},0.12)`);
-      bgGradient.addColorStop(1, `rgba(${atmosphere},0)`);
+      bgGradient.addColorStop(0, "rgba(" + atmosphere + ",0.9)");
+      bgGradient.addColorStop(0.45, "rgba(" + atmosphere + ",0.72)");
+      bgGradient.addColorStop(0.9, "rgba(" + atmosphere + ",0.42)");
+      bgGradient.addColorStop(0.97, "rgba(" + atmosphere + ",0.12)");
+      bgGradient.addColorStop(1, "rgba(" + atmosphere + ",0)");
     }
     ctxS.fillStyle = bgGradient;
     ctxS.fillRect(0, 0, w, h);
 
     const glowBoost = lightMode ? 1.2 : 1;
     const focusGlow = ctxS.createRadialGradient(w * 0.5, h * 0.42, 0, w * 0.5, h * 0.42, Math.max(w * 0.58, h * 0.72, 520));
-    focusGlow.addColorStop(0, `rgba(${accent},${0.04 * glowBoost})`);
-    focusGlow.addColorStop(0.24, `rgba(${accent},${0.026 * glowBoost})`);
-    focusGlow.addColorStop(0.52, `rgba(${accent},${0.012 * glowBoost})`);
-    focusGlow.addColorStop(0.78, `rgba(${accent},${0.004 * glowBoost})`);
-    focusGlow.addColorStop(1, `rgba(${accent},0)`);
+    focusGlow.addColorStop(0, "rgba(" + accent + "," + 0.04 * glowBoost + ")");
+    focusGlow.addColorStop(0.24, "rgba(" + accent + "," + 0.026 * glowBoost + ")");
+    focusGlow.addColorStop(0.52, "rgba(" + accent + "," + 0.012 * glowBoost + ")");
+    focusGlow.addColorStop(0.78, "rgba(" + accent + "," + 0.004 * glowBoost + ")");
+    focusGlow.addColorStop(1, "rgba(" + accent + ",0)");
     ctxS.fillStyle = focusGlow;
     ctxS.fillRect(0, 0, w, h);
 
     const bottomVignette = ctxS.createLinearGradient(0, h * 0.72, 0, h);
-    bottomVignette.addColorStop(0, `rgba(${atmosphere},0)`);
-    bottomVignette.addColorStop(0.7, `rgba(${atmosphere},${lightMode ? 0.12 : 0.26})`);
-    bottomVignette.addColorStop(1, `rgba(${atmosphere},${lightMode ? 0.3 : 0.56})`);
+    bottomVignette.addColorStop(0, "rgba(" + atmosphere + ",0)");
+    bottomVignette.addColorStop(0.7, "rgba(" + atmosphere + "," + (lightMode ? 0.12 : 0.26) + ")");
+    bottomVignette.addColorStop(1, "rgba(" + atmosphere + "," + (lightMode ? 0.3 : 0.56) + ")");
     ctxS.fillStyle = bottomVignette;
     ctxS.fillRect(0, 0, w, h);
-  };
+  }
 
-  const initRay = (i: number) => {
+  function initRay(i) {
     const x = rand(w);
     const len = BASE_LEN + rand(RANGE_LEN);
     const yBase = h * 0.5 + NOISE_STRENGTH;
@@ -196,19 +195,20 @@ function createRenderer(init: Extract<AuroraWorkerMessage, { type: "init" }>): R
       ? (BASE_WIDTH + rand(RANGE_WIDTH)) * 2.1
       : BASE_WIDTH + rand(RANGE_WIDTH);
     props.set([x, yBase + n, y2Base + n, 0, (BASE_TTL + rand(RANGE_TTL)) / motionScale, rayWidth, speed, hue], i);
-  };
+  }
 
-  const rebuildRays = () => {
+  function rebuildRays() {
     const densityQuality = lightMode ? 1 : profile.rayQuality;
     rayCount = Math.max(96, Math.floor(Math.min(RAY_COUNT, (w / 2.8) * densityQuality)));
     total = rayCount * RAY_PROPS;
     props = new Float32Array(total);
     for (let i = 0; i < total; i += RAY_PROPS) initRay(i);
-  };
+  }
 
   const HUE_BUCKETS = 8;
-  const raySprites: Array<OffscreenCanvas | null> = new Array(HUE_BUCKETS).fill(null);
-  const getRaySprite = (hue: number) => {
+  const raySprites = new Array(HUE_BUCKETS).fill(null);
+
+  function getRaySprite(hue) {
     const hueBase = lightMode ? LIGHT_HUE_BASE : BASE_HUE;
     const hueRange = lightMode ? LIGHT_HUE_RANGE : RANGE_HUE;
     const bucket = Math.max(0, Math.min(HUE_BUCKETS - 1, Math.floor(((hue - hueBase) / hueRange) * HUE_BUCKETS)));
@@ -221,17 +221,17 @@ function createRenderer(init: Extract<AuroraWorkerMessage, { type: "init" }>): R
     const sctx = sprite.getContext("2d");
     if (sctx) {
       const g = sctx.createLinearGradient(0, 0, 0, 256);
-      g.addColorStop(0, `hsla(${bucketHue}, ${sat}%, ${lum}%, 0)`);
-      g.addColorStop(0.5, `hsla(${bucketHue}, ${sat}%, ${lum}%, 1)`);
-      g.addColorStop(1, `hsla(${bucketHue}, ${sat}%, ${lum}%, 0)`);
+      g.addColorStop(0, "hsla(" + bucketHue + ", " + sat + "%, " + lum + "%, 0)");
+      g.addColorStop(0.5, "hsla(" + bucketHue + ", " + sat + "%, " + lum + "%, 1)");
+      g.addColorStop(1, "hsla(" + bucketHue + ", " + sat + "%, " + lum + "%, 0)");
       sctx.fillStyle = g;
       sctx.fillRect(0, 0, 1, 256);
     }
     raySprites[bucket] = sprite;
     return sprite;
-  };
+  }
 
-  const drawRay = (i: number) => {
+  function drawRay(i) {
     const x = props[i];
     const y1 = props[i + 1];
     const y2 = props[i + 2];
@@ -243,9 +243,9 @@ function createRenderer(init: Extract<AuroraWorkerMessage, { type: "init" }>): R
 
     ctxA.globalAlpha = a;
     ctxA.drawImage(getRaySprite(hue), x - width / 2, y2, width, Math.max(1, y1 - y2));
-  };
+  }
 
-  const updateRay = (i: number) => {
+  function updateRay(i) {
     drawRay(i);
     const oldX = props[i];
     const life = props[i + 3] + 1;
@@ -254,22 +254,21 @@ function createRenderer(init: Extract<AuroraWorkerMessage, { type: "init" }>): R
     if (oldX < -50 || oldX > w + 50 || life > props[i + 4]) {
       initRay(i);
     }
-  };
+  }
 
-  const composeFrame = () => {
-    ctxB.fillStyle = `rgb(${palette.atmosphere})`;
-    ctxB.fillRect(0, 0, w, h);
+  function composeFrame() {
+    ctxB.clearRect(0, 0, w, h);
     ctxB.drawImage(staticLayer, 0, 0, w, h);
 
     ctxB.save();
-    if (profile.mainBlur > 0) ctxB.filter = `blur(${profile.mainBlur}px)`;
+    if (profile.mainBlur > 0) ctxB.filter = "blur(" + profile.mainBlur + "px)";
     ctxB.globalCompositeOperation = lightMode ? "multiply" : "lighter";
     if (lightMode) ctxB.globalAlpha = LIGHT_MAIN_ALPHA;
     ctxB.drawImage(raysLayer, 0, 0, w, h);
     ctxB.restore();
 
     ctxBloom.clearRect(0, 0, bloomLayer.width, bloomLayer.height);
-    ctxBloom.filter = `blur(${Math.max(2, profile.bloomBlur * 0.5)}px)`;
+    ctxBloom.filter = "blur(" + Math.max(2, profile.bloomBlur * 0.5) + "px)";
     ctxBloom.drawImage(raysLayer, 0, 0, bloomLayer.width, bloomLayer.height);
     ctxBloom.filter = "none";
 
@@ -278,9 +277,9 @@ function createRenderer(init: Extract<AuroraWorkerMessage, { type: "init" }>): R
     ctxB.globalCompositeOperation = lightMode ? "multiply" : "screen";
     ctxB.drawImage(bloomLayer, 0, 0, w, h);
     ctxB.restore();
-  };
+  }
 
-  const renderFrame = () => {
+  function renderFrame() {
     tick += motionScale;
     ctxA.clearRect(0, 0, w, h);
     ctxA.globalCompositeOperation = lightMode ? "source-over" : "lighter";
@@ -292,9 +291,9 @@ function createRenderer(init: Extract<AuroraWorkerMessage, { type: "init" }>): R
     composeFrame();
     frameCounter += 1;
     if (frameCounter % 24 === 0) postToMain({ type: "frame", tick: frameCounter });
-  };
+  }
 
-  const step = () => {
+  function step() {
     timer = null;
     if (hidden) {
       running = false;
@@ -307,13 +306,13 @@ function createRenderer(init: Extract<AuroraWorkerMessage, { type: "init" }>): R
     }
     running = true;
     timer = setTimeout(step, budget);
-  };
+  }
 
-  const runIfNeeded = () => {
+  function runIfNeeded() {
     if (running || hidden) return;
     running = true;
     timer = setTimeout(step, budget);
-  };
+  }
 
   applyTiming();
   setCanvasResolution();
@@ -380,25 +379,23 @@ function createRenderer(init: Extract<AuroraWorkerMessage, { type: "init" }>): R
   };
 }
 
-let renderer: Renderer | null = null;
-
-self.onmessage = (event: MessageEvent) => {
-  const data = event.data as AuroraWorkerMessage;
+self.onmessage = function (event) {
+  const data = event.data;
   switch (data.type) {
     case "init":
       renderer = createRenderer(data);
       break;
     case "resize":
-      renderer?.resize(data.width, data.height, data.dpr);
+      if (renderer) renderer.resize(data.width, data.height, data.dpr);
       break;
     case "theme":
-      renderer?.setTheme(data.light, data.palette);
+      if (renderer) renderer.setTheme(data.light, data.palette);
       break;
     case "hidden":
-      renderer?.setHidden(data.hidden);
+      if (renderer) renderer.setHidden(data.hidden);
       break;
     case "degrade":
-      renderer?.degrade(data.level);
+      if (renderer) renderer.degrade(data.level);
       break;
   }
 };

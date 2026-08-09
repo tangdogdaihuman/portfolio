@@ -551,7 +551,7 @@ export default function HomeClient({
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-60px" }}
                 transition={{ duration: 0.85, delay: 0.08, ease: EASE_OUT }}
-                className="glass-solid sticky top-[80px] z-40 mt-9 flex flex-wrap items-center gap-2 rounded-[24px] p-2 md:rounded-full"
+                className="glass-solid relative z-40 mt-9 flex flex-wrap items-center gap-2 rounded-[24px] p-2 md:rounded-full"
               >
                   <div className="flex flex-wrap items-center gap-1.5">
                     <button

@@ -3,7 +3,6 @@
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import { createNoise3D } from "simplex-noise";
 import { subscribeResolvedTheme } from "@/lib/theme-client";
-import type { AuroraProfile } from "@/components/aurora-worker";
 
 const RAY_COUNT = 500;
 const RAY_PROPS = 8;
@@ -66,10 +65,14 @@ function supportsWorkerCanvas() {
   );
 }
 
-function startWorkerRenderer(canvas: HTMLCanvasElement, profile: AuroraProfile) {
+function startWorkerRenderer(
+  canvas: HTMLCanvasElement,
+  profile: ReturnType<typeof getPerformanceProfile>,
+  onFail: () => void
+) {
   let worker: Worker;
   try {
-    worker = new Worker(new URL("./aurora-worker.ts", import.meta.url));
+    worker = new Worker("/aurora-worker.js");
   } catch {
     return null;
   }
@@ -81,6 +84,32 @@ function startWorkerRenderer(canvas: HTMLCanvasElement, profile: AuroraProfile) 
     return null;
   }
 
+  let stopped = false;
+  let failed = false;
+  let gotFrame = false;
+  let monitorRaf = 0;
+  let degradeLevel = 0;
+  let frames = 0;
+  let windowStart = performance.now();
+
+  const cleanupSelf = () => {
+    if (stopped) return;
+    stopped = true;
+    clearTimeout(watchdog);
+    cancelAnimationFrame(monitorRaf);
+    resizeObserver.disconnect();
+    document.removeEventListener("visibilitychange", onVisibilityChange);
+    unsubscribeTheme();
+    worker.terminate();
+  };
+
+  const fail = () => {
+    if (failed) return;
+    failed = true;
+    cleanupSelf();
+    onFail();
+  };
+
   const postTheme = () => {
     worker.postMessage({
       type: "theme",
@@ -89,9 +118,11 @@ function startWorkerRenderer(canvas: HTMLCanvasElement, profile: AuroraProfile) 
     });
   };
 
+  worker.onerror = () => fail();
   worker.onmessage = (event: MessageEvent) => {
     const data = event.data as { type?: string; tick?: number };
     if (data?.type === "frame" && typeof data.tick === "number") {
+      gotFrame = true;
       canvas.dataset.auroraFrame = String(data.tick);
     }
   };
@@ -127,11 +158,10 @@ function startWorkerRenderer(canvas: HTMLCanvasElement, profile: AuroraProfile) 
   document.addEventListener("visibilitychange", onVisibilityChange);
   const unsubscribeTheme = subscribeResolvedTheme(postTheme);
 
-  let stopped = false;
-  let degradeLevel = 0;
-  let frames = 0;
-  let windowStart = performance.now();
-  let monitorRaf = 0;
+  const watchdog = setTimeout(() => {
+    if (!gotFrame) fail();
+  }, 2500);
+
   const monitor = (ts: number) => {
     if (stopped) return;
     frames += 1;
@@ -149,14 +179,7 @@ function startWorkerRenderer(canvas: HTMLCanvasElement, profile: AuroraProfile) 
   };
   monitorRaf = requestAnimationFrame(monitor);
 
-  return () => {
-    stopped = true;
-    cancelAnimationFrame(monitorRaf);
-    resizeObserver.disconnect();
-    document.removeEventListener("visibilitychange", onVisibilityChange);
-    unsubscribeTheme();
-    worker.terminate();
-  };
+  return cleanupSelf;
 }
 
 function getPerformanceProfile() {
@@ -265,21 +288,17 @@ export default function AuroraCanvas() {
 
     const profile = getPerformanceProfile();
 
-    if (profile.coarsePointer && supportsWorkerCanvas()) {
-      const workerCleanup = startWorkerRenderer(visible, profile);
-      if (workerCleanup) return workerCleanup;
-    }
-
-    const ctxB = visible.getContext("2d");
-    if (!ctxB) return;
-
+    const startMain = (target: HTMLCanvasElement) => {
+      const visible = target;
+      const ctxB = visible.getContext("2d");
+      if (!ctxB) return () => {};
     const raysLayer = document.createElement("canvas");
     const staticLayer = document.createElement("canvas");
     const bloomLayer = document.createElement("canvas");
     const ctxA = raysLayer.getContext("2d");
     const ctxS = staticLayer.getContext("2d");
     const ctxBloom = bloomLayer.getContext("2d");
-    if (!ctxA || !ctxS || !ctxBloom) return;
+    if (!ctxA || !ctxS || !ctxBloom) return () => {};
 
     const noise3D = createNoise3D();
 
@@ -549,6 +568,24 @@ export default function AuroraCanvas() {
       document.removeEventListener("visibilitychange", onVisibilityChange);
       unsubscribeTheme();
     };
+    };
+
+    if (profile.coarsePointer && supportsWorkerCanvas()) {
+      let fallbackCleanup: (() => void) | null = null;
+      const workerCleanup = startWorkerRenderer(visible, profile, () => {
+        const fresh = visible.cloneNode(false) as HTMLCanvasElement;
+        visible.replaceWith(fresh);
+        fallbackCleanup = startMain(fresh);
+      });
+      if (workerCleanup) {
+        return () => {
+          workerCleanup();
+          fallbackCleanup?.();
+        };
+      }
+    }
+
+    return startMain(visible);
   }, [useCssFallback]);
 
   if (useCssFallback) return <CssAurora />;
