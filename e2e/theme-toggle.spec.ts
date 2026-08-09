@@ -122,6 +122,63 @@ test.describe("theme toggle", () => {
     expect(await page.evaluate(() => window.__heroCanvasResetCount)).toBe(beforeToggle);
   });
 
+  test("作品详情页切换主题后图标保持可见", async ({ page, baseURL }) => {
+    if (!baseURL) throw new Error("baseURL is required");
+    await page.route("https://placehold.co/**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "image/png",
+        body: TINY_PNG,
+      });
+    });
+
+    const api = await newAdminApi(baseURL);
+
+    const title = `theme-toggle-icon-${Date.now()}`;
+    let workId = "";
+
+    try {
+      const created = await api.post("/api/works", {
+        data: {
+          title,
+          description: "theme toggle icon test",
+          tags: ["e2e"],
+          imageUrl: TEST_IMAGE_URL,
+          thumbUrl: TEST_IMAGE_URL,
+          pinned: false,
+          sortOrder: 998,
+          workDate: "2026-05",
+          imageSize: 128,
+          sizeWeight: 1,
+        },
+      });
+      expect(created.status()).toBe(201);
+      workId = ((await created.json()) as { id: string }).id;
+
+      await page.goto(`${baseURL}/work/${workId}`);
+      const toggle = page.locator("[data-theme-toggle]:visible");
+      await expect(toggle).toBeVisible();
+
+      const iconOpacities = () =>
+        toggle
+          .locator("svg")
+          .evaluateAll((icons) => icons.map((icon) => getComputedStyle(icon).opacity));
+
+      await expect.poll(iconOpacities).toContain("1");
+
+      await toggle.click();
+      await expect(page.locator("html")).toHaveClass(/light/);
+      await expect.poll(iconOpacities).toContain("1");
+
+      await toggle.click();
+      await expect(page.locator("html")).toHaveClass(/dark/);
+      await expect.poll(iconOpacities).toContain("1");
+    } finally {
+      if (workId) await api.delete(`/api/works/${workId}`);
+      await api.dispose();
+    }
+  });
+
   test("桌面和移动端切换按钮共享同一主题状态", async ({ page, baseURL }) => {
     await page.addInitScript(() => localStorage.setItem("theme", "light"));
     await page.goto(baseURL ?? "/");

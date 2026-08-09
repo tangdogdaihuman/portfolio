@@ -75,29 +75,55 @@ export async function GET(req: NextRequest) {
     const unauth = await requireAuth(req);
     if (unauth) return unauth;
 
+    const adminIpHash = hashIp(clientIp(req));
+
     const [totalRes, uniqueRes, todayRes, weekRes, dailyRes, topRes, recentRes] = await Promise.all([
-      db.execute("SELECT COUNT(*) AS c FROM visits"),
-      db.execute("SELECT COUNT(DISTINCT ip_hash) AS c FROM visits"),
-      db.execute(`SELECT COUNT(*) AS c, COUNT(DISTINCT ip_hash) AS u FROM visits
-                  WHERE date(created_at, '+8 hours') = date('now', '+8 hours')`),
-      db.execute("SELECT COUNT(*) AS c FROM visits WHERE created_at >= datetime('now', '-7 days')"),
-      db.execute(`SELECT date(created_at, '+8 hours') AS d, COUNT(*) AS c, COUNT(DISTINCT ip_hash) AS u
-                  FROM visits WHERE created_at >= datetime('now', '-14 days')
-                  GROUP BY d ORDER BY d ASC`),
-      db.execute(`SELECT path, COUNT(*) AS c FROM visits
-                  GROUP BY path ORDER BY c DESC, path ASC LIMIT 8`),
-      db.execute(`SELECT id, path, referrer, user_agent, created_at FROM visits
-                  ORDER BY created_at DESC, rowid DESC LIMIT 30`),
+      db.execute({ sql: "SELECT COUNT(*) AS c FROM visits WHERE ip_hash <> ?", args: [adminIpHash] }),
+      db.execute({ sql: "SELECT COUNT(DISTINCT ip_hash) AS c FROM visits WHERE ip_hash <> ?", args: [adminIpHash] }),
+      db.execute({
+        sql: `SELECT COUNT(*) AS c, COUNT(DISTINCT ip_hash) AS u FROM visits
+              WHERE ip_hash <> ? AND date(created_at, '+8 hours') = date('now', '+8 hours')`,
+        args: [adminIpHash],
+      }),
+      db.execute({
+        sql: "SELECT COUNT(*) AS c FROM visits WHERE ip_hash <> ? AND created_at >= datetime('now', '-7 days')",
+        args: [adminIpHash],
+      }),
+      db.execute({
+        sql: `SELECT date(created_at, '+8 hours') AS d, COUNT(*) AS c, COUNT(DISTINCT ip_hash) AS u
+              FROM visits WHERE ip_hash <> ? AND created_at >= datetime('now', '-14 days')
+              GROUP BY d ORDER BY d ASC`,
+        args: [adminIpHash],
+      }),
+      db.execute({
+        sql: `SELECT path, COUNT(*) AS c FROM visits
+              WHERE ip_hash <> ? GROUP BY path ORDER BY c DESC, path ASC LIMIT 8`,
+        args: [adminIpHash],
+      }),
+      db.execute({
+        sql: `SELECT id, path, referrer, user_agent, created_at FROM visits
+              WHERE ip_hash <> ? ORDER BY created_at DESC, rowid DESC LIMIT 30`,
+        args: [adminIpHash],
+      }),
     ]);
 
     const topRows = topRes.rows.map((row) => ({
       path: row.path as string,
       visits: Number(row.c) || 0,
     }));
+    const recentRows = recentRes.rows.map((row) => ({
+      id: row.id as string,
+      path: row.path as string,
+      referrer: row.referrer as string,
+      userAgent: row.user_agent as string,
+      createdAt: row.created_at as string,
+    }));
 
-    const workIds = topRows
-      .map((row) => /^\/work\/([^/?#]+)$/.exec(row.path)?.[1])
-      .filter((id): id is string => !!id);
+    const workIds = [...new Set(
+      [...topRows.map((row) => row.path), ...recentRows.map((row) => row.path)]
+        .map((path) => /^\/work\/([^/?#]+)$/.exec(path)?.[1])
+        .filter((id): id is string => !!id)
+    )];
     const titles = new Map<string, string>();
     if (workIds.length > 0) {
       const placeholders = workIds.map(() => "?").join(", ");
@@ -110,6 +136,11 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    const resolveTitle = (path: string): string => {
+      const workId = /^\/work\/([^/?#]+)$/.exec(path)?.[1];
+      return (workId && titles.get(workId)) || (path === "/" ? "首页" : path);
+    };
+
     const stats: VisitStats = {
       totalVisits: Number(totalRes.rows[0]?.c) || 0,
       uniqueVisitors: Number(uniqueRes.rows[0]?.c) || 0,
@@ -121,20 +152,14 @@ export async function GET(req: NextRequest) {
         visits: Number(row.c) || 0,
         visitors: Number(row.u) || 0,
       })),
-      topPages: topRows.map((row) => {
-        const workId = /^\/work\/([^/?#]+)$/.exec(row.path)?.[1];
-        return {
-          path: row.path,
-          title: (workId && titles.get(workId)) || (row.path === "/" ? "首页" : row.path),
-          visits: row.visits,
-        };
-      }),
-      recent: recentRes.rows.map((row) => ({
-        id: row.id as string,
-        path: row.path as string,
-        referrer: row.referrer as string,
-        userAgent: row.user_agent as string,
-        createdAt: row.created_at as string,
+      topPages: topRows.map((row) => ({
+        path: row.path,
+        title: resolveTitle(row.path),
+        visits: row.visits,
+      })),
+      recent: recentRows.map((row) => ({
+        ...row,
+        title: resolveTitle(row.path),
       })),
     };
 

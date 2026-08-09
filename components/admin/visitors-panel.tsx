@@ -34,7 +34,9 @@ function summarizeUA(ua: string): string {
 function referrerHost(referrer: string): string {
   if (!referrer) return "直接访问";
   try {
-    return new URL(referrer).host;
+    const host = new URL(referrer).host;
+    if (typeof window !== "undefined" && host === window.location.host) return "站内跳转";
+    return host;
   } catch {
     return referrer;
   }
@@ -161,17 +163,29 @@ export default function VisitorsPanel() {
       )}
 
       <div className="glass-strong rounded-[28px] p-6 md:p-7">
-        <p className="meta-label mb-5">最近访问</p>
+        <div className="mb-2 flex items-center justify-between">
+          <p className="meta-label">最近访问</p>
+          <p className="text-[0.62rem] text-text-muted/70">已自动过滤你自己的访问</p>
+        </div>
+        <p className="mb-5 text-[0.68rem] leading-relaxed text-text-muted/80">
+          来源口径：直接访问 = 访客手动输入网址或通过书签打开；站内跳转 = 从本站其他页面点击进入；其余显示外部来源域名。
+        </p>
         {stats.recent.length === 0 ? (
           <p className="text-sm text-text-muted">暂无访问记录</p>
         ) : (
           <div className="space-y-2.5">
+            <div className="hidden flex-wrap items-center gap-x-4 gap-y-1 px-4 text-[0.6rem] tracking-[0.12em] text-text-muted/60 sm:flex">
+              <span className="w-24 shrink-0">时间</span>
+              <span className="min-w-0 flex-1">页面</span>
+              <span className="w-28">设备</span>
+              <span className="w-24">来源</span>
+            </div>
             {stats.recent.map((visit) => (
               <div key={visit.id} className="glass flex flex-wrap items-center gap-x-4 gap-y-1 rounded-[20px] px-4 py-3">
                 <span className="w-24 shrink-0 text-xs text-text-muted">{formatTime(visit.createdAt)}</span>
-                <span className="min-w-0 flex-1 truncate text-sm text-text">{visit.path}</span>
-                <span className="text-xs text-text-muted">{summarizeUA(visit.userAgent)}</span>
-                <span className="text-xs text-text-muted">{referrerHost(visit.referrer)}</span>
+                <span className="min-w-0 flex-1 truncate text-sm text-text" title={visit.path}>{visit.title}</span>
+                <span className="w-28 truncate text-xs text-text-muted">{summarizeUA(visit.userAgent)}</span>
+                <span className="w-24 truncate text-xs text-text-muted">{referrerHost(visit.referrer)}</span>
               </div>
             ))}
           </div>

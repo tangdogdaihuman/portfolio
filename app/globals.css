@@ -363,6 +363,12 @@ html.hide-native-cursor * {
   cursor: none !important;
 }
 
+html.vt-theme *,
+html.vt-theme *::before,
+html.vt-theme *::after {
+  transition: none !important;
+}
+
 html.vt-theme::view-transition-old(root) {
   animation: none;
   mix-blend-mode: normal;

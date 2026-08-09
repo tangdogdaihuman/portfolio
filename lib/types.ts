@@ -49,6 +49,7 @@ export interface VisitTopPage {
 export interface VisitRecord {
   id: string;
   path: string;
+  title: string;
   referrer: string;
   userAgent: string;
   createdAt: string;
