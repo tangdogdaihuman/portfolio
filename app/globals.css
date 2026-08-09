@@ -189,6 +189,45 @@ body {
   }
 }
 
+@media (pointer: coarse) {
+  :root,
+  .dark {
+    --glass-bg: rgba(16, 18, 26, 0.6);
+    --glass-bg-strong: rgba(13, 14, 20, 0.88);
+    --glass-chip-bg: rgba(255, 255, 255, 0.12);
+  }
+
+  .light {
+    --glass-bg: rgba(255, 255, 255, 0.66);
+    --glass-bg-strong: rgba(252, 252, 254, 0.92);
+    --glass-chip-bg: rgba(255, 255, 255, 0.68);
+  }
+
+  .glass {
+    -webkit-backdrop-filter: blur(14px) saturate(150%);
+    backdrop-filter: blur(14px) saturate(150%);
+  }
+
+  .glass-strong {
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    backdrop-filter: blur(18px) saturate(160%);
+  }
+
+  .glass-chip {
+    -webkit-backdrop-filter: blur(10px) saturate(140%);
+    backdrop-filter: blur(10px) saturate(140%);
+  }
+
+  .glass-solid {
+    -webkit-backdrop-filter: blur(16px) saturate(150%);
+    backdrop-filter: blur(16px) saturate(150%);
+  }
+
+  .work-card-hover {
+    display: none;
+  }
+}
+
 .meta-label {
   font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 0.625rem;

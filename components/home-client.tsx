@@ -231,7 +231,7 @@ function WorkCard({ work, index, priority }: { work: Work; index: number; priori
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-black/0 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100"
         />
-        <div className="pointer-events-none absolute inset-x-4 bottom-4">
+        <div className="work-card-hover pointer-events-none absolute inset-x-4 bottom-4">
           <div className="glass-strong flex translate-y-3 items-center justify-between gap-3 rounded-2xl px-4 py-3 opacity-0 transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-y-0 group-hover:opacity-100">
             <span className="truncate text-sm font-medium text-white">{work.title}</span>
             <span className="meta-label shrink-0 text-white/70!">查看 ↗</span>

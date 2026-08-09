@@ -69,11 +69,11 @@ function getPerformanceProfile() {
     coarsePointer,
     lowEnd,
     baseScale: lowEnd ? 0.5 : coarsePointer ? 0.45 : 1,
-    dynamicScale: lowEnd ? 0.7 : coarsePointer ? 0.5 : 0.96,
-    targetFps: reducedMotion ? 0 : lowEnd ? 30 : coarsePointer ? 30 : 60,
-    mainBlur: lowEnd ? 9 : coarsePointer ? 12 : 12,
+    dynamicScale: lowEnd ? 0.55 : coarsePointer ? 0.4 : 0.96,
+    targetFps: reducedMotion ? 0 : lowEnd ? 20 : coarsePointer ? 24 : 60,
+    mainBlur: lowEnd ? 0 : coarsePointer ? 0 : 12,
     bloomBlur: lowEnd ? 16 : coarsePointer ? 18 : 20,
-    bloomAlpha: lowEnd ? 0.18 : coarsePointer ? 0.12 : 0.26,
+    bloomAlpha: lowEnd ? 0.22 : coarsePointer ? 0.16 : 0.26,
     rayQuality: lowEnd ? 0.62 : coarsePointer ? 0.35 : 1,
     speedQuality: lowEnd ? 0.82 : coarsePointer ? 0.9 : 1,
     alphaQuality: lowEnd ? 0.8 : coarsePointer ? 0.7 : 1,
@@ -337,7 +337,7 @@ export default function AuroraCanvas() {
       ctxB.drawImage(staticLayer, 0, 0, w, h);
 
       ctxB.save();
-      ctxB.filter = `blur(${profile.mainBlur}px)`;
+      if (profile.mainBlur > 0) ctxB.filter = `blur(${profile.mainBlur}px)`;
       ctxB.globalCompositeOperation = lightMode ? "multiply" : "lighter";
       if (lightMode) ctxB.globalAlpha = LIGHT_MAIN_ALPHA;
       ctxB.drawImage(raysLayer, 0, 0, w, h);
