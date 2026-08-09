@@ -3,6 +3,7 @@
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import { createNoise3D } from "simplex-noise";
 import { subscribeResolvedTheme } from "@/lib/theme-client";
+import type { AuroraProfile } from "@/components/aurora-worker";
 
 const RAY_COUNT = 500;
 const RAY_PROPS = 8;
@@ -55,6 +56,107 @@ function shouldUseCssFallback() {
 
 function subscribeToNothing() {
   return () => {};
+}
+
+function supportsWorkerCanvas() {
+  return (
+    typeof Worker !== "undefined" &&
+    typeof HTMLCanvasElement !== "undefined" &&
+    "transferControlToOffscreen" in HTMLCanvasElement.prototype
+  );
+}
+
+function startWorkerRenderer(canvas: HTMLCanvasElement, profile: AuroraProfile) {
+  let worker: Worker;
+  try {
+    worker = new Worker(new URL("./aurora-worker.ts", import.meta.url));
+  } catch {
+    return null;
+  }
+  let offscreen: OffscreenCanvas;
+  try {
+    offscreen = canvas.transferControlToOffscreen();
+  } catch {
+    worker.terminate();
+    return null;
+  }
+
+  const postTheme = () => {
+    worker.postMessage({
+      type: "theme",
+      light: document.documentElement.classList.contains("light"),
+      palette: getThemePalette(),
+    });
+  };
+
+  worker.onmessage = (event: MessageEvent) => {
+    const data = event.data as { type?: string; tick?: number };
+    if (data?.type === "frame" && typeof data.tick === "number") {
+      canvas.dataset.auroraFrame = String(data.tick);
+    }
+  };
+
+  worker.postMessage(
+    {
+      type: "init",
+      canvas: offscreen,
+      width: Math.max(1, canvas.offsetWidth),
+      height: Math.max(1, canvas.offsetHeight),
+      dpr: window.devicePixelRatio || 1,
+      light: document.documentElement.classList.contains("light"),
+      palette: getThemePalette(),
+      profile,
+    },
+    [offscreen]
+  );
+
+  const onResize = () => {
+    worker.postMessage({
+      type: "resize",
+      width: Math.max(1, canvas.offsetWidth),
+      height: Math.max(1, canvas.offsetHeight),
+      dpr: window.devicePixelRatio || 1,
+    });
+  };
+  const resizeObserver = new ResizeObserver(onResize);
+  resizeObserver.observe(canvas);
+
+  const onVisibilityChange = () => {
+    worker.postMessage({ type: "hidden", hidden: document.hidden });
+  };
+  document.addEventListener("visibilitychange", onVisibilityChange);
+  const unsubscribeTheme = subscribeResolvedTheme(postTheme);
+
+  let stopped = false;
+  let degradeLevel = 0;
+  let frames = 0;
+  let windowStart = performance.now();
+  let monitorRaf = 0;
+  const monitor = (ts: number) => {
+    if (stopped) return;
+    frames += 1;
+    const elapsed = ts - windowStart;
+    if (elapsed >= 2500) {
+      const fps = (frames * 1000) / elapsed;
+      if (fps < 30 && degradeLevel < 2) {
+        degradeLevel += 1;
+        worker.postMessage({ type: "degrade", level: degradeLevel });
+      }
+      frames = 0;
+      windowStart = ts;
+    }
+    monitorRaf = requestAnimationFrame(monitor);
+  };
+  monitorRaf = requestAnimationFrame(monitor);
+
+  return () => {
+    stopped = true;
+    cancelAnimationFrame(monitorRaf);
+    resizeObserver.disconnect();
+    document.removeEventListener("visibilitychange", onVisibilityChange);
+    unsubscribeTheme();
+    worker.terminate();
+  };
 }
 
 function getPerformanceProfile() {
@@ -160,10 +262,17 @@ export default function AuroraCanvas() {
 
     const visible = canvasRef.current;
     if (!visible) return;
+
+    const profile = getPerformanceProfile();
+
+    if (profile.coarsePointer && supportsWorkerCanvas()) {
+      const workerCleanup = startWorkerRenderer(visible, profile);
+      if (workerCleanup) return workerCleanup;
+    }
+
     const ctxB = visible.getContext("2d");
     if (!ctxB) return;
 
-    const profile = getPerformanceProfile();
     const raysLayer = document.createElement("canvas");
     const staticLayer = document.createElement("canvas");
     const bloomLayer = document.createElement("canvas");

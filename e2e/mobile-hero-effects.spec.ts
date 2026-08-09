@@ -13,18 +13,24 @@ test.describe("手机端首屏背景", () => {
       const sample = () =>
         canvas.evaluate((node) => {
           const el = node as HTMLCanvasElement;
-          const ctx = el.getContext("2d");
-          if (!ctx || el.width === 0 || el.height === 0) return 0;
+          if (el.dataset.auroraFrame !== undefined) return `f${el.dataset.auroraFrame}`;
+          let ctx: CanvasRenderingContext2D | null = null;
+          try {
+            ctx = el.getContext("2d");
+          } catch {
+            return "static";
+          }
+          if (!ctx || el.width === 0 || el.height === 0) return "static";
           const rows = Math.min(el.height, 200);
           const data = ctx.getImageData(0, 0, el.width, rows).data;
           let sum = 0;
           for (let i = 0; i < data.length; i += 401) {
             sum += data[i] + data[i + 1] + data[i + 2];
           }
-          return sum;
+          return `p${sum}`;
         });
       const before = await sample();
-      await page.waitForTimeout(900);
+      await page.waitForTimeout(1600);
       const after = await sample();
       expect(after).not.toBe(before);
       return;
