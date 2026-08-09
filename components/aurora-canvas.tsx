@@ -83,6 +83,7 @@ function startWorkerRenderer(
     worker.terminate();
     return null;
   }
+  canvas.dataset.auroraTransferred = "1";
 
   let stopped = false;
   let failed = false;
@@ -283,14 +284,27 @@ export default function AuroraCanvas() {
   useEffect(() => {
     if (useCssFallback) return;
 
-    const visible = canvasRef.current;
+    let visible = canvasRef.current;
     if (!visible) return;
+    if (visible.dataset.auroraTransferred === "1") {
+      const fresh = visible.cloneNode(false) as HTMLCanvasElement;
+      delete fresh.dataset.auroraTransferred;
+      delete fresh.dataset.auroraFrame;
+      visible.replaceWith(fresh);
+      canvasRef.current = fresh;
+      visible = fresh;
+    }
 
     const profile = getPerformanceProfile();
 
     const startMain = (target: HTMLCanvasElement) => {
       const visible = target;
-      const ctxB = visible.getContext("2d");
+      let ctxB: CanvasRenderingContext2D | null = null;
+      try {
+        ctxB = visible.getContext("2d");
+      } catch {
+        return () => {};
+      }
       if (!ctxB) return () => {};
     const raysLayer = document.createElement("canvas");
     const staticLayer = document.createElement("canvas");
@@ -574,7 +588,10 @@ export default function AuroraCanvas() {
       let fallbackCleanup: (() => void) | null = null;
       const workerCleanup = startWorkerRenderer(visible, profile, () => {
         const fresh = visible.cloneNode(false) as HTMLCanvasElement;
+        delete fresh.dataset.auroraTransferred;
+        delete fresh.dataset.auroraFrame;
         visible.replaceWith(fresh);
+        canvasRef.current = fresh;
         fallbackCleanup = startMain(fresh);
       });
       if (workerCleanup) {
