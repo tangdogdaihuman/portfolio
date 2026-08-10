@@ -33,7 +33,7 @@ npm run test:smoke:prod  # 对线上 tangzihang.top 跑冒烟（SMOKE_ALLOW_WRIT
 - **`lib/schema.ts` 是 schema 单一来源**：`BASE_SCHEMA_SQL` + `COLUMN_PATCHES` + `RECORDED_MIGRATIONS`。`lib/db.ts` 和 `scripts/push-schema.ts` 都引用它；`test:schema` 会验证这一点。改 schema 只改 `lib/schema.ts` 一处。
 - `tags`、`software` 在库里是逗号字符串；`lib/db.ts` 的 `tagsToArray()` / `tagsToString()` 负责转换。`lib/work-mappers.ts` 的 `rowToWork()` 统一做 DB 行到类型的映射。
 - 公共类型在 `lib/types.ts`（前台 `home-client.tsx` 也从这里导入 `Work`）；改 API 返回字段只动 `lib/types.ts` + `lib/work-mappers.ts` 两处。
-- 数据表：`works`、`work_images`（work_id 仅建索引 `idx_work_images_work_id_sort`，无外键约束，关联由 API 维护）、`intro`、`details`、`detail_sections`、`schema_migrations`、`audit_logs`、`r2_delete_jobs`。
+- 数据表：`works`、`work_images`（work_id 仅建索引 `idx_work_images_work_id_sort`，无外键约束，关联由 API 维护）、`intro`、`details`、`detail_sections`、`schema_migrations`、`audit_logs`、`r2_delete_jobs`、`visits`。
 - `works.software` 字段与 `tags` 一样是逗号串，API 返回数组。
 - `COLUMN_PATCHES` 共 7 条后期 patch 列（`work_date`、`software`、`image_size`、`media_type`、`intro.tagline`、`works.size_weight` 等，见 `lib/schema.ts`）。
 
@@ -77,6 +77,7 @@ npm run test:smoke:prod  # 对线上 tangzihang.top 跑冒烟（SMOKE_ALLOW_WRIT
 - 必填变量见 `.env.example`：`DATABASE_URL`、`DATABASE_AUTH_TOKEN`、R2 一组、`ADMIN_SECRET_KEY`。
 - 可选：`NEXT_PUBLIC_BASE_URL`、`UPSTASH_REDIS_REST_URL`+`UPSTASH_REDIS_REST_TOKEN`、`CRON_SECRET`、`MONITORING_WEBHOOK_URL`、`TOTP_SECRET`、`EMAIL_HOST`/`PORT`/`USER`/`PASS`（QQ SMTP 验证码登录）、`SMOKE_BASE_URL`、`SMOKE_ALLOW_WRITES`、`ADMIN_KEY`（smoke 测试优先读，回退到 `ADMIN_SECRET_KEY`）。
 - 部署在 Vercel，绑定 GitHub 自动部署；域名 `tangzihang.top` 走 Cloudflare 代理。
+- 未配置 Upstash 时限流退化为单实例内存计数，Vercel 多实例下会失效（2026-08 实测线上 12 连错不触发 429），生产环境建议必配。IP 识别信任 `x-forwarded-for` 首值，仅在该头被平台（Vercel/CF）覆盖的部署下安全。
 - 部署命令：`vercel --prod --yes`，网络不稳时 `git push` 触发自动部署。
 
 ## Git 约定

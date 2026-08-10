@@ -38,7 +38,12 @@ export async function POST(req: NextRequest) {
       return ok({ tracked: false, reason: "admin" });
     }
 
-    const body = await req.json();
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return fail("BAD_REQUEST", "Invalid visit payload", 400);
+    }
     const parsed = trackSchema.safeParse(body);
     if (!parsed.success) {
       return fail("BAD_REQUEST", "Invalid visit payload", 400);

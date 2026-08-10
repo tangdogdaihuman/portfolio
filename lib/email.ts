@@ -52,6 +52,7 @@ export async function sendVerificationCode(code: string): Promise<boolean> {
     return false;
   }
 
+  const escapedCode = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const sent = await trySendMail({
     from: `"个人网站管理" <${user}>`,
     to: ALLOWED_EMAIL,
@@ -62,7 +63,7 @@ export async function sendVerificationCode(code: string): Promise<boolean> {
         <h2 style="color:#333;">管理后台验证码</h2>
         <p style="font-size:14px;color:#666;">您正在登录个人网站管理后台，验证码如下：</p>
         <div style="background:#f5f5f5;padding:16px;text-align:center;margin:20px 0;border-radius:4px;">
-          <span style="font-size:28px;font-weight:bold;letter-spacing:6px;color:#111;">${code}</span>
+          <span style="font-size:28px;font-weight:bold;letter-spacing:6px;color:#111;">${escapedCode}</span>
         </div>
         <p style="font-size:12px;color:#999;">有效期5分钟。如非本人操作请忽略。</p>
       </div>
