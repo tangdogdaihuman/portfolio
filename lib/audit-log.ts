@@ -1,14 +1,13 @@
 import { createId } from "@paralleldrive/cuid2";
 import type { NextRequest } from "next/server";
 import db from "@/lib/db";
+import { getClientIp } from "@/lib/client-ip";
 import { reportApiError } from "@/lib/monitoring";
 
 type AuditMeta = Record<string, unknown>;
 
 function getActor(req: NextRequest): string {
-  const forwarded = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  const ip = forwarded || req.headers.get("x-real-ip") || "unknown";
-  return ip;
+  return getClientIp(req);
 }
 
 export async function writeAuditLog(

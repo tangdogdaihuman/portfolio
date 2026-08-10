@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { rateLimit, requireSameOrigin } from "@/lib/api-security";
+import { getClientIp } from "@/lib/client-ip";
 import { sendVerificationCode } from "@/lib/email";
 import { isRateLimited, setRateLimit, generateCode } from "@/lib/verification-codes";
 import { reportApiError, reportMetric } from "@/lib/monitoring";
@@ -16,9 +17,7 @@ export async function POST(req: NextRequest) {
       return limited;
     }
 
-    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
-      || req.headers.get("x-real-ip")
-      || "unknown";
+    const ip = getClientIp(req);
 
     // 先标记限流，再发邮件，关闭 check-then-act 窗口
     if (isRateLimited(ip)) {

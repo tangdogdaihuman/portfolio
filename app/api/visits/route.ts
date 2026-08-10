@@ -4,6 +4,7 @@ import { createId } from "@paralleldrive/cuid2";
 import { z } from "zod";
 import db from "@/lib/db";
 import { rateLimit, requireSameOrigin } from "@/lib/api-security";
+import { getClientIp } from "@/lib/client-ip";
 import { requireAuth, verifyAuthRequest } from "@/lib/auth";
 import { reportApiError } from "@/lib/monitoring";
 import { fail, ok } from "@/lib/api-response";
@@ -17,8 +18,7 @@ const trackSchema = z.object({
 });
 
 function clientIp(req: NextRequest): string {
-  const forwarded = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  return forwarded || req.headers.get("x-real-ip") || "unknown";
+  return getClientIp(req);
 }
 
 function hashIp(ip: string): string {

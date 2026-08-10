@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import crypto from "crypto";
 import { rateLimit, requireSameOrigin } from "@/lib/api-security";
+import { getClientIp } from "@/lib/client-ip";
 import { setAuthCookie } from "@/lib/auth";
 import { verifyCode } from "@/lib/verification-codes";
 import { verifyTotp } from "@/lib/totp";
@@ -52,9 +53,7 @@ export async function POST(req: NextRequest) {
 
     // --- 方式二：邮箱验证码 ---
     if (payload.code && typeof payload.code === "string") {
-      const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
-        || req.headers.get("x-real-ip")
-        || "unknown";
+      const ip = getClientIp(req);
 
       if (!verifyCode(ip, payload.code)) {
         reportMetric({ scope: "auth.login.invalid_code", value: 1, path: req.nextUrl.pathname });

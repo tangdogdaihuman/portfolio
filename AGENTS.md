@@ -54,7 +54,7 @@ npm run test:smoke:prod  # 对线上 tangzihang.top 跑冒烟（SMOKE_ALLOW_WRIT
 - 乐观并发控制：更新类接口（`works/[id]`、`works/[id]/save`、`works/reorder`）接受 `expectedUpdatedAt`，与库中 `updated_at` 不匹配返回 409；e2e 有覆盖。
 - 可选 Upstash Redis 做跨实例限流（`lib/rate-limit-store.ts`）；未配置时自动用进程内存。
 - `app/api/auth/login` 支持三种登录：TOTP、邮箱验证码（QQ SMTP）、管理员密钥；涉及依赖 `nodemailer`、`otplib`、`qrcode`、`@paralleldrive/cuid2`。
-- 邮箱验证码仅限 `1193662756@qq.com`，存在进程内存（`lib/verification-codes.ts`），重启丢失。TOTP 绑定走 `/admin/totp-setup` 扫码，仓库里没有独立生成脚本。
+- 邮箱验证码仅限 `1193662756@qq.com`，存在进程内存（`lib/verification-codes.ts`），重启丢失；且 Vercel 多实例下不共享，发码与验码落到不同实例会失败（已知限制，待迁 DB）。TOTP 绑定走 `/admin/totp-setup` 扫码，仓库里没有独立生成脚本。
 - `lib/email.ts` 的 QQ SMTP 硬编码真实 IP 绕过本地 DNS 污染，改邮件配置时勿恢复为域名解析。
 
 ## API 安全辅助
@@ -77,7 +77,8 @@ npm run test:smoke:prod  # 对线上 tangzihang.top 跑冒烟（SMOKE_ALLOW_WRIT
 - 必填变量见 `.env.example`：`DATABASE_URL`、`DATABASE_AUTH_TOKEN`、R2 一组、`ADMIN_SECRET_KEY`。
 - 可选：`NEXT_PUBLIC_BASE_URL`、`UPSTASH_REDIS_REST_URL`+`UPSTASH_REDIS_REST_TOKEN`、`CRON_SECRET`、`MONITORING_WEBHOOK_URL`、`TOTP_SECRET`、`EMAIL_HOST`/`PORT`/`USER`/`PASS`（QQ SMTP 验证码登录）、`SMOKE_BASE_URL`、`SMOKE_ALLOW_WRITES`、`ADMIN_KEY`（smoke 测试优先读，回退到 `ADMIN_SECRET_KEY`）。
 - 部署在 Vercel，绑定 GitHub 自动部署；域名 `tangzihang.top` 走 Cloudflare 代理。
-- 限流默认走 Turso `rate_limits` 表（多实例共享计数，DB 故障时降级放行并报监控）；配置了 `UPSTASH_REDIS_REST_*` 才改用 Redis。IP 识别信任 `x-forwarded-for` 首值，仅在该头被平台（Vercel/CF）覆盖的部署下安全。
+- 限流默认走 Turso `rate_limits` 表（多实例共享计数，DB 故障时降级放行并报监控）；配置了 `UPSTASH_REDIS_REST_*` 才改用 Redis。
+- 客户端 IP 统一走 `lib/client-ip.ts` 的 `getClientIp()`（`cf-connecting-ip` → `x-vercel-forwarded-for` → `x-forwarded-for` → `x-real-ip`）。**禁止直接取 `x-forwarded-for` 首值**：Vercel 会把它覆写成直连对端 IP，CF 前置时就是每请求轮换的 CF 边缘节点 IP（2026-08 实测：限流桶键全是 CF IP，登录限流因此失效）。
 - 部署命令：`vercel --prod --yes`，网络不稳时 `git push` 触发自动部署。
 
 ## Git 约定

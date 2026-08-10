@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRateLimitStore } from "@/lib/rate-limit-store";
+import { getClientIp } from "@/lib/client-ip";
 import { fail } from "@/lib/api-response";
 
 const WRITE_METHODS = new Set(["POST", "PUT", "DELETE", "PATCH"]);
@@ -51,9 +52,7 @@ export async function rateLimit(
   limit: number,
   windowMs: number
 ): Promise<NextResponse | null> {
-  const forwarded = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-  const ip = forwarded || req.headers.get("x-real-ip") || "unknown";
-  const bucketKey = `${key}:${ip}`;
+  const bucketKey = `${key}:${getClientIp(req)}`;
   const now = Date.now();
   const bucket = await getRateLimitStore().increment(bucketKey, windowMs, now);
   if (bucket.count > limit) {
