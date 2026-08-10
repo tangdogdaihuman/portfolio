@@ -1,34 +1,33 @@
+import db from "@/lib/db";
+import { reportApiError } from "@/lib/monitoring";
+
 type Bucket = { count: number; resetAt: number };
 
 export interface RateLimitStore {
   increment(key: string, windowMs: number, now: number): Promise<Bucket>;
 }
 
-class MemoryRateLimitStore implements RateLimitStore {
-  private buckets = new Map<string, Bucket>();
-  private lastCleanupAt = 0;
-  private readonly cleanupIntervalMs = 60_000;
-
-  private cleanup(now: number) {
-    if (now - this.lastCleanupAt < this.cleanupIntervalMs) return;
-    this.lastCleanupAt = now;
-    for (const [key, bucket] of this.buckets) {
-      if (bucket.resetAt <= now) this.buckets.delete(key);
-    }
-  }
-
+class DbRateLimitStore implements RateLimitStore {
   async increment(key: string, windowMs: number, now: number): Promise<Bucket> {
-    this.cleanup(now);
-    const current = this.buckets.get(key);
-    if (!current || current.resetAt <= now) {
-      const created = { count: 1, resetAt: now + windowMs };
-      this.buckets.set(key, created);
-      return created;
+    const resetAt = now + windowMs;
+    try {
+      const res = await db.execute({
+        sql: `INSERT INTO rate_limits (bucket_key, count, reset_at) VALUES (?, 1, ?)
+              ON CONFLICT(bucket_key) DO UPDATE SET
+                count = CASE WHEN reset_at <= ? THEN 1 ELSE count + 1 END,
+                reset_at = CASE WHEN reset_at <= ? THEN ? ELSE reset_at END
+              RETURNING count, reset_at`,
+        args: [key, resetAt, now, now, resetAt],
+      });
+      const row = res.rows[0];
+      return { count: Number(row.count), resetAt: Number(row.reset_at) };
+    } catch (error) {
+      reportApiError({
+        scope: "rate-limit.store",
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+      return { count: 1, resetAt };
     }
-
-    const updated = { ...current, count: current.count + 1 };
-    this.buckets.set(key, updated);
-    return updated;
   }
 }
 
@@ -80,7 +79,7 @@ export function getRateLimitStore(): RateLimitStore {
     return singletonStore;
   }
 
-  singletonStore = new MemoryRateLimitStore();
+  singletonStore = new DbRateLimitStore();
   return singletonStore;
 }
 

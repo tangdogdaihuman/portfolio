@@ -100,6 +100,12 @@ export const BASE_SCHEMA_SQL = `
     ON visits(created_at);
   CREATE INDEX IF NOT EXISTS idx_visits_path_created
     ON visits(path, created_at);
+
+  CREATE TABLE IF NOT EXISTS rate_limits (
+    bucket_key TEXT PRIMARY KEY,
+    count INTEGER NOT NULL DEFAULT 0,
+    reset_at INTEGER NOT NULL
+  );
 `;
 
 export const COLUMN_PATCHES = [
@@ -119,6 +125,7 @@ export const RECORDED_MIGRATIONS = [
   "0004_r2_delete_retry_jobs",
   "0005_intro_tagline_and_work_software",
   "0006_visits_table",
+  "0007_rate_limits_table",
 ] as const;
 
 export async function addColumnIfMissing(
