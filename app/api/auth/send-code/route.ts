@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { rateLimit, requireSameOrigin } from "@/lib/api-security";
 import { getClientIp } from "@/lib/client-ip";
 import { sendVerificationCode } from "@/lib/email";
-import { isRateLimited, setRateLimit, generateCode } from "@/lib/verification-codes";
+import { generateCode } from "@/lib/verification-codes";
 import { reportApiError, reportMetric } from "@/lib/monitoring";
 import { fail, ok } from "@/lib/api-response";
 
@@ -17,15 +17,12 @@ export async function POST(req: NextRequest) {
       return limited;
     }
 
-    const ip = getClientIp(req);
-
-    // 先标记限流，再发邮件，关闭 check-then-act 窗口
-    if (isRateLimited(ip)) {
+    if (await rateLimit(req, "send-code-cooldown", 1, 30 * 1000)) {
       return fail("RATE_LIMITED", "发送过于频繁，请30秒后再试", 429);
     }
-    setRateLimit(ip);
 
-    const code = generateCode(ip);
+    const ip = getClientIp(req);
+    const code = await generateCode(ip);
     const sent = await sendVerificationCode(code);
 
     if (!sent) {

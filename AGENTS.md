@@ -33,7 +33,7 @@ npm run test:smoke:prod  # 对线上 tangzihang.top 跑冒烟（SMOKE_ALLOW_WRIT
 - **`lib/schema.ts` 是 schema 单一来源**：`BASE_SCHEMA_SQL` + `COLUMN_PATCHES` + `RECORDED_MIGRATIONS`。`lib/db.ts` 和 `scripts/push-schema.ts` 都引用它；`test:schema` 会验证这一点。改 schema 只改 `lib/schema.ts` 一处。
 - `tags`、`software` 在库里是逗号字符串；`lib/db.ts` 的 `tagsToArray()` / `tagsToString()` 负责转换。`lib/work-mappers.ts` 的 `rowToWork()` 统一做 DB 行到类型的映射。
 - 公共类型在 `lib/types.ts`（前台 `home-client.tsx` 也从这里导入 `Work`）；改 API 返回字段只动 `lib/types.ts` + `lib/work-mappers.ts` 两处。
-- 数据表：`works`、`work_images`（work_id 仅建索引 `idx_work_images_work_id_sort`，无外键约束，关联由 API 维护）、`intro`、`details`、`detail_sections`、`schema_migrations`、`audit_logs`、`r2_delete_jobs`、`visits`、`rate_limits`。
+- 数据表：`works`、`work_images`（work_id 仅建索引 `idx_work_images_work_id_sort`，无外键约束，关联由 API 维护）、`intro`、`details`、`detail_sections`、`schema_migrations`、`audit_logs`、`r2_delete_jobs`、`visits`、`rate_limits`、`verification_codes`。
 - `works.software` 字段与 `tags` 一样是逗号串，API 返回数组。
 - `COLUMN_PATCHES` 共 7 条后期 patch 列（`work_date`、`software`、`image_size`、`media_type`、`intro.tagline`、`works.size_weight` 等，见 `lib/schema.ts`）。
 
@@ -54,7 +54,7 @@ npm run test:smoke:prod  # 对线上 tangzihang.top 跑冒烟（SMOKE_ALLOW_WRIT
 - 乐观并发控制：更新类接口（`works/[id]`、`works/[id]/save`、`works/reorder`）接受 `expectedUpdatedAt`，与库中 `updated_at` 不匹配返回 409；e2e 有覆盖。
 - 可选 Upstash Redis 做跨实例限流（`lib/rate-limit-store.ts`）；未配置时自动用进程内存。
 - `app/api/auth/login` 支持三种登录：TOTP、邮箱验证码（QQ SMTP）、管理员密钥；涉及依赖 `nodemailer`、`otplib`、`qrcode`、`@paralleldrive/cuid2`。
-- 邮箱验证码仅限 `1193662756@qq.com`，存在进程内存（`lib/verification-codes.ts`），重启丢失；且 Vercel 多实例下不共享，发码与验码落到不同实例会失败（已知限制，待迁 DB）。TOTP 绑定走 `/admin/totp-setup` 扫码，仓库里没有独立生成脚本。
+- 邮箱验证码仅限 `1193662756@qq.com`，存 Turso `verification_codes` 表（多实例共享）：5 分钟有效期、单码 5 次尝试上限；发送侧双层限流 = `send-code`（3 次/分钟）+ `send-code-cooldown`（1 次/30 秒），都走共享限流存储。TOTP 绑定走 `/admin/totp-setup` 扫码，仓库里没有独立生成脚本。
 - `lib/email.ts` 的 QQ SMTP 硬编码真实 IP 绕过本地 DNS 污染，改邮件配置时勿恢复为域名解析。
 
 ## API 安全辅助

@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     if (payload.code && typeof payload.code === "string") {
       const ip = getClientIp(req);
 
-      if (!verifyCode(ip, payload.code)) {
+      if (!(await verifyCode(ip, payload.code))) {
         reportMetric({ scope: "auth.login.invalid_code", value: 1, path: req.nextUrl.pathname });
         return fail("UNAUTHORIZED", "验证码错误或已过期", 401);
       }

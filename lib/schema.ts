@@ -106,6 +106,13 @@ export const BASE_SCHEMA_SQL = `
     count INTEGER NOT NULL DEFAULT 0,
     reset_at INTEGER NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS verification_codes (
+    ip TEXT PRIMARY KEY,
+    code TEXT NOT NULL,
+    expires_at INTEGER NOT NULL,
+    attempts INTEGER NOT NULL DEFAULT 0
+  );
 `;
 
 export const COLUMN_PATCHES = [
@@ -126,6 +133,7 @@ export const RECORDED_MIGRATIONS = [
   "0005_intro_tagline_and_work_software",
   "0006_visits_table",
   "0007_rate_limits_table",
+  "0008_verification_codes_table",
 ] as const;
 
 export async function addColumnIfMissing(
