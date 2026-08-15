@@ -376,7 +376,7 @@ export default function HomeClient({
         <main className="relative">
           <section ref={heroRef} className="relative flex min-h-svh flex-col justify-center overflow-hidden px-5 md:px-12">
             <m.div
-              style={{ opacity: heroOpacity, scale: heroScale, filter: isCoarsePointer ? undefined : heroFilter }}
+              style={isCoarsePointer ? { opacity: heroOpacity } : { opacity: heroOpacity, scale: heroScale, filter: heroFilter }}
               className="relative z-10 mx-auto w-full max-w-6xl"
             >
               <div className="meta-label flex items-center justify-between gap-4 border-b border-border/50 pb-4">
@@ -494,11 +494,15 @@ export default function HomeClient({
           <div
             aria-hidden="true"
             className="relative overflow-hidden border-y border-border/50 py-4 md:py-5"
-            style={{
-              background: "color-mix(in srgb, var(--theme-bg) 45%, transparent)",
-              WebkitBackdropFilter: "blur(6px)",
-              backdropFilter: "blur(6px)",
-            }}
+            style={
+              isCoarsePointer
+                ? { background: "color-mix(in srgb, var(--theme-bg) 82%, transparent)" }
+                : {
+                    background: "color-mix(in srgb, var(--theme-bg) 45%, transparent)",
+                    WebkitBackdropFilter: "blur(6px)",
+                    backdropFilter: "blur(6px)",
+                  }
+            }
           >
             <div className="animate-marquee inline-flex whitespace-nowrap will-change-transform">
               {[0, 1].map((dup) => (

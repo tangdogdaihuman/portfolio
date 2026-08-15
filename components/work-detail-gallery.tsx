@@ -223,13 +223,13 @@ export default function WorkDetailGallery({
                           requestAnimationFrame(() => markReady(imageKey));
                         }
                       }}
-                      src={image.image_url}
+                      src={image.thumb_url || image.image_url}
                       alt={`${workTitle} ${index + 1}`}
                       width={2400}
                       height={3000}
                       unoptimized
                       sizes="(max-width: 768px) 98vw, 96vw"
-                      className={`relative w-full h-auto object-contain transition-[opacity,transform] duration-700 ease-out will-change-transform ${isReady ? "opacity-100 scale-100" : "opacity-0 scale-[1.015]"}`}
+                      className={`relative w-full h-auto object-contain transition-[opacity,transform] duration-700 ease-out ${isReady ? "opacity-100 scale-100" : "opacity-0 scale-[1.015]"}`}
                       priority={index < 2}
                       onLoad={() => markReady(imageKey)}
                       onError={() => markReady(imageKey)}
@@ -334,6 +334,7 @@ export default function WorkDetailGallery({
                         src={image.image_url}
                         poster={image.thumb_url}
                         controls
+                        playsInline
                         className="max-w-[97vw] max-h-[97vh] object-contain select-none"
                       />
                     ) : (

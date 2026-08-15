@@ -98,6 +98,8 @@ function startWorkerRenderer(
     stopped = true;
     clearTimeout(watchdog);
     cancelAnimationFrame(monitorRaf);
+    if (scrollPauseTimer !== null) clearTimeout(scrollPauseTimer);
+    window.removeEventListener("scroll", onScrollPause);
     resizeObserver.disconnect();
     document.removeEventListener("visibilitychange", onVisibilityChange);
     unsubscribeTheme();
@@ -157,6 +159,20 @@ function startWorkerRenderer(
     worker.postMessage({ type: "hidden", hidden: document.hidden });
   };
   document.addEventListener("visibilitychange", onVisibilityChange);
+
+  let scrollPauseTimer: ReturnType<typeof setTimeout> | null = null;
+  const onScrollPause = () => {
+    worker.postMessage({ type: "paused", paused: true });
+    if (scrollPauseTimer !== null) clearTimeout(scrollPauseTimer);
+    scrollPauseTimer = setTimeout(() => {
+      scrollPauseTimer = null;
+      worker.postMessage({ type: "paused", paused: false });
+    }, 200);
+  };
+  if (profile.coarsePointer) {
+    window.addEventListener("scroll", onScrollPause, { passive: true });
+  }
+
   const unsubscribeTheme = subscribeResolvedTheme(postTheme);
 
   const watchdog = setTimeout(() => {
@@ -534,6 +550,22 @@ export default function AuroraCanvas() {
       raf = requestAnimationFrame(drawFrame);
     };
 
+    let scrollPaused = false;
+    let scrollResumeTimer: ReturnType<typeof setTimeout> | null = null;
+    const onScrollPause = () => {
+      if (!scrollPaused) {
+        scrollPaused = true;
+        cancelAnimationFrame(raf);
+        running = false;
+      }
+      if (scrollResumeTimer !== null) clearTimeout(scrollResumeTimer);
+      scrollResumeTimer = setTimeout(() => {
+        scrollResumeTimer = null;
+        scrollPaused = false;
+        runIfNeeded();
+      }, 200);
+    };
+
     const onResize = () => {
       const nextW = Math.max(1, visible.offsetWidth);
       const nextH = Math.max(1, visible.offsetHeight);
@@ -575,9 +607,14 @@ export default function AuroraCanvas() {
     resizeObserver.observe(visible);
     document.addEventListener("visibilitychange", onVisibilityChange);
     const unsubscribeTheme = subscribeResolvedTheme(onThemeChange);
+    if (profile.coarsePointer && !profile.reducedMotion) {
+      window.addEventListener("scroll", onScrollPause, { passive: true });
+    }
 
     return () => {
       cancelAnimationFrame(raf);
+      if (scrollResumeTimer !== null) clearTimeout(scrollResumeTimer);
+      window.removeEventListener("scroll", onScrollPause);
       resizeObserver.disconnect();
       document.removeEventListener("visibilitychange", onVisibilityChange);
       unsubscribeTheme();

@@ -110,44 +110,47 @@ export function useActiveHomeSection(worksLength: number, detailSectionLength: n
   const [activeSection, setActiveSection] = useState<"works" | "about" | "contact">("works");
 
   useEffect(() => {
-    const sections = ["works", "about", "contact"] as const;
+    const ids = ["works", "about", "contact"] as const;
     let raf = 0;
+    let lastActive: "works" | "about" | "contact" = "works";
 
-    const updateActiveSection = () => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            lastActive = entry.target.id as "works" | "about" | "contact";
+          }
+        }
+        setActiveSection((current) => (current === lastActive ? current : lastActive));
+      },
+      { rootMargin: "-40% 0px -59% 0px" }
+    );
+
+    for (const id of ids) {
+      const el = document.getElementById(id);
+      if (el) observer.observe(el);
+    }
+
+    const updateBottom = () => {
+      raf = 0;
       const scrollBottom = window.scrollY + window.innerHeight;
       const docHeight = document.documentElement.scrollHeight;
-      const marker = window.scrollY + Math.max(180, window.innerHeight * 0.4);
-      let nextActive: "works" | "about" | "contact" = "works";
-
       if (scrollBottom >= docHeight - 24) {
         setActiveSection((current) => (current === "contact" ? current : "contact"));
-        raf = 0;
-        return;
       }
-
-      for (const id of sections) {
-        const el = document.getElementById(id);
-        if (!el) continue;
-        if (el.getBoundingClientRect().top + window.scrollY <= marker) nextActive = id;
-      }
-
-      setActiveSection((current) => (current === nextActive ? current : nextActive));
-      raf = 0;
     };
-
     const onScroll = () => {
       if (raf) return;
-      raf = window.requestAnimationFrame(updateActiveSection);
+      raf = window.requestAnimationFrame(updateBottom);
     };
 
-    updateActiveSection();
+    updateBottom();
     window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
 
     return () => {
+      observer.disconnect();
       if (raf) window.cancelAnimationFrame(raf);
       window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
     };
   }, [worksLength, detailSectionLength]);
 

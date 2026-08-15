@@ -98,6 +98,7 @@ function createRenderer(init) {
   let lightMode = init.light;
   let palette = init.palette;
   let hidden = false;
+  let paused = false;
   let staticMode = false;
   let degradeScale = 1;
   let baseRatio = 1;
@@ -295,7 +296,7 @@ function createRenderer(init) {
 
   function step() {
     timer = null;
-    if (hidden) {
+    if (hidden || paused) {
       running = false;
       return;
     }
@@ -309,7 +310,7 @@ function createRenderer(init) {
   }
 
   function runIfNeeded() {
-    if (running || hidden) return;
+    if (running || hidden || paused) return;
     running = true;
     timer = setTimeout(step, budget);
   }
@@ -358,6 +359,19 @@ function createRenderer(init) {
       if (staticMode || profile.reducedMotion) return;
       runIfNeeded();
     },
+    setPaused(nextPaused) {
+      paused = nextPaused;
+      if (paused) {
+        if (timer !== null) {
+          clearTimeout(timer);
+          timer = null;
+        }
+        running = false;
+        return;
+      }
+      if (staticMode || profile.reducedMotion || hidden) return;
+      runIfNeeded();
+    },
     degrade(level) {
       if (level >= 1) {
         profile.targetFps = Math.min(profile.targetFps, 15);
@@ -393,6 +407,9 @@ self.onmessage = function (event) {
       break;
     case "hidden":
       if (renderer) renderer.setHidden(data.hidden);
+      break;
+    case "paused":
+      if (renderer) renderer.setPaused(data.paused);
       break;
     case "degrade":
       if (renderer) renderer.degrade(data.level);

@@ -10,7 +10,7 @@
   --color-on-accent: var(--theme-on-accent);
   --color-border: var(--theme-border);
   --font-display: var(--font-display-en), "Noto Serif SC", serif;
-  --font-display-sc: var(--font-display-cn), "Noto Serif SC", serif;
+  --font-display-sc: "Noto Serif SC", serif;
   --font-body: var(--font-inter), "Noto Sans SC", sans-serif;
   --font-mono: var(--font-jbmono);
   --animate-fade-up: fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -190,37 +190,45 @@ body {
 }
 
 @media (pointer: coarse) {
+  body {
+    text-rendering: auto;
+  }
+
+  .dark body {
+    text-shadow: 0 1px 2px rgba(2, 6, 14, 0.55);
+  }
+
   :root,
   .dark {
-    --glass-bg: rgba(16, 18, 26, 0.6);
-    --glass-bg-strong: rgba(13, 14, 20, 0.88);
-    --glass-chip-bg: rgba(255, 255, 255, 0.12);
+    --glass-bg: rgba(16, 18, 26, 0.74);
+    --glass-bg-strong: rgba(13, 14, 20, 0.92);
+    --glass-chip-bg: rgba(255, 255, 255, 0.18);
   }
 
   .light {
-    --glass-bg: rgba(255, 255, 255, 0.66);
-    --glass-bg-strong: rgba(252, 252, 254, 0.92);
-    --glass-chip-bg: rgba(255, 255, 255, 0.68);
+    --glass-bg: rgba(255, 255, 255, 0.8);
+    --glass-bg-strong: rgba(252, 252, 254, 0.95);
+    --glass-chip-bg: rgba(255, 255, 255, 0.78);
   }
 
   .glass {
-    -webkit-backdrop-filter: blur(14px) saturate(150%);
-    backdrop-filter: blur(14px) saturate(150%);
+    -webkit-backdrop-filter: blur(8px) saturate(140%);
+    backdrop-filter: blur(8px) saturate(140%);
   }
 
   .glass-strong {
-    -webkit-backdrop-filter: blur(18px) saturate(160%);
-    backdrop-filter: blur(18px) saturate(160%);
+    -webkit-backdrop-filter: blur(10px) saturate(150%);
+    backdrop-filter: blur(10px) saturate(150%);
   }
 
   .glass-chip {
-    -webkit-backdrop-filter: blur(10px) saturate(140%);
-    backdrop-filter: blur(10px) saturate(140%);
+    -webkit-backdrop-filter: blur(6px) saturate(130%);
+    backdrop-filter: blur(6px) saturate(130%);
   }
 
   .glass-solid {
-    -webkit-backdrop-filter: blur(16px) saturate(150%);
-    backdrop-filter: blur(16px) saturate(150%);
+    -webkit-backdrop-filter: blur(10px) saturate(140%);
+    backdrop-filter: blur(10px) saturate(140%);
   }
 
   .work-card-hover {
