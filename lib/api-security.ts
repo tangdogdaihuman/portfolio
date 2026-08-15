@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getRateLimitStore } from "@/lib/rate-limit-store";
 import { getClientIp } from "@/lib/client-ip";
 import { fail } from "@/lib/api-response";
+import { reportApiError } from "@/lib/monitoring";
 
 const WRITE_METHODS = new Set(["POST", "PUT", "DELETE", "PATCH"]);
 const LOOPBACK_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1"]);
@@ -54,7 +55,16 @@ export async function rateLimit(
 ): Promise<NextResponse | null> {
   const bucketKey = `${key}:${getClientIp(req)}`;
   const now = Date.now();
-  const bucket = await getRateLimitStore().increment(bucketKey, windowMs, now);
+  let bucket: { count: number; resetAt: number };
+  try {
+    bucket = await getRateLimitStore().increment(bucketKey, windowMs, now);
+  } catch (error) {
+    reportApiError({
+      scope: "rate-limit",
+      message: error instanceof Error ? error.message : "Unknown error",
+    });
+    return fail("RATE_LIMITED", "Too many requests", 429);
+  }
   if (bucket.count > limit) {
     return fail("RATE_LIMITED", "Too many requests", 429);
   }

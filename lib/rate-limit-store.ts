@@ -1,5 +1,4 @@
 import db from "@/lib/db";
-import { reportApiError } from "@/lib/monitoring";
 
 type Bucket = { count: number; resetAt: number };
 
@@ -10,24 +9,16 @@ export interface RateLimitStore {
 class DbRateLimitStore implements RateLimitStore {
   async increment(key: string, windowMs: number, now: number): Promise<Bucket> {
     const resetAt = now + windowMs;
-    try {
-      const res = await db.execute({
-        sql: `INSERT INTO rate_limits (bucket_key, count, reset_at) VALUES (?, 1, ?)
-              ON CONFLICT(bucket_key) DO UPDATE SET
-                count = CASE WHEN reset_at <= ? THEN 1 ELSE count + 1 END,
-                reset_at = CASE WHEN reset_at <= ? THEN ? ELSE reset_at END
-              RETURNING count, reset_at`,
-        args: [key, resetAt, now, now, resetAt],
-      });
-      const row = res.rows[0];
-      return { count: Number(row.count), resetAt: Number(row.reset_at) };
-    } catch (error) {
-      reportApiError({
-        scope: "rate-limit.store",
-        message: error instanceof Error ? error.message : "Unknown error",
-      });
-      return { count: 1, resetAt };
-    }
+    const res = await db.execute({
+      sql: `INSERT INTO rate_limits (bucket_key, count, reset_at) VALUES (?, 1, ?)
+            ON CONFLICT(bucket_key) DO UPDATE SET
+              count = CASE WHEN reset_at <= ? THEN 1 ELSE count + 1 END,
+              reset_at = CASE WHEN reset_at <= ? THEN ? ELSE reset_at END
+            RETURNING count, reset_at`,
+      args: [key, resetAt, now, now, resetAt],
+    });
+    const row = res.rows[0];
+    return { count: Number(row.count), resetAt: Number(row.reset_at) };
   }
 }
 

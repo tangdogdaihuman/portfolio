@@ -139,5 +139,37 @@ Strict-Transport-Security: max-age=15552000; includeSubDomains
 | 第 1 轮 | 发现 2 高 1 中（依赖、CSRF、安全头） | 修复前基线 | 3 |
 | 第 2 轮 | 确认 SQL 拼接白名单安全；nikto 发现 1 低（X-Powered-By）并修复 | nikto/sqlmap/gobuster/手工 25 项全过 | 0 |
 | 第 3 轮 | 复查危险 API（eval/innerHTML/动态 SQL）无新问题；npm audit = 0 | 复扫全绿 | 0 |
+| 第 4 轮（2026-08-15） | 复查限流/访客/验证码/IP 解析新增代码，发现 2 中（验证码并发竞态、限流 fail-open）并修复；确认 visits 回显为 React 自动转义无 XSS；npm audit = 0 | —（静态复查） | 2（已修复） |
 
 连续两轮无新增中/高危发现，且渗透测试全部通过，满足停止条件。
+
+---
+
+## 七、第 4 轮审计明细（2026-08-15）
+
+### 中危（已修复）
+
+#### 5. `verifyCode` 并发竞态可突破尝试上限
+- **文件**：[lib/verification-codes.ts](file:///c:/Users/admin/Desktop/个人网站2/lib/verification-codes.ts)
+- **触发**：原实现先 `SELECT attempts` 再 `UPDATE attempts = 旧值+1`，并发请求读到同一旧值各自回写，尝试计数增长慢于实际尝试次数，可绕过 `MAX_ATTEMPTS=5`
+- **修复**：改为单条原子 `UPDATE ... SET attempts = attempts + 1 WHERE ip = ? AND expires_at > ? RETURNING code, attempts`，每次尝试严格递增；过期行由后续 `DELETE ... WHERE expires_at <= ?` 清理
+
+#### 6. 限流存储故障时 fail-open
+- **文件**：[lib/rate-limit-store.ts](file:///c:/Users/admin/Desktop/个人网站2/lib/rate-limit-store.ts)、[lib/api-security.ts](file:///c:/Users/admin/Desktop/个人网站2/lib/api-security.ts)
+- **触发**：`DbRateLimitStore` 出错时返回 `count: 1`，DB 故障窗口内限流完全失效（含 `admin-login`、`send-code` 安全桶）；Upstash 分支却又直接抛错 500，两套后端故障语义相反
+- **修复**：store 故障统一上抛，由 `rateLimit()` 捕获后 fail-closed 返回 429 并报监控——存储不可用时拒绝请求，而非放行爆破
+
+### 确认安全的项
+
+| 检查项 | 结论 |
+|---|---|
+| visits 回显 XSS | 误报：`components/admin/visitors-panel.tsx` 全部 React 文本插值自动转义，无 `dangerouslySetInnerHTML` |
+| SQL 注入（新增代码） | 全参数化；`rate_limits` upsert、`verification_codes`、`visits` 的 `IN` 占位符均安全 |
+| cron 鉴权 | `CRON_SECRET` 缺失时默认 403，`safeEqual` 恒定时间比较，`limit` clamp 1-100 |
+| API 路由鉴权覆盖 | 全部写路由 Origin+Auth 双校验（logout 仅 Origin，幂等清 cookie 无危害）；公开 GET 均为作品集内容 |
+| 依赖 | `npm audit` = 0 漏洞 |
+
+### 回归验证（第 4 轮修复后）
+
+- `npm run lint` / `typecheck` / `test:schema` / `build` ✅
+- `npm run test:e2e` ✅ 30 passed

@@ -15,20 +15,23 @@ export async function generateCode(ip: string): Promise<string> {
 }
 
 export async function verifyCode(ip: string, input: string): Promise<boolean> {
+  const now = Date.now();
   const res = await db.execute({
-    sql: "SELECT code, expires_at, attempts FROM verification_codes WHERE ip = ?",
-    args: [ip],
+    sql: `UPDATE verification_codes SET attempts = attempts + 1
+          WHERE ip = ? AND expires_at > ?
+          RETURNING code, attempts`,
+    args: [ip, now],
   });
   const row = res.rows[0];
-  if (!row) return false;
-
-  if (Date.now() > Number(row.expires_at)) {
-    await db.execute({ sql: "DELETE FROM verification_codes WHERE ip = ?", args: [ip] });
+  if (!row) {
+    await db.execute({
+      sql: "DELETE FROM verification_codes WHERE ip = ? AND expires_at <= ?",
+      args: [ip, now],
+    });
     return false;
   }
 
-  const attempts = Number(row.attempts) + 1;
-  if (attempts > MAX_ATTEMPTS) {
+  if (Number(row.attempts) > MAX_ATTEMPTS) {
     await db.execute({ sql: "DELETE FROM verification_codes WHERE ip = ?", args: [ip] });
     return false;
   }
@@ -40,9 +43,5 @@ export async function verifyCode(ip: string, input: string): Promise<boolean> {
     return true;
   }
 
-  await db.execute({
-    sql: "UPDATE verification_codes SET attempts = ? WHERE ip = ?",
-    args: [attempts, ip],
-  });
   return false;
 }

@@ -77,7 +77,7 @@ npm run test:smoke:prod  # 对线上 tangzihang.top 跑冒烟（SMOKE_ALLOW_WRIT
 - 必填变量见 `.env.example`：`DATABASE_URL`、`DATABASE_AUTH_TOKEN`、R2 一组、`ADMIN_SECRET_KEY`。
 - 可选：`NEXT_PUBLIC_BASE_URL`、`UPSTASH_REDIS_REST_URL`+`UPSTASH_REDIS_REST_TOKEN`、`CRON_SECRET`、`MONITORING_WEBHOOK_URL`、`TOTP_SECRET`、`EMAIL_HOST`/`PORT`/`USER`/`PASS`（QQ SMTP 验证码登录）、`SMOKE_BASE_URL`、`SMOKE_ALLOW_WRITES`、`ADMIN_KEY`（smoke 测试优先读，回退到 `ADMIN_SECRET_KEY`）。
 - 部署在 Vercel，绑定 GitHub 自动部署；域名 `tangzihang.top` 走 Cloudflare 代理。
-- 限流默认走 Turso `rate_limits` 表（多实例共享计数，DB 故障时降级放行并报监控）；配置了 `UPSTASH_REDIS_REST_*` 才改用 Redis。
+- 限流默认走 Turso `rate_limits` 表（多实例共享计数，存储故障时 fail-closed 返回 429 并报监控，防止限流被绕过）；配置了 `UPSTASH_REDIS_REST_*` 才改用 Redis。
 - 客户端 IP 统一走 `lib/client-ip.ts` 的 `getClientIp()`（`cf-connecting-ip` → `x-vercel-forwarded-for` → `x-forwarded-for` → `x-real-ip`）。**禁止直接取 `x-forwarded-for` 首值**：Vercel 会把它覆写成直连对端 IP，CF 前置时就是每请求轮换的 CF 边缘节点 IP（2026-08 实测：限流桶键全是 CF IP，登录限流因此失效）。
 - 部署命令：`vercel --prod --yes`，网络不稳时 `git push` 触发自动部署。
 
