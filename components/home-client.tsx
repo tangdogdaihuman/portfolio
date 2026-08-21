@@ -756,15 +756,43 @@ export default function HomeClient({
               >
                 1193662756@qq.com
               </a>
+              <div className="mt-10 flex flex-wrap items-center gap-3">
+                <a
+                  href="/resume-tangzihang.png"
+                  download="唐子航-3D角色简历.png"
+                  data-cursor="下载"
+                  className="inline-flex min-h-12 items-center gap-2.5 rounded-full bg-accent px-7 text-[0.78rem] font-medium tracking-[0.14em] text-on-accent shadow-[0_14px_36px_-10px_color-mix(in_srgb,var(--color-accent)_55%,transparent)] transition-[transform,box-shadow] duration-400 hover:scale-[1.03] hover:shadow-[0_18px_44px_-10px_color-mix(in_srgb,var(--color-accent)_70%,transparent)] active:scale-[0.98]"
+                >
+                  下载简历
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                </a>
+                <a
+                  href="/portfolio-tangzihang.pdf"
+                  download="唐子航-作品集.pdf"
+                  data-cursor="下载"
+                  className="glass inline-flex min-h-12 items-center gap-2.5 rounded-full px-7 text-[0.78rem] font-medium tracking-[0.14em] text-text transition-transform duration-400 hover:scale-[1.03] active:scale-[0.98]"
+                >
+                  作品集 PDF
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                </a>
+              </div>
             </Reveal>
             <div className="mt-14 grid gap-x-14 md:grid-cols-2">
-              <Reveal delay={0.1}>
+              <Reveal delay={0.14}>
                 <div className="border-t border-border/60 py-6 md:py-7">
                   <p className="meta-label">微信 WeChat</p>
                   <p className="font-display mt-3 text-[clamp(1.25rem,2.4vw,1.9rem)] text-text">T15918177465</p>
                 </div>
               </Reveal>
-              <Reveal delay={0.14}>
+              <Reveal delay={0.18}>
                 <div className="border-t border-border/60 py-6 md:py-7">
                   <p className="meta-label">电话 Phone</p>
                   <a
@@ -791,7 +819,7 @@ export default function HomeClient({
                   </a>
                 </div>
               </Reveal>
-              <Reveal delay={0.22}>
+              <Reveal delay={0.26}>
                 <div className="border-t border-border/60 py-6 md:py-7">
                   <p className="meta-label">ArtStation</p>
                   <a
