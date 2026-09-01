@@ -10,6 +10,7 @@
 - 后台入口 `app/admin/page.tsx`（含 `admin/login`、`admin/totp-setup` 子路由）；子组件在 `components/admin/`。
 - API 在 `app/api/**/route.ts`；数据库/鉴权封装在 `lib/db.ts`、`lib/auth.ts`、`proxy.ts`。
 - SEO 已就绪：`app/sitemap.ts`、`app/robots.ts`、详情页 `generateMetadata` OG 标签；404 在 `app/not-found.tsx`。
+- 移动端动效性能的设计决策（极光 canvas 降帧降分辨率、粗指针玻璃模糊降载、桌面零改动）记录在 `.trae/documents/mobile-performance-optimization.md`，改 `components/aurora-canvas.tsx` 或玻璃样式前先读。
 
 ## 开发命令
 ```bash
@@ -26,7 +27,8 @@ npm run test:smoke:prod  # 对线上 tangzihang.top 跑冒烟（SMOKE_ALLOW_WRIT
 - 验证顺序：`lint` → `typecheck` → `test:schema` → `build` → `test:e2e`（CI 执行的顺序）。
 - `db:push` 用 `.env.local` 直连 Turso；实际线上 db.ts 首次访问时自动迁移，通常不需要手动跑。
 - 单跑测试：`npx playwright test e2e/portfolio.spec.ts` 跑单个文件；`npm run test:e2e -- -g "用例名"` 按名过滤；`SMOKE_BASE_URL=http://localhost:3000 npm run test:smoke` 指定 smoke 目标。
-- e2e 基建：`playwright.config.ts` 自动起 dev server（127.0.0.1:3000），注入临时 `file:./e2e.db` SQLite + 假 R2 环境变量；`fullyParallel: false`；共享 helper 在 `e2e/admin-api.ts`；8 个 spec（portfolio / r2-delete / upload-policy / theme-toggle / desktop-cursor / mobile-hero-effects / work-form-state / smoke-settings.spec.js）。
+- e2e 基建：`playwright.config.ts` 自动起 dev server（127.0.0.1:3000），注入临时 `file:./e2e.db` SQLite + 假 R2 环境变量；`fullyParallel: false`；共享 helper 在 `e2e/admin-api.ts`；9 个 spec（portfolio / home-gallery / r2-delete / upload-policy / theme-toggle / desktop-cursor / mobile-hero-effects / work-form-state / smoke-settings.spec.js）。
+- 端口冲突：dev 与 e2e 固定 3000 端口，与本机 UE MCP（localhost:3000）冲突；UE 编辑器开着时手动起 dev 用 `npx next dev -p 3001`，跑 e2e 前先确认 3000 空闲。
 
 ## 数据与迁移
 - `lib/db.ts` 的 `db` 是 `Proxy`；首次 DB 访问自动 `runMigrations()`。
@@ -71,7 +73,7 @@ npm run test:smoke:prod  # 对线上 tangzihang.top 跑冒烟（SMOKE_ALLOW_WRIT
 - Tailwind v4 没有 `tailwind.config.*`；主题变量在 `app/globals.css` 的 `@theme inline`，PostCSS 只配 `@tailwindcss/postcss`。
 - 代码不加注释；新增代码英文命名。
 - `app/admin/page.tsx` 表单状态用对象整体替换，别用函数式 `setState`；不可变更新逻辑集中在 `components/admin/work-form-state.ts`。
-- `components/admin/AGENTS.md` 有子目录约定（禁引 server-only 模块、保持表单对象替换风格），改后台组件前先读。
+- 子目录约定：`components/admin/AGENTS.md`（禁引 server-only 模块、保持表单对象替换风格）、`app/work/AGENTS.md`（详情页数据读取保持服务端，不加客户端 fetch）。改对应目录前先读。
 
 ## 环境
 - 必填变量见 `.env.example`：`DATABASE_URL`、`DATABASE_AUTH_TOKEN`、R2 一组、`ADMIN_SECRET_KEY`。
@@ -86,6 +88,6 @@ npm run test:smoke:prod  # 对线上 tangzihang.top 跑冒烟（SMOKE_ALLOW_WRIT
 
 ## 修改时最容易漏的点
 - 作品删除/图片删除走异步 R2 清理（`enqueueR2DeleteInTransaction` + cron retry），不是同步删。改相关接口时检查 `app/api/works/[id]/route.ts` 和图片删除路由。
-- 仓库里有 `.next/`、`tsconfig.tsbuildinfo`、`.playwright-mcp/` 等生成产物；搜索和编辑时避开。
+- 仓库里有 `.next/`、`tsconfig.tsbuildinfo`、`.playwright-mcp/`、`test-results/`、`e2e.db*` 等生成产物；搜索和编辑时避开。
 - `.github/workflows/ci.yml` 在 push/master 和 PR 上跑 `lint → typecheck → test:schema → build → test:e2e`。
 - `.github/workflows/r2-delete-cron.yml` 每 15 分钟触发 R2 清理 cron，部署时需配 GitHub Secrets `CRON_ENDPOINT`、`CRON_SECRET`。
