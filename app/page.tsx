@@ -5,10 +5,10 @@ import HomeClient from "@/components/home-client";
 import VisitTracker from "@/components/visit-tracker";
 import { rowToWork } from "@/lib/work-mappers";
 
-export const revalidate = 30;
+export const revalidate = 300;
 
-const getData = unstable_cache(async () => {
-  try {
+const getData = unstable_cache(
+  async () => {
     const [introRes, worksRes, sectionsRes] = await Promise.all([
       db.execute("SELECT content, tagline FROM intro WHERE id = 1"),
       db.execute(
@@ -29,19 +29,18 @@ const getData = unstable_cache(async () => {
         title: row.title as string,
         content: row.content as string,
       })) satisfies Section[],
-      loadError: false,
     };
-  } catch {
-    return { intro: "", tagline: "", works: [], sections: [], loadError: true };
-  }
-}, ["home-data"], { revalidate: 30, tags: ["works", "intro", "detail-sections"] });
+  },
+  ["home-data"],
+  { revalidate: 300, tags: ["works", "intro", "detail-sections"] }
+);
 
 export default async function HomePage() {
-  const { intro, tagline, works, sections, loadError } = await getData();
+  const { intro, tagline, works, sections } = await getData();
   return (
     <>
       <VisitTracker />
-      <HomeClient initialIntro={intro} initialTagline={tagline} initialWorks={works} initialSections={sections} initialLoadError={loadError} />
+      <HomeClient initialIntro={intro} initialTagline={tagline} initialWorks={works} initialSections={sections} initialLoadError={false} />
     </>
   );
 }

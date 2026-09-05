@@ -270,3 +270,44 @@
 **判断分歧（需要你来定）**：字体。对方把 render-blocking CJK 字体定为 🟡 并认为"Google 按 unicode-range 切片，实际传输可控"；我定为 P-01 高优先，理由是（a）阻塞的是 **CSS 请求本身**而非只有字体分片，(b) 中国大陆对 `fonts.googleapis.com` 的可达性不稳，白屏风险不对称，(c) `next/font` 已经在构建期自托管另外三套字体，同一页面混用两套字体加载机制没有收益。若你的访客主体在海外，对方的降级判断可以接受；若访客主体在中国大陆，应把它排进 S1/S3 首位。
 
 **执行建议**：合并成一张单子做，顺序用本文件的 S1–S6，把对方路线图第 3 项（图片宽高入库消除 CLS）、第 5 项（R2 孤儿清理）、以及 §四·1（`avi`/`mkv` 上传后浏览器不能播放）补进 S2/S5/S6——这三条对方有、我这边没有独立验证，值得一起收。两份报告共 1 处崩溃链、2 处丢数据路径、3 处交付层浪费、以及约 1500 行可删复杂度。
+
+---
+
+## 10. 审查自我更正（实施阶段实测推翻的三条结论）
+
+诚实记录：下面三条是本审查（含子代理采集）的结论，在动手时被证伪或修正。以后复用本报告时以本节为准。
+
+### 更正 1 · P-06 附带说法错误：`app/error.tsx` 早就存在
+本文件称"当前只有 `not-found.tsx`"。实际 `app/error.tsx` 已存在，且有 500 文案与"重新加载"按钮。因此"catch 结果被缓存成空首页"的修法就是简单地让它 throw，无需新建错误页。**教训**：子代理的"缺失类"结论（某某文件不存在）必须自己 Glob 一遍再采信。
+
+### 更正 2 · P-01 推荐的具体方案不成立：`next/font` 无法自托管中文切片
+本文件建议"把 Noto Serif SC / Noto Sans SC 交给 `next/font/google`，`subsets: ["chinese-simplified"]`"。实测不可行：Next 16 内置字体元数据 `node_modules/next/dist/compiled/@next/font/dist/google/font-data.json` 里 `Noto Serif SC` 的 `subsets` 只有 `["cyrillic","latin","latin-ext","vietnamese"]`，`chinese-simplified` 通不过 `validate-google-font-function-call` 的类型检查；且 `getGoogleFontsUrl(fontFamily, axes, display)` 根本不传 subset 参数，切片是按元数据里的合法子集名去 CSS 里筛的，中文没有对应子集名 → 拿不到中文字形。**可行方向只有三个**：① 正文用系统中文字体（零下载，已实施）；② 构建期脚本自行拉取 Google 中文切片并本地 `@font-face`（每字重代价数 MB）；③ 保留外部 `<link>` 但改用大陆可达镜像并做非阻塞加载。已实施 ①，并把标题字体的 ②③ 留作用户决策。
+
+### 更正 3 · L-01 我给出的修法本身是错的：`'+1 millisecond'` 不是合法 SQLite 修饰符
+本文件（以及我最初写进 `lib/db.ts` 的修复）建议改成 `strftime('%Y-%m-%d %H:%M:%f', updated_at, '+1 millisecond')`。实测该表达式返回 **NULL**：SQLite 时间修饰符的单位里没有 `millisecond`，毫秒必须写成小数秒 `'+0.001 seconds'`；而标量 `MAX(a, b)` 任一参数为 NULL 即返回 NULL，所以这个"修复"会把 `updated_at` 写成空值并撞上 NOT NULL 约束。
+
+**正确写法（已落地并实测）**：
+```sql
+updated_at = MAX(strftime('%Y-%m-%d %H:%M:%f', 'now'),
+                 strftime('%Y-%m-%d %H:%M:%f', updated_at, '+0.001 seconds'))
+```
+`node:sqlite` 实测（对同一行连续 8 次写入）：
+- 旧表达式 `datetime(updated_at,'+0.001 seconds')`：8 次结果**完全相同**（毫秒被截断；同秒内若 `now` 的毫秒位小于旧值，结果还会倒退）→ 首轮审计声称的"毫秒单调递增"确实完全失效。
+- 新表达式：8 次结果严格递增且互不相同，毫秒位保留；对"库里时间戳领先于 now"的情况也能逐毫秒正确推进。
+
+通用陷阱记一条：**给 SQLite 时间列做算术要用 `strftime(..., '+N seconds')` 而不是 `datetime(...)`，后者静默丢弃毫秒**；而 `MAX()` 的 NULL 传播会让"多加了一层保护"的表达式整体失效。
+
+### 极光实测数字（P-04 定级依据：Chromium + CDP，1440×900，桌面细指针，静置采样）
+| 场景 | 主线程 Task | 其中 scripting | 页面实际 RAF |
+|---|---|---|---|
+| 现状（aurora 满帧动画） | **998 ms/s** | 461 ms/s | **24 fps** |
+| 画布 `visibility:hidden`（JS 仍逐帧画） | 471 ms/s | 462 ms/s | 25 fps |
+| 画布移出布局（JS 不再逐帧画） | 38 ms/s | 17 ms/s | 60 fps |
+
+读法：每帧全屏 `drawImage` + `ctx.filter` blur 合成的纯 scripting 约占 **46% 单核**，含光栅化后总计约**吃满一个核心**，把页面帧率压到 24fps；摘掉它之后，剩余全部动效（Lenis、自定义光标、framer、玻璃层）合计只有 38 ms/s。也就是说桌面卡顿几乎全是极光的，而非玻璃拟态或滚动处理——这修正了同日另一份报告"三重叠加"的归因权重。
+
+据此实施：桌面档 `targetFps 60→30`、`mainBlur 12px→6px`、滚动暂停对**所有**指针类型生效（原先只有粗指针）。bloom 层与射线密度不变，观感差异集中在光晕柔和度与漂移流畅度。
+
+### 实施中新发现、原报告未覆盖的两条
+- `DELETE /api/works/{id}/images`（清空整个作品图片）与空数组 `PUT` 会清掉 `work_images` 却把 `works.image_url` 留在原位，且该对象因仍被引用而受 R2 删除保护 → 出现"有封面、零图片"的不一致状态。不同于 L-02 的空串崩溃链，本次未改，留作后续。
+- 拒绝上传批次时若只回收"非法条目"的 R2 对象，仍会泄漏同批次里合法但未被插入的对象（因为整批被拒）。已按"整批 URL 全部入队 + 删除前二次校验库内引用"处理。

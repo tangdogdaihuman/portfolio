@@ -10,30 +10,39 @@ import { writeAuditLog } from "@/lib/audit-log";
 import { fail, ok } from "@/lib/api-response";
 import { enqueueR2DeleteInTransaction, processR2DeleteJobs } from "@/lib/r2-delete-jobs";
 import {
+  descriptionField,
+  fileSizeField,
+  sizeWeightField,
+  tagListField,
+  titleField,
+  urlField,
+  workDateField,
+} from "@/lib/validate/work-fields";
+import {
   collectRemovedImageUrls,
   replaceWorkImagesInTransaction,
   type PreparedWorkImage,
 } from "@/lib/work-images-replace";
 
 const imageSchema = z.object({
-  imageUrl: z.string().url(),
-  thumbUrl: z.string().url(),
+  imageUrl: urlField,
+  thumbUrl: urlField,
   mediaType: z.enum(["image", "video"]).default("image"),
-  imageSize: z.number().int().default(0),
+  imageSize: fileSizeField.default(0),
   sortOrder: z.number().int().optional(),
 });
 
 const saveSchema = z.object({
-  title: z.string().min(1),
-  description: z.string().min(1),
-  tags: z.array(z.string()).default([]),
-  software: z.array(z.string()).default([]),
-  imageUrl: z.string().url(),
-  thumbUrl: z.string().url(),
-  imageSize: z.number().int().default(0),
-  workDate: z.string().default(""),
-  sizeWeight: z.number().min(0.5).max(2.0).default(1.0),
-  expectedUpdatedAt: z.string().optional(),
+  title: titleField,
+  description: descriptionField,
+  tags: tagListField.default([]),
+  software: tagListField.default([]),
+  imageUrl: urlField,
+  thumbUrl: urlField,
+  imageSize: fileSizeField.default(0),
+  workDate: workDateField.default(""),
+  sizeWeight: sizeWeightField.default(1.0),
+  expectedUpdatedAt: z.string().min(1).optional(),
   images: z.array(imageSchema).min(1),
 });
 

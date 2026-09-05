@@ -4,6 +4,7 @@ import { reportApiError, reportMetric } from "@/lib/monitoring";
 
 export type RetentionCounts = {
   rateLimits: number;
+  verificationCodes: number;
   auditLogs: number;
   visits: number;
 };
@@ -61,9 +62,19 @@ export function pruneVisits() {
   });
 }
 
+export function pruneVerificationCodeRows() {
+  return prune("verification_codes", {
+    sql: `DELETE FROM verification_codes WHERE rowid IN (
+            SELECT rowid FROM verification_codes WHERE expires_at < ? ORDER BY expires_at ASC LIMIT ?
+          )`,
+    args: [Date.now(), CHUNK_ROWS],
+  });
+}
+
 export async function pruneRetentionTables(): Promise<RetentionCounts> {
   const rateLimits = await pruneRateLimitRows();
+  const verificationCodes = await pruneVerificationCodeRows();
   const auditLogs = await pruneAuditLogs();
   const visits = await pruneVisits();
-  return { rateLimits, auditLogs, visits };
+  return { rateLimits, verificationCodes, auditLogs, visits };
 }

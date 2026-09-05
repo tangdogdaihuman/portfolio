@@ -5,6 +5,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { requireSameOrigin } from "@/lib/api-security";
 import { requireAuth } from "@/lib/auth";
 import { r2, R2_BUCKET, publicUrl } from "@/lib/r2";
+import { IMMUTABLE_CACHE_CONTROL } from "@/lib/media-url";
 import { reportApiError, reportMetric } from "@/lib/monitoring";
 import { getIdempotencyStore } from "@/lib/idempotency-store";
 import { fail, ok } from "@/lib/api-response";
@@ -68,6 +69,7 @@ export async function POST(req: NextRequest) {
         Bucket: R2_BUCKET,
         Key: originalKey,
         ContentType: contentType,
+        CacheControl: IMMUTABLE_CACHE_CONTROL,
       }),
       { expiresIn: 300 }
     );

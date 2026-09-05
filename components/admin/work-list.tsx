@@ -11,6 +11,7 @@ export default function WorkList({
   onEdit,
   onReorder,
   reordering = false,
+  loading = false,
 }: {
   works: Work[];
   onDelete: (work: Work) => void;
@@ -18,13 +19,14 @@ export default function WorkList({
   onEdit: (id: string) => void;
   onReorder: (work: Work, direction: "up" | "down") => void;
   reordering?: boolean;
+  loading?: boolean;
 }) {
   const totalWeight = works.reduce((sum, work) => sum + (work.size_weight ?? 1), 0);
 
   return (
     <div className="space-y-3">
       {works.length === 0 && (
-        <p className="text-text-muted text-sm">暂无作品</p>
+        <p className="text-text-muted text-sm">{loading ? "加载中…" : "暂无作品"}</p>
       )}
       {works.map((work, i) => {
         const wgt = work.size_weight ?? 1;

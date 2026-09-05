@@ -1,4 +1,5 @@
 import { unstable_cache } from "next/cache";
+import { cache } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -11,22 +12,23 @@ import VisitTracker from "@/components/visit-tracker";
 import { rowToWork, rowToWorkImage } from "@/lib/work-mappers";
 import { isVideoUrl } from "@/lib/upload-policy";
 
-export const revalidate = 30;
+export const revalidate = 300;
 
-async function getWork(id: string): Promise<{ work: Work; images: WorkImage[] } | null> {
+const getWork = cache(async (id: string): Promise<{ work: Work; images: WorkImage[] } | null> => {
   const load = unstable_cache(async () => {
-    const result = await db.execute({
-      sql: "SELECT * FROM works WHERE id = ?",
-      args: [id],
-    });
+    const [workResult, imageResult] = await Promise.all([
+      db.execute({
+        sql: "SELECT * FROM works WHERE id = ?",
+        args: [id],
+      }),
+      db.execute({
+        sql: "SELECT * FROM work_images WHERE work_id = ? ORDER BY sort_order ASC, created_at ASC",
+        args: [id],
+      }),
+    ]);
 
-    if (result.rows.length === 0) return null;
-    const work = rowToWork(result.rows[0] as Record<string, unknown>);
-
-    const imageResult = await db.execute({
-      sql: "SELECT * FROM work_images WHERE work_id = ? ORDER BY sort_order ASC, created_at ASC",
-      args: [id],
-    });
+    if (workResult.rows.length === 0) return null;
+    const work = rowToWork(workResult.rows[0] as Record<string, unknown>);
 
     const images = imageResult.rows.length > 0
       ? imageResult.rows.map((row) => rowToWorkImage(row as Record<string, unknown>))
@@ -42,10 +44,10 @@ async function getWork(id: string): Promise<{ work: Work; images: WorkImage[] } 
         }];
 
     return { work, images };
-  }, [`work-data:${id}`], { revalidate: 30, tags: ["works", `work:${id}`] });
+  }, [`work-data:${id}`], { revalidate: 300, tags: ["works", `work:${id}`] });
 
   return load();
-}
+});
 
 export async function generateMetadata(
   { params }: { params: Promise<{ id: string }> }

@@ -38,6 +38,8 @@ npm run test:smoke:prod  # 对线上 tangzihang.top 跑冒烟（SMOKE_ALLOW_WRIT
 - 数据表：`works`、`work_images`（work_id 仅建索引 `idx_work_images_work_id_sort`，无外键约束，关联由 API 维护）、`intro`、`details`、`detail_sections`、`schema_migrations`、`audit_logs`、`r2_delete_jobs`、`visits`、`rate_limits`、`verification_codes`。
 - `works.software` 字段与 `tags` 一样是逗号串，API 返回数组。
 - `COLUMN_PATCHES` 共 7 条后期 patch 列（`work_date`、`software`、`image_size`、`media_type`、`intro.tagline`、`works.size_weight` 等，见 `lib/schema.ts`）。
+- **缓存与新鲜度**：`app/page.tsx`、`app/work/[id]/page.tsx` 以及被首页轮询的三个公开 GET（`/api/works`、`/api/intro`、`/api/detail-sections`）统一 `revalidate: 300` 并挂 `works` / `work:<id>` / `intro` / `detail-sections` 标签。个人站内容每周才变，写路由全都做了 `revalidateTag`，所以长 TTL 不影响新鲜度，只是让低流量站不再频繁把冷实例的迁移+查询全跑一遍。
+- **服务端取数失败必须抛错，不要 catch 成空值返回**：`unstable_cache` 会把 catch 分支的返回值当成功结果缓存住（30 秒起），一次数据库抖动就变成全站空作品集；抛错会走 `app/error.tsx`，且 ISR 期间会继续供出上一份好数据。
 
 ## 上传与存储约束
 - 图片上传固定走 `lib/upload-client.ts` 的 `uploadImageToR2()`：`POST /api/upload/presigned` → `PUT` 原图到 R2 → `POST /api/upload/process` 生成 webp 缩略图。视频文件跳过 process 步，缩略图直接用原图 URL。
@@ -45,7 +47,10 @@ npm run test:smoke:prod  # 对线上 tangzihang.top 跑冒烟（SMOKE_ALLOW_WRIT
 - 上传限制：图片 50MB / 视频 500MB，定义在 `lib/upload-policy.ts`（e2e `upload-policy.spec.ts` 有覆盖）。
 - 面向 Vercel/R2；不要引入本地文件持久化，服务端不依赖可写磁盘。
 - `Sharp`、`@libsql/client`、R2/S3、`crypto` 只能留在服务端文件，不能混进 `'use client'`。
-- **R2 删除是异步的**：删除作品/图片时在事务内调用 `enqueueR2DeleteInTransaction()` 写入 `r2_delete_jobs` 表；`processR2DeleteJobs()` 由 cron（`/api/cron/r2-delete`）按退避重试处理，也在多个写路由内联同步调用做 opportunistic 清理。`enqueueR2Delete()` 仅 `/api/upload/cleanup` 直接调用。
+- **R2 删除是异步的**：删除作品/图片时在事务内调用 `enqueueR2DeleteInTransaction()` 写入 `r2_delete_jobs` 表；`processR2DeleteJobs()` 由 cron（`/api/cron/r2-delete`）按退避重试处理，也在多个写路由内联同步调用做 opportunistic 清理。`enqueueR2Delete()` 由 `/api/upload/cleanup` 与整批被拒的上传载荷调用；删除前一定先用 `findReferencedUrls()` 复核库内引用，所以整批 URL 可以安全入队。
+- **媒体 URL 只在 `lib/media-url.ts` 一处解释**：`normalizeMediaUrl()` 在 `lib/work-mappers.ts` 的行映射出口把历史 `*.r2.dev` 地址统一成 `R2_PUBLIC_URL` 的域名（库里数据不需要改写）；`mediaUrlToKey()`/`urlToKey()` 按 `originals/`、`thumbnails/` 前缀 + 自有域名解析对象键。新增图片字段务必走 mapper，别在组件里自己拼域名；判定"自有域名"时记得把 `R2_PUBLIC_URL` 本身算进去，否则删除会被静默跳过。
+- **上传对象必须带 `CacheControl: IMMUTABLE_CACHE_CONTROL`**（`public, max-age=31536000, immutable`）：对象键是一次性 cuid 永不覆写；没有这个头，Cloudflare 对 R2 自定义域名不会做边缘缓存（实测一直 `cf-cache-status: DYNAMIC`）。另需在 Cloudflare **zone 的 Cache Rules** 里建规则开启边缘缓存（R2 面板里没有缓存开关）：匹配 Hostname equals `cdn.tangzihang.top`（只圈图片子域，主站 HTML 由 Vercel ISR 自管），Then 设 Cache eligibility = Eligible for cache、Edge TTL = Override origin 30 天（存量对象没有 Cache-Control 头，靠 override 才能命中）。
+- **作品至少保留一张图片**：`DELETE /api/works/images/[imageId]` 在事务内先 `COUNT(*)`，删到最后一张返回 409。不要退回成"删除后把 `works.image_url` 写成空串"——空串能过 NOT NULL，会让首页与 OG 变成空封面，而后台没有补图入口。
 
 ## 鉴权与后台
 - `/admin` 保护依赖 `proxy.ts`，不是 `middleware.ts`。Next 16 下别改回 middleware。
@@ -53,7 +58,9 @@ npm run test:smoke:prod  # 对线上 tangzihang.top 跑冒烟（SMOKE_ALLOW_WRIT
 - `ADMIN_SECRET_KEY` 缺失时，`proxy.ts` 对 `/admin` 路径返回 503；非 admin 路径放行。排查"本地后台打不开"先查此变量。
 - API 写操作约定：先 `requireSameOrigin(req)` → 再 `requireAuth(req)`；返回值非空时直接返回该 `NextResponse`。
 - 写路由成功后必须调 `revalidatePath("/")`（作品类再加 `revalidatePath(`/work/${id}`)`）+ `revalidateTag`，新增写路由照做。
-- 乐观并发控制：更新类接口（`works/[id]`、`works/[id]/save`、`works/reorder`）接受 `expectedUpdatedAt`，与库中 `updated_at` 不匹配返回 409；e2e 有覆盖。
+- 乐观并发控制：更新类接口（`works/[id]`、`works/[id]/save`、`works/reorder`）接受 `expectedUpdatedAt`，与库中 `updated_at` 不匹配返回 409；e2e 有覆盖。该字段是 `.min(1).optional()`，空串会被判 400，客户端在没有版本号时应**省略该字段**而不是传空串。
+- **`updated_at` 的推进表达式只能用 `strftime('%Y-%m-%d %H:%M:%f', ...)`**（见 `lib/db.ts` 的 `TOUCH_WORK_UPDATED_AT_SQL`）：`datetime()` 会静默截断毫秒，同秒内 bump 不出更大值；而 `'+1 millisecond'` 不是合法的 SQLite 修饰符单位（毫秒要写成 `'+0.001 seconds'`），且标量 `MAX()` 任一参数为 NULL 就整体返回 NULL，会把 `updated_at` 写空撞 NOT NULL。
+- **写完要回给客户端的新版本号必须在同一事务里读回**（或 `RETURNING`）。条件 UPDATE 之后再单独 `SELECT updated_at` 会在并发写交错时把别人会话的时间戳发回去，导致下一次保存通过校验却覆盖对方的修改。
 - 可选 Upstash Redis 做跨实例限流（`lib/rate-limit-store.ts`）；未配置时默认走 Turso `rate_limits` 表。
 - `app/api/auth/login` 支持三种登录：TOTP、邮箱验证码（QQ SMTP）、管理员密钥；涉及依赖 `nodemailer`、`otplib`、`qrcode`、`@paralleldrive/cuid2`。
 - 邮箱验证码仅限 `1193662756@qq.com`，存 Turso `verification_codes` 表（多实例共享）：5 分钟有效期、单码 5 次尝试上限；发送侧双层限流 = `send-code`（3 次/分钟）+ `send-code-cooldown`（1 次/30 秒），都走共享限流存储。TOTP 绑定走 `/admin/totp-setup` 扫码，仓库里没有独立生成脚本。
@@ -69,7 +76,10 @@ npm run test:smoke:prod  # 对线上 tangzihang.top 跑冒烟（SMOKE_ALLOW_WRIT
 ## 前端约定
 - 首页 `components/home-client.tsx`：筛选、排序、marquee、hero 等展示逻辑。轮询、`visibilitychange` 刷新（30s 节流）、自定义光标抽到 `components/home-hooks.ts`；初始数据由 `app/page.tsx` 服务端 `unstable_cache` 抓取后通过 props 传入。
 - 动画基线：`spring` 常用 `damping: 28`、`stiffness: 200`、`mass: 0.8`。
-- 自定义光标：纯 DOM 操作，不触发 React 渲染。
+- 画廊状态用可判别分支：`loadingWorks`（重试中且无内容）/ `works.length === 0`（作品集为空或加载失败）/ `filtered.length === 0`（筛选无匹配，带清除筛选入口）/ 正常网格；"已有内容但更新失败"另在网格上方独立提示。别把 error 和 empty 塞进同一个分支。
+- 中文字体策略：正文走设备自带字体（`--font-body` 里 `PingFang SC`/`Microsoft YaHei` 优先，零下载）；标题中文 `Noto Serif SC` 仍走 `app/layout.tsx` 的外部 `<link>`，只请求 400/700/800。**`next/font` 在 Next 16 下无法自托管中文切片**——其 `font-data.json` 里 CJK 字体没有中文子集名，`subsets: ["chinese-simplified"]` 通不过类型检查；要彻底自托管得另写构建期拉取脚本。
+- framer-motion：`layoutId`/`layout`/`drag` 需要投影特性，`domAnimation` 不含它们。首页与详情页灯箱统一用 `<LazyMotion features={loadMotionFeatures}>`（`components/motion-features.ts`，异步取 `domMax`）；从根入口 import `motion` 会把完整特性包拉进首屏。
+- 自定义光标：纯 DOM 操作，不触发 React 渲染。滚动时隐藏但必须在停手 ~140ms 后自动恢复（原生光标已被隐藏，不能等下一次 mousemove 才回来）；文本输入框与 `cursor-zoom-in` 处保留原生光标并隐藏光点，`app/globals.css` 里那组 `hide-native-cursor` 例外规则别退回成 `cursor: none !important`。
 - Tailwind v4 没有 `tailwind.config.*`；主题变量在 `app/globals.css` 的 `@theme inline`，PostCSS 只配 `@tailwindcss/postcss`。
 - 代码不加注释；新增代码英文命名。
 - `app/admin/page.tsx` 表单状态用对象整体替换，别用函数式 `setState`；不可变更新逻辑集中在 `components/admin/work-form-state.ts`。
@@ -91,3 +101,13 @@ npm run test:smoke:prod  # 对线上 tangzihang.top 跑冒烟（SMOKE_ALLOW_WRIT
 - 仓库里有 `.next/`、`tsconfig.tsbuildinfo`、`.playwright-mcp/`、`test-results/`、`e2e.db*` 等生成产物；搜索和编辑时避开。
 - `.github/workflows/ci.yml` 在 push/master 和 PR 上跑 `lint → typecheck → test:schema → build → test:e2e`。
 - `.github/workflows/r2-delete-cron.yml` 每 15 分钟触发 R2 清理 cron，部署时需配 GitHub Secrets `CRON_ENDPOINT`、`CRON_SECRET`。
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

@@ -1,9 +1,9 @@
 import { NextRequest } from "next/server";
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import { z } from "zod";
 import db from "@/lib/db";
 import { requireSameOrigin } from "@/lib/api-security";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, verifyAuthRequest } from "@/lib/auth";
 import { fail, ok } from "@/lib/api-response";
 
 const introSchema = z.object({
@@ -11,14 +11,26 @@ const introSchema = z.object({
   tagline: z.string().default(""),
 });
 
-export async function GET() {
+async function loadIntroData() {
   const result = await db.execute("SELECT content, tagline, updated_at FROM intro WHERE id = 1");
   const row = result.rows[0];
-  return ok({
-    content: row?.content || "",
-    tagline: row?.tagline || "",
-    updatedAt: row?.updated_at || "",
-  });
+  return {
+    content: (row?.content as string) || "",
+    tagline: (row?.tagline as string) || "",
+    updatedAt: (row?.updated_at as string) || "",
+  };
+}
+
+const getIntroData = unstable_cache(loadIntroData, ["intro-data"], {
+  revalidate: 300,
+  tags: ["intro"],
+});
+
+export async function GET(req: NextRequest) {
+  if (await verifyAuthRequest(req)) {
+    return ok(await loadIntroData());
+  }
+  return ok(await getIntroData());
 }
 
 export async function PUT(req: NextRequest) {

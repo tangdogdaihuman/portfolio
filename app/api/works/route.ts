@@ -1,41 +1,50 @@
 import { NextRequest } from "next/server";
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import { createId } from "@paralleldrive/cuid2";
 import { z } from "zod";
 import db, { tagsToString } from "@/lib/db";
 import { requireSameOrigin } from "@/lib/api-security";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, verifyAuthRequest } from "@/lib/auth";
 import { reportApiError, reportMetric } from "@/lib/monitoring";
 import { writeAuditLog } from "@/lib/audit-log";
 import { fail, ok } from "@/lib/api-response";
 import { processR2DeleteJobs } from "@/lib/r2-delete-jobs";
+import {
+  descriptionField,
+  fileSizeField,
+  sizeWeightField,
+  tagListField,
+  titleField,
+  urlField,
+  workDateField,
+} from "@/lib/validate/work-fields";
 import { replaceWorkImagesInTransaction, type PreparedWorkImage } from "@/lib/work-images-replace";
 import { rowToWork } from "@/lib/work-mappers";
 
 const imageSchema = z.object({
-  imageUrl: z.string().url(),
-  thumbUrl: z.string().url(),
+  imageUrl: urlField,
+  thumbUrl: urlField,
   mediaType: z.enum(["image", "video"]).default("image"),
-  imageSize: z.number().int().default(0),
+  imageSize: fileSizeField.default(0),
   sortOrder: z.number().int().optional(),
 });
 
 const workSchema = z.object({
-  title: z.string().min(1),
-  description: z.string().min(1),
-  tags: z.array(z.string()).default([]),
-  software: z.array(z.string()).default([]),
-  imageUrl: z.string().url(),
-  thumbUrl: z.string().url(),
+  title: titleField,
+  description: descriptionField,
+  tags: tagListField.default([]),
+  software: tagListField.default([]),
+  imageUrl: urlField,
+  thumbUrl: urlField,
   pinned: z.boolean().default(false),
   sortOrder: z.number().int().default(0),
-  workDate: z.string().default(""),
-  imageSize: z.number().int().default(0),
-  sizeWeight: z.number().min(0.5).max(2.0).default(1.0),
+  workDate: workDateField.default(""),
+  imageSize: fileSizeField.default(0),
+  sizeWeight: sizeWeightField.default(1.0),
   images: z.array(imageSchema).optional(),
 });
 
-export async function GET() {
+async function loadWorksList() {
   const result = await db.execute(
     `SELECT w.*, (SELECT COUNT(*) FROM work_images WHERE work_id = w.id) as image_count,
      CASE WHEN (SELECT COALESCE(SUM(image_size), 0) FROM work_images WHERE work_id = w.id) = 0
@@ -43,8 +52,19 @@ export async function GET() {
           ELSE (SELECT SUM(image_size) FROM work_images WHERE work_id = w.id) END as total_size
      FROM works w ORDER BY w.pinned DESC, w.sort_order DESC, w.created_at DESC`
   );
-  const works = result.rows.map((row) => rowToWork(row as Record<string, unknown>));
-  return ok(works);
+  return result.rows.map((row) => rowToWork(row as Record<string, unknown>));
+}
+
+const getWorksList = unstable_cache(loadWorksList, ["works-list"], {
+  revalidate: 300,
+  tags: ["works"],
+});
+
+export async function GET(req: NextRequest) {
+  if (await verifyAuthRequest(req)) {
+    return ok(await loadWorksList());
+  }
+  return ok(await getWorksList());
 }
 
 export async function POST(req: NextRequest) {

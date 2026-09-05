@@ -41,6 +41,7 @@ export default function GlassCursor() {
     let ringScaleTarget = 0;
     let hasPosition = false;
     let raf = 0;
+    let scrollRestoreTimer = 0;
 
     const render = () => {
       raf = 0;
@@ -67,8 +68,20 @@ export default function GlassCursor() {
         rx = mx;
         ry = my;
       }
-      cursor.style.opacity = "1";
-      ring.style.opacity = "1";
+      if (scrollRestoreTimer) {
+        window.clearTimeout(scrollRestoreTimer);
+        scrollRestoreTimer = 0;
+      }
+      const field = (event.target as HTMLElement).closest<HTMLElement>(
+        'input, textarea, [contenteditable="true"]'
+      );
+      if (field) {
+        cursor.style.opacity = "0";
+        ring.style.opacity = "0";
+      } else {
+        cursor.style.opacity = "1";
+        ring.style.opacity = "1";
+      }
       const target = (event.target as HTMLElement).closest<HTMLElement>("[data-cursor], a, button");
       const nextLabel = target?.dataset.cursor ?? "";
       ringScaleTarget = target ? 1 : 0;
@@ -86,6 +99,12 @@ export default function GlassCursor() {
     const onScroll = () => {
       cursor.style.opacity = "0";
       ring.style.opacity = "0";
+      if (scrollRestoreTimer) window.clearTimeout(scrollRestoreTimer);
+      scrollRestoreTimer = window.setTimeout(() => {
+        scrollRestoreTimer = 0;
+        cursor.style.opacity = "1";
+        ring.style.opacity = "1";
+      }, 140);
     };
 
     window.addEventListener("mousemove", onMove, { passive: true });
@@ -95,6 +114,7 @@ export default function GlassCursor() {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("scroll", onScroll);
       document.documentElement.removeEventListener("mouseleave", onLeave);
+      if (scrollRestoreTimer) window.clearTimeout(scrollRestoreTimer);
       if (raf) cancelAnimationFrame(raf);
     };
   }, [enabled]);

@@ -7,7 +7,7 @@ import { requireSameOrigin } from "@/lib/api-security";
 import { requireAuth } from "@/lib/auth";
 import { writeAuditLog } from "@/lib/audit-log";
 import { fail, ok } from "@/lib/api-response";
-import { enqueueR2DeleteInTransaction, processR2DeleteJobs } from "@/lib/r2-delete-jobs";
+import { enqueueR2Delete, enqueueR2DeleteInTransaction, processR2DeleteJobs } from "@/lib/r2-delete-jobs";
 import {
   chooseCoverImage,
   collectRemovedImageUrls,
@@ -65,13 +65,29 @@ export async function POST(
   void processR2DeleteJobs().catch(() => {});
 
   const { id: workId } = await params;
-  const body = await req.json();
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return fail("BAD_REQUEST", "Invalid JSON body", 400);
+  }
 
   const items = Array.isArray(body) ? body : [body];
   const valid: { id: string; imageUrl: string; thumbUrl: string; mediaType: string; imageSize: number }[] = [];
+  const batchUrls: string[] = [];
+  let rejected = 0;
   for (const item of items) {
     const parsed = addImageSchema.safeParse(item);
-    if (!parsed.success) continue;
+    if (!parsed.success) {
+      rejected += 1;
+      if (item && typeof item === "object") {
+        const candidate = item as Record<string, unknown>;
+        if (typeof candidate.imageUrl === "string") batchUrls.push(candidate.imageUrl);
+        if (typeof candidate.thumbUrl === "string") batchUrls.push(candidate.thumbUrl);
+      }
+      continue;
+    }
+    batchUrls.push(parsed.data.imageUrl, parsed.data.thumbUrl);
     valid.push({
       id: createId(),
       imageUrl: parsed.data.imageUrl,
@@ -79,6 +95,11 @@ export async function POST(
       mediaType: parsed.data.mediaType,
       imageSize: parsed.data.imageSize,
     });
+  }
+
+  if (rejected > 0) {
+    await enqueueR2Delete(batchUrls);
+    return fail("BAD_REQUEST", `Invalid image payload: ${rejected}/${items.length} items rejected, nothing was added`, 400);
   }
 
   if (valid.length > 0) {

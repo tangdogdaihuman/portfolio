@@ -1,5 +1,6 @@
 import { S3Client, DeleteObjectsCommand } from "@aws-sdk/client-s3";
 import { reportMetric } from "@/lib/monitoring";
+import { mediaUrlToKey } from "@/lib/media-url";
 
 export const r2 = new S3Client({
   region: "auto",
@@ -18,16 +19,7 @@ export function publicUrl(key: string): string {
 }
 
 export function urlToKey(url: string): string | null {
-  if (!url || !R2_PUBLIC_URL) return null;
-  const prefixes = [
-    R2_PUBLIC_URL,
-    ...(process.env.R2_ALT_PUBLIC_URLS?.split(",").map((s) => s.trim()).filter(Boolean) ?? []),
-  ];
-  for (const p of prefixes) {
-    const prefix = p.endsWith("/") ? p : p + "/";
-    if (url.startsWith(prefix)) return url.slice(prefix.length);
-  }
-  return null;
+  return mediaUrlToKey(url);
 }
 
 export async function deleteFromR2(urls: string[]): Promise<void> {

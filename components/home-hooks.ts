@@ -26,6 +26,7 @@ export function useHomeDataRefresh({
   const [loadingWorks, setLoadingWorks] = useState(false);
   const [expandedSection, setExpandedSection] = useState<string | null>(initialSections[0]?.id ?? null);
   const [works, setWorks] = useState<Work[]>(initialWorks);
+  const worksRef = useRef<Work[]>(initialWorks);
   const refreshInFlightRef = useRef(false);
   const lastWorksRefreshAtRef = useRef(0);
   const lastMetaRefreshAtRef = useRef(0);
@@ -35,6 +36,7 @@ export function useHomeDataRefresh({
     if (refreshInFlightRef.current) return;
     if (!options?.force && now - lastWorksRefreshAtRef.current < WORKS_REFRESH_MIN_INTERVAL) return;
     refreshInFlightRef.current = true;
+    if (worksRef.current.length === 0) setLoadingWorks(true);
     const fetchMeta = Boolean(options?.force) || now - lastMetaRefreshAtRef.current >= META_REFRESH_MIN_INTERVAL;
 
     try {
@@ -46,6 +48,7 @@ export function useHomeDataRefresh({
       if (!worksRes.ok) throw new Error("refresh failed");
 
       const nextWorks = (await worksRes.json()) as Work[];
+      worksRef.current = nextWorks;
       setWorks(nextWorks);
       setLoadError(false);
       lastWorksRefreshAtRef.current = Date.now();

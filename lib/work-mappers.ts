@@ -1,4 +1,5 @@
 import { tagsToArray } from "@/lib/db";
+import { normalizeMediaUrl } from "@/lib/media-url";
 import type { Work, WorkImage } from "@/lib/types";
 
 function readString(value: unknown): string {
@@ -20,8 +21,8 @@ export function rowToWork(row: Record<string, unknown>): Work {
     id: readString(row.id),
     title: readString(row.title),
     description: readString(row.description),
-    image_url: readString(row.image_url),
-    thumb_url: readString(row.thumb_url),
+    image_url: normalizeMediaUrl(readString(row.image_url)),
+    thumb_url: normalizeMediaUrl(readString(row.thumb_url)),
     tags: tagsToArray(row.tags),
     software: tagsToArray(row.software),
     work_date: readString(row.work_date),
@@ -40,8 +41,8 @@ export function rowToWorkImage(row: Record<string, unknown>): WorkImage {
   return {
     id: readString(row.id),
     work_id: readString(row.work_id),
-    image_url: readString(row.image_url),
-    thumb_url: readString(row.thumb_url),
+    image_url: normalizeMediaUrl(readString(row.image_url)),
+    thumb_url: normalizeMediaUrl(readString(row.thumb_url)),
     media_type: readString(row.media_type) || "image",
     sort_order: readNumber(row.sort_order),
     image_size: readNumber(row.image_size),

@@ -7,7 +7,6 @@ import {
   AnimatePresence,
   LazyMotion,
   MotionConfig,
-  domAnimation,
   m,
   useScroll,
   useTransform,
@@ -17,6 +16,7 @@ import { isVideoUrl } from "@/lib/upload-policy";
 import ThemeToggle from "@/components/theme-toggle";
 import { EASE_OUT, SPRING_SOFT, Reveal } from "@/components/reveal";
 import { useActiveHomeSection, useHomeDataRefresh } from "@/components/home-hooks";
+import { loadMotionFeatures } from "@/components/motion-features";
 
 const DEFAULT_TAGLINE = "Hard Surface / Stylized Character / Game Art";
 
@@ -190,11 +190,11 @@ function WorkThumbImage({ work, priority }: { work: Work; priority: boolean }) {
   if (isVideoUrl(work.thumb_url)) {
     return (
       <video
-        src={work.thumb_url}
+        src={`${work.thumb_url}#t=0.5`}
         muted
         playsInline
         preload="metadata"
-        className="block h-auto w-full object-cover"
+        className="block aspect-[4/5] w-full object-cover"
       />
     );
   }
@@ -383,7 +383,7 @@ export default function HomeClient({
 
   return (
     <MotionConfig reducedMotion="user">
-      <LazyMotion features={domAnimation}>
+      <LazyMotion features={loadMotionFeatures}>
         <SiteNav worksCount={works.length} sectionsCount={detailSections.length} />
 
         <main className="relative">
@@ -626,9 +626,22 @@ export default function HomeClient({
               </m.div>
             )}
 
-            <div className="mt-10 md:mt-14">
+            <div className="mt-10 md:mt-14" aria-live="polite">
+              {loadError && works.length > 0 && (
+                <div className="glass mb-8 flex flex-wrap items-center justify-between gap-4 rounded-[20px] px-6 py-4">
+                  <p className="meta-label tracking-[0.2em]! text-text-muted">内容更新失败，当前显示的是上次加载的结果</p>
+                  <button
+                    type="button"
+                    onClick={() => refreshData({ force: true })}
+                    data-hover
+                    className="inline-flex min-h-10 items-center rounded-full border border-accent/40 px-5 text-[0.7rem] tracking-[0.12em] text-accent-strong transition-colors duration-300 hover:bg-accent/10"
+                  >
+                    重新加载
+                  </button>
+                </div>
+              )}
               {loadingWorks ? (
-                <div className="grid grid-cols-1 gap-x-8 gap-y-12 md:grid-cols-12">
+                <div className="grid grid-cols-1 gap-x-8 gap-y-12 md:grid-cols-12" aria-hidden="true">
                   {[8, 4, 7, 5].map((span, i) => (
                     <div key={i} className={span >= 8 ? "md:col-span-8" : span >= 7 ? "md:col-span-7" : span >= 5 ? "md:col-span-5" : "md:col-span-4"}>
                       <div className="skeleton h-72 rounded-[24px] md:h-96" />
@@ -636,10 +649,10 @@ export default function HomeClient({
                     </div>
                   ))}
                 </div>
-              ) : filtered.length === 0 ? (
+              ) : works.length === 0 ? (
                 <div className="glass rounded-[28px] px-8 py-20 text-center">
                   <p className="meta-label tracking-[0.3em]!">
-                    {loadError ? "内容暂时加载失败" : "该分类下还没有作品"}
+                    {loadError ? "内容暂时加载失败" : "作品集还没有公开作品"}
                   </p>
                   {loadError && (
                     <button
@@ -651,6 +664,18 @@ export default function HomeClient({
                       重试加载
                     </button>
                   )}
+                </div>
+              ) : filtered.length === 0 ? (
+                <div className="glass rounded-[28px] px-8 py-20 text-center">
+                  <p className="meta-label tracking-[0.3em]!">「{activeTag}」下还没有作品</p>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTag(null)}
+                    data-hover
+                    className="mt-6 inline-flex min-h-11 items-center rounded-full border border-accent/40 px-6 text-[0.72rem] tracking-[0.12em] text-accent-strong transition-colors duration-300 hover:bg-accent/10"
+                  >
+                    查看全部作品
+                  </button>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-x-8 gap-y-12 md:grid-cols-12 md:gap-y-24">

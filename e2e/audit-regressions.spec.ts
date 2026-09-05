@@ -237,3 +237,205 @@ test("清理队列执行时跳过仍被作品引用的文件", async ({ request,
     await api.dispose();
   }
 });
+
+test("删除最后一张图片被拒绝且封面保留", async ({ baseURL }) => {
+  if (!baseURL) throw new Error("baseURL is required");
+  const api = await newAdminApi(baseURL);
+  const stamp = Date.now();
+  const workId = await createApiWork(api, `last-image-e2e-${stamp}`, 0);
+
+  try {
+    const added = await api.post(`/api/works/${workId}/images`, {
+      data: [{ imageUrl: WORK_IMAGE, thumbUrl: WORK_THUMB, imageSize: 1024, sortOrder: 0 }],
+    });
+    expect(added.status(), await added.text()).toBe(201);
+    const imageId = ((await added.json()).ids as string[])[0];
+    expect(imageId).toBeTruthy();
+
+    const blocked = await api.delete(`/api/works/images/${imageId}`);
+    expect(blocked.status(), await blocked.text()).toBe(409);
+    const blockedBody = await blocked.json();
+    expect(blockedBody.code).toBe("CONFLICT");
+    expect(blockedBody.message).toBe("作品至少需要保留一张图片");
+
+    const images = await api.get(`/api/works/${workId}/images`);
+    expect(images.status()).toBe(200);
+    const imagesBody = await images.json();
+    expect(imagesBody.map((image: { image_url: string }) => image.image_url)).toEqual([WORK_IMAGE]);
+
+    const work = await api.get(`/api/works/${workId}`);
+    expect(work.status()).toBe(200);
+    const workBody = await work.json();
+    expect(workBody.image_url).toBeTruthy();
+    expect(workBody.thumb_url).toBeTruthy();
+  } finally {
+    await api.delete(`/api/works/${workId}`);
+    await api.dispose();
+  }
+});
+
+test("图片批量追加含非法项时整批拒绝且不写入", async ({ baseURL }) => {
+  if (!baseURL) throw new Error("baseURL is required");
+  const api = await newAdminApi(baseURL);
+  const stamp = Date.now();
+  const kept = {
+    imageUrl: `https://example.com/originals/kept-${stamp}.png`,
+    thumbUrl: `https://example.com/thumbnails/kept-${stamp}.webp`,
+  };
+  const orphan = {
+    imageUrl: `https://example.com/originals/orphan-${stamp}.png`,
+    thumbUrl: `https://example.com/thumbnails/orphan-${stamp}.webp`,
+  };
+  const workId = await createApiWork(api, `mixed-add-e2e-${stamp}`, 0);
+
+  try {
+    const added = await api.post(`/api/works/${workId}/images`, {
+      data: [{ ...kept, imageSize: 1024, sortOrder: 0 }],
+    });
+    expect(added.status(), await added.text()).toBe(201);
+
+    const mixed = await api.post(`/api/works/${workId}/images`, {
+      data: [
+        { ...orphan, imageSize: 1024, sortOrder: 1 },
+        { imageUrl: "not-a-url", thumbUrl: orphan.thumbUrl },
+      ],
+    });
+    expect(mixed.status(), await mixed.text()).toBe(400);
+    const mixedBody = await mixed.json();
+    expect(mixedBody.code).toBe("BAD_REQUEST");
+    expect(mixedBody.message).toContain("1/2");
+    expect(mixedBody.ids).toBeUndefined();
+
+    const current = await api.get(`/api/works/${workId}/images`);
+    expect(current.status()).toBe(200);
+    const currentBody = await current.json();
+    expect(currentBody.map((image: { image_url: string }) => image.image_url)).toEqual([kept.imageUrl]);
+  } finally {
+    await api.delete(`/api/works/${workId}`);
+    await api.dispose();
+  }
+});
+
+test("图片追加接口对畸形 JSON 返回 400", async ({ baseURL }) => {
+  if (!baseURL) throw new Error("baseURL is required");
+  const api = await newAdminApi(baseURL);
+  const stamp = Date.now();
+  const workId = await createApiWork(api, `broken-json-e2e-${stamp}`, 0);
+
+  try {
+    const broken = await api.post(`/api/works/${workId}/images`, {
+      data: "{ imageUrl: https://example.com/originals/broken-",
+      headers: { "content-type": "application/json" },
+    });
+    expect(broken.status()).toBe(400);
+    const brokenBody = await broken.json();
+    expect(brokenBody.code).toBe("BAD_REQUEST");
+
+    const images = await api.get(`/api/works/${workId}/images`);
+    expect(images.status()).toBe(200);
+    expect(((await images.json()) as unknown[]).length).toBeLessThanOrEqual(1);
+  } finally {
+    await api.delete(`/api/works/${workId}`);
+    await api.dispose();
+  }
+});
+
+test("空 expectedUpdatedAt 不再绕过并发写校验", async ({ baseURL }) => {
+  if (!baseURL) throw new Error("baseURL is required");
+  const api = await newAdminApi(baseURL);
+  const stamp = Date.now();
+  const title = `occ-empty-e2e-${stamp}`;
+  const workId = await createApiWork(api, title, 0);
+
+  try {
+    const emptyPut = await api.put(`/api/works/${workId}`, {
+      data: { title: `${title}-overwritten`, expectedUpdatedAt: "" },
+    });
+    expect(emptyPut.status(), await emptyPut.text()).toBe(400);
+    expect((await emptyPut.json()).code).toBe("BAD_REQUEST");
+
+    const emptySave = await api.put(`/api/works/${workId}/save`, {
+      data: {
+        title: `${title}-saved`,
+        description: "e2e description",
+        tags: [],
+        software: [],
+        workDate: "",
+        imageUrl: WORK_IMAGE,
+        thumbUrl: WORK_THUMB,
+        imageSize: 1,
+        sizeWeight: 1,
+        expectedUpdatedAt: "",
+        images: [{ imageUrl: WORK_IMAGE, thumbUrl: WORK_THUMB, imageSize: 1, sortOrder: 0 }],
+      },
+    });
+    expect(emptySave.status(), await emptySave.text()).toBe(400);
+    expect((await emptySave.json()).code).toBe("BAD_REQUEST");
+
+    const work = await api.get(`/api/works/${workId}`);
+    expect(work.status()).toBe(200);
+    expect((await work.json()).title).toBe(title);
+
+    const emptyReorder = await api.put("/api/works/reorder", {
+      data: { items: [{ id: workId, sortOrder: 5, expectedUpdatedAt: "" }] },
+    });
+    expect(emptyReorder.status(), await emptyReorder.text()).toBe(400);
+  } finally {
+    await api.delete(`/api/works/${workId}`);
+    await api.dispose();
+  }
+});
+
+test("含逗号的标签在写入时归一化且回读不再漂移", async ({ baseURL }) => {
+  if (!baseURL) throw new Error("baseURL is required");
+  const api = await newAdminApi(baseURL);
+  const stamp = Date.now();
+  const created = await api.post("/api/works", {
+    data: {
+      title: `tag-normalize-e2e-${stamp}`,
+      description: "e2e description",
+      tags: ["  角色设计  ", "场景，概念", "角色设计", ""],
+      software: ["Blender, ZBrush"],
+      imageUrl: WORK_IMAGE,
+      thumbUrl: WORK_THUMB,
+      pinned: false,
+      sortOrder: 0,
+      workDate: "2026-05",
+      imageSize: 1024,
+      sizeWeight: 1,
+    },
+  });
+  expect(created.status(), await created.text()).toBe(201);
+  const workId = (await created.json()).id as string;
+
+  try {
+    const work = await api.get(`/api/works/${workId}`);
+    expect(work.status()).toBe(200);
+    const workBody = await work.json();
+    expect(workBody.tags).toEqual(["角色设计", "场景", "概念"]);
+    expect(workBody.software).toEqual(["Blender", "ZBrush"]);
+
+    const rewrite = await api.put(`/api/works/${workId}`, {
+      data: { tags: workBody.tags, expectedUpdatedAt: workBody.updated_at },
+    });
+    expect(rewrite.status(), await rewrite.text()).toBe(200);
+
+    const reread = await api.get(`/api/works/${workId}`);
+    expect((await reread.json()).tags).toEqual(workBody.tags);
+  } finally {
+    await api.delete(`/api/works/${workId}`);
+    await api.dispose();
+  }
+});
+
+test("站点地图可访问且 lastmod 可解析", async ({ request }) => {
+  const response = await request.get("/sitemap.xml");
+  expect(response.status()).toBe(200);
+  const body = await response.text();
+  expect(body).toContain("<urlset");
+  const lastMods = [...body.matchAll(/<lastmod>([^<]+)<\/lastmod>/g)].map((match) => match[1]);
+  expect(lastMods.length).toBeGreaterThan(0);
+  for (const lastMod of lastMods) {
+    expect(Number.isNaN(new Date(lastMod).getTime())).toBe(false);
+  }
+});

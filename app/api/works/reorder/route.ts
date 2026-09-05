@@ -11,7 +11,7 @@ import { fail, ok } from "@/lib/api-response";
 const itemSchema = z.object({
   id: z.string().min(1),
   sortOrder: z.number().int(),
-  expectedUpdatedAt: z.string().optional(),
+  expectedUpdatedAt: z.string().min(1).optional(),
 });
 
 const reorderSchema = z.object({

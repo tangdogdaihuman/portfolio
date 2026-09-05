@@ -8,20 +8,28 @@ import { reportApiError, reportMetric } from "@/lib/monitoring";
 import { writeAuditLog } from "@/lib/audit-log";
 import { fail, ok } from "@/lib/api-response";
 import { enqueueR2DeleteInTransaction, processR2DeleteJobs } from "@/lib/r2-delete-jobs";
+import {
+  descriptionField,
+  sizeWeightField,
+  tagListField,
+  titleField,
+  urlField,
+  workDateField,
+} from "@/lib/validate/work-fields";
 import { rowToWork } from "@/lib/work-mappers";
 
 const updateSchema = z.object({
-  title: z.string().min(1).optional(),
-  description: z.string().min(1).optional(),
-  tags: z.array(z.string()).optional(),
-  software: z.array(z.string()).optional(),
-  imageUrl: z.string().url().optional(),
-  thumbUrl: z.string().url().optional(),
+  title: titleField.optional(),
+  description: descriptionField.optional(),
+  tags: tagListField.optional(),
+  software: tagListField.optional(),
+  imageUrl: urlField.optional(),
+  thumbUrl: urlField.optional(),
   pinned: z.boolean().optional(),
   sortOrder: z.number().int().optional(),
-  workDate: z.string().optional(),
-  sizeWeight: z.number().min(0.5).max(2.0).optional(),
-  expectedUpdatedAt: z.string().optional(),
+  workDate: workDateField.optional(),
+  sizeWeight: sizeWeightField.optional(),
+  expectedUpdatedAt: z.string().min(1).optional(),
 });
 
 export async function GET(
@@ -91,30 +99,43 @@ export async function PUT(
       args.push(expectedUpdatedAt);
     }
 
-    const result = await db.execute({
-      sql: `UPDATE works SET ${updates.join(", ")} WHERE id = ?${expectedUpdatedAt ? " AND updated_at = ?" : ""}`,
-      args,
-    });
+    const transaction = await db.transaction("write");
+    let updatedAt = "";
 
-    if (result.rowsAffected === 0) {
-      const exists = await db.execute({
-        sql: "SELECT id FROM works WHERE id = ?",
+    try {
+      const result = await transaction.execute({
+        sql: `UPDATE works SET ${updates.join(", ")} WHERE id = ?${expectedUpdatedAt ? " AND updated_at = ?" : ""}`,
+        args,
+      });
+
+      if (result.rowsAffected === 0) {
+        const exists = await transaction.execute({
+          sql: "SELECT id FROM works WHERE id = ?",
+          args: [id],
+        });
+        await transaction.rollback();
+        if (exists.rows.length === 0) {
+          return fail("NOT_FOUND", "Work not found", 404);
+        }
+        if (expectedUpdatedAt) {
+          return fail("CONFLICT", "Conflict: work updated by another session", 409);
+        }
+        return fail("BAD_REQUEST", "Not updated", 400);
+      }
+
+      const refreshed = await transaction.execute({
+        sql: "SELECT updated_at FROM works WHERE id = ?",
         args: [id],
       });
-      if (exists.rows.length === 0) {
-        return fail("NOT_FOUND", "Work not found", 404);
-      }
-      if (expectedUpdatedAt) {
-        return fail("CONFLICT", "Conflict: work updated by another session", 409);
-      }
-      return fail("BAD_REQUEST", "Not updated", 400);
-    }
+      updatedAt = (refreshed.rows[0]?.updated_at as string) || "";
 
-    const updated = await db.execute({
-      sql: "SELECT updated_at FROM works WHERE id = ?",
-      args: [id],
-    });
-    const updatedAt = (updated.rows[0]?.updated_at as string) || "";
+      await transaction.commit();
+    } catch (error) {
+      if (!transaction.closed) await transaction.rollback();
+      throw error;
+    } finally {
+      if (!transaction.closed) transaction.close();
+    }
 
     reportMetric({ scope: "audit.work.update", value: 1, path: req.nextUrl.pathname, meta: { id } });
     await writeAuditLog(req, "work.update", { id, fields: Object.keys(parsed.data).filter((k) => k !== "expectedUpdatedAt") });

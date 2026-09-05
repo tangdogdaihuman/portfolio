@@ -211,12 +211,12 @@ function getPerformanceProfile() {
     coarsePointer,
     lowEnd,
     baseScale: lowEnd ? 0.5 : coarsePointer ? 0.45 : 1,
-    dynamicScale: lowEnd ? 0.55 : coarsePointer ? 0.4 : 0.96,
-    targetFps: reducedMotion ? 0 : lowEnd ? 20 : coarsePointer ? 24 : 60,
-    mainBlur: lowEnd ? 0 : coarsePointer ? 0 : 12,
+    dynamicScale: lowEnd ? 0.55 : coarsePointer ? 0.4 : 0.6,
+    targetFps: reducedMotion ? 0 : lowEnd ? 20 : coarsePointer ? 24 : 30,
+    mainBlur: lowEnd || coarsePointer ? 0 : 6,
     bloomBlur: lowEnd ? 16 : coarsePointer ? 18 : 20,
     bloomAlpha: lowEnd ? 0.22 : coarsePointer ? 0.16 : 0.26,
-    rayQuality: lowEnd ? 0.62 : coarsePointer ? 0.35 : 1,
+    rayQuality: lowEnd ? 0.62 : coarsePointer ? 0.35 : 0.85,
     speedQuality: lowEnd ? 0.82 : coarsePointer ? 0.9 : 1,
     alphaQuality: lowEnd ? 0.8 : coarsePointer ? 0.7 : 1,
     saturation: lowEnd ? 42 : coarsePointer ? 34 : 58,
@@ -607,7 +607,7 @@ export default function AuroraCanvas() {
     resizeObserver.observe(visible);
     document.addEventListener("visibilitychange", onVisibilityChange);
     const unsubscribeTheme = subscribeResolvedTheme(onThemeChange);
-    if (profile.coarsePointer && !profile.reducedMotion) {
+    if (!profile.reducedMotion) {
       window.addEventListener("scroll", onScrollPause, { passive: true });
     }
 

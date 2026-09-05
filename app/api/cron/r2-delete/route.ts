@@ -37,8 +37,24 @@ export async function GET(req: NextRequest) {
     ? Math.max(1, Math.min(100, Math.floor(parsedLimit)))
     : 20;
 
-  const result = await processR2DeleteJobs(limit);
+  let r2Failure: string | null = null;
+  let result = { processed: 0, succeeded: 0, failed: 0 };
+  try {
+    result = await processR2DeleteJobs(limit);
+  } catch (error) {
+    r2Failure = error instanceof Error ? error.message : "unknown";
+  }
+
   const retention = await pruneRetentionTables();
+
+  if (r2Failure) {
+    return fail("SERVER_ERROR", `R2 cleanup pass failed: ${r2Failure}`, 500, {
+      triggeredAt: new Date().toISOString(),
+      limit,
+      retention,
+    });
+  }
+
   return ok({
     triggeredAt: new Date().toISOString(),
     limit,

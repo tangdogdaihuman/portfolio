@@ -37,6 +37,15 @@ export async function DELETE(
     if (row.image_url) urls.push(row.image_url as string);
     if (row.thumb_url) urls.push(row.thumb_url as string);
 
+    const siblingCount = await transaction.execute({
+      sql: "SELECT COUNT(*) AS image_count FROM work_images WHERE work_id = ?",
+      args: [workId],
+    });
+    if (Number(siblingCount.rows[0]?.image_count ?? 0) <= 1) {
+      await transaction.rollback();
+      return fail("CONFLICT", "作品至少需要保留一张图片", 409);
+    }
+
     await transaction.execute({ sql: "DELETE FROM work_images WHERE id = ?", args: [imageId] });
 
     const work = await transaction.execute({

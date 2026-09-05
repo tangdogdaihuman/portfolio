@@ -205,21 +205,25 @@ export default function AdminPageClient() {
   };
 
   const togglePin = async (work: Work) => {
-    const response = await fetch(`/api/works/${work.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pinned: !work.pinned, expectedUpdatedAt: getWorkUpdatedAt(work) }),
-    });
-    if (response.ok) {
-      refresh();
-      return;
+    try {
+      const response = await fetch(`/api/works/${work.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pinned: !work.pinned, expectedUpdatedAt: getWorkUpdatedAt(work) }),
+      });
+      if (response.ok) {
+        refresh();
+        return;
+      }
+      if (response.status === 409) {
+        refresh();
+        showMsg("置顶状态冲突，已刷新", false);
+        return;
+      }
+      showMsg("置顶状态更新失败", false);
+    } catch {
+      showMsg("置顶请求发送失败，请检查网络", false);
     }
-    if (response.status === 409) {
-      refresh();
-      showMsg("置顶状态冲突，已刷新", false);
-      return;
-    }
-    showMsg("置顶状态更新失败", false);
   };
 
   return (
@@ -316,6 +320,7 @@ export default function AdminPageClient() {
               }}
               onReorder={moveWork}
               reordering={reordering}
+              loading={loading}
             />
           </div>
         )}

@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { animate, motion, useMotionValue, type PanInfo } from "framer-motion";
+import { animate, LazyMotion, m, useMotionValue, type PanInfo } from "framer-motion";
+import { loadMotionFeatures } from "@/components/motion-features";
 
 interface GalleryImage {
   id: string;
@@ -186,7 +187,7 @@ export default function WorkDetailGallery({
   }, [openIndex, trackBaseX, trackX]);
 
   return (
-    <>
+    <LazyMotion features={loadMotionFeatures}>
       <div className="space-y-8 md:space-y-14">
         {images.map((image, index) => {
           const imageKey = image.id || String(index);
@@ -204,9 +205,8 @@ export default function WorkDetailGallery({
               >
                 {isVideo ? (
                   <video
-                    src={image.image_url}
+                    src={`${image.image_url}#t=0.5`}
                     poster={image.thumb_url !== image.image_url ? image.thumb_url : undefined}
-                    controls
                     playsInline
                     muted
                     preload="metadata"
@@ -258,6 +258,22 @@ export default function WorkDetailGallery({
           aria-label={`${workTitle} 图片查看器`}
           className="fixed inset-0 z-[90] flex items-center justify-center bg-[var(--scrim)] backdrop-blur-xl"
           onClick={closeViewer}
+          onKeyDown={(event) => {
+            if (event.key !== "Tab") return;
+            const focusable = event.currentTarget.querySelectorAll<HTMLElement>(
+              'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+            );
+            if (focusable.length === 0) return;
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (!event.shiftKey && document.activeElement === last) {
+              event.preventDefault();
+              first.focus();
+            } else if (event.shiftKey && document.activeElement === first) {
+              event.preventDefault();
+              last.focus();
+            }
+          }}
         >
           <button
             ref={closeButtonRef}
@@ -307,7 +323,7 @@ export default function WorkDetailGallery({
             className="relative w-[97vw] h-[97vh] overflow-hidden"
             onClick={(event) => event.stopPropagation()}
           >
-            <motion.div
+            <m.div
               data-gallery-track
               drag={zoom > 1 || slideItems.length <= 1 ? false : "x"}
               dragConstraints={{
@@ -451,7 +467,7 @@ export default function WorkDetailGallery({
                   </div>
                 );
               })}
-            </motion.div>
+            </m.div>
           </div>
 
           <div className="glass-strong absolute bottom-16 left-1/2 z-20 flex -translate-x-1/2 items-center gap-1 rounded-full p-1.5">
@@ -497,6 +513,6 @@ export default function WorkDetailGallery({
           )}
         </div>
       )}
-    </>
+    </LazyMotion>
   );
 }

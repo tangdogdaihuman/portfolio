@@ -9,9 +9,9 @@
   --color-accent-strong: var(--theme-accent-strong);
   --color-on-accent: var(--theme-on-accent);
   --color-border: var(--theme-border);
-  --font-display: var(--font-display-en), "Noto Serif SC", serif;
-  --font-display-sc: "Noto Serif SC", serif;
-  --font-body: var(--font-inter), "Noto Sans SC", sans-serif;
+  --font-display: var(--font-display-en), "Noto Serif SC", "Songti SC", "SimSun", serif;
+  --font-display-sc: "Noto Serif SC", "Songti SC", "SimSun", serif;
+  --font-body: var(--font-inter), "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
   --font-mono: var(--font-jbmono);
   --animate-fade-up: fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
   --animate-marquee: marquee-x 28s linear infinite;
@@ -97,7 +97,7 @@ html {
 body {
   background: var(--color-bg);
   color: var(--color-text);
-  font-family: var(--font-body), "PingFang SC", "Microsoft YaHei", ui-sans-serif, sans-serif;
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -368,7 +368,24 @@ body {
 
 html.hide-native-cursor,
 html.hide-native-cursor * {
-  cursor: none !important;
+  cursor: none;
+}
+
+html.hide-native-cursor input[type="text"],
+html.hide-native-cursor input[type="email"],
+html.hide-native-cursor input[type="password"],
+html.hide-native-cursor input[type="number"],
+html.hide-native-cursor input[type="search"],
+html.hide-native-cursor input[type="tel"],
+html.hide-native-cursor input[type="url"],
+html.hide-native-cursor input:not([type]),
+html.hide-native-cursor textarea,
+html.hide-native-cursor [contenteditable="true"] {
+  cursor: text !important;
+}
+
+html.hide-native-cursor .cursor-zoom-in {
+  cursor: zoom-in !important;
 }
 
 html.vt-theme *,

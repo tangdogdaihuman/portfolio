@@ -9,7 +9,7 @@ import { fail, ok } from "@/lib/api-response";
 const updateSchema = z.object({
   title: z.string().optional(),
   content: z.string().optional(),
-  sortOrder: z.number().optional(),
+  sortOrder: z.number().int().nonnegative().optional(),
 });
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -31,11 +31,16 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (parsed.data.title !== undefined) { sets.push("title = ?"); args.push(parsed.data.title); }
   if (parsed.data.content !== undefined) { sets.push("content = ?"); args.push(parsed.data.content); }
   if (parsed.data.sortOrder !== undefined) { sets.push("sort_order = ?"); args.push(parsed.data.sortOrder); }
-  if (sets.length === 0) return ok({ updated: true });
+  if (sets.length === 0) {
+    const exists = await db.execute({ sql: "SELECT id FROM detail_sections WHERE id = ?", args: [id] });
+    if (exists.rows.length === 0) return fail("NOT_FOUND", "Detail section not found", 404);
+    return ok({ updated: true });
+  }
 
   sets.push("updated_at = datetime('now')");
   args.push(id);
-  await db.execute({ sql: `UPDATE detail_sections SET ${sets.join(", ")} WHERE id = ?`, args });
+  const result = await db.execute({ sql: `UPDATE detail_sections SET ${sets.join(", ")} WHERE id = ?`, args });
+  if (result.rowsAffected === 0) return fail("NOT_FOUND", "Detail section not found", 404);
 
   revalidatePath("/");
   revalidateTag("detail-sections", "max");
@@ -50,7 +55,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (unauth) return unauth;
 
   const { id } = await params;
-  await db.execute({ sql: "DELETE FROM detail_sections WHERE id = ?", args: [id] });
+  const result = await db.execute({ sql: "DELETE FROM detail_sections WHERE id = ?", args: [id] });
+  if (result.rowsAffected === 0) return fail("NOT_FOUND", "Detail section not found", 404);
   revalidatePath("/");
   revalidateTag("detail-sections", "max");
   return ok({ deleted: true });

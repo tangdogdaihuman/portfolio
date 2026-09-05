@@ -202,7 +202,7 @@ export default function EditWorkForm({
           thumbUrl: cover.thumb_url,
           imageSize: cover.size,
           sizeWeight,
-          expectedUpdatedAt: baseUpdatedAt,
+          ...(baseUpdatedAt ? { expectedUpdatedAt: baseUpdatedAt } : {}),
           images: allImages
             .filter((image) => image.image_url)
             .map((image, index) => ({
