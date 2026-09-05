@@ -311,3 +311,35 @@ updated_at = MAX(strftime('%Y-%m-%d %H:%M:%f', 'now'),
 ### 实施中新发现、原报告未覆盖的两条
 - `DELETE /api/works/{id}/images`（清空整个作品图片）与空数组 `PUT` 会清掉 `work_images` 却把 `works.image_url` 留在原位，且该对象因仍被引用而受 R2 删除保护 → 出现"有封面、零图片"的不一致状态。不同于 L-02 的空串崩溃链，本次未改，留作后续。
 - 拒绝上传批次时若只回收"非法条目"的 R2 对象，仍会泄漏同批次里合法但未被插入的对象（因为整批被拒）。已按"整批 URL 全部入队 + 删除前二次校验库内引用"处理。
+
+---
+
+## 11. 实施结果（2026-09-06，commit `de75b71` + `571e042`，已推送）
+
+### 已落地
+S1/S2/S3/S4/S5 全部按"不删功能"的前提实施：媒体 URL 读路径归一化（免改生产数据）、上传对象 immutable 缓存头、首页取数失败改为抛错不再被缓存、`TOUCH_WORK_UPDATED_AT_SQL` 修正、`expectedUpdatedAt` 空串绕过、事务内回读版本号、删到 0 图的 409 守卫、非法图片批次 400 + 整批入队回收、标签/长度/取值校验集中到 `lib/validate/work-fields.ts`、detail-sections 静默成功改 404、sitemap 时区、冷启动迁移 16→2 条语句 + `instrumentation.ts`、`visits` 统计改 sargable 区间 + 四张表保留期清理、R2 引用检查批量化并补索引、`revalidate` 30s→300s、三个轮询 GET 加 tag 缓存、详情页 `React.cache` + 查询并行、极光桌面档、光标滚动恢复、视频卡片占位与 iOS 首帧、画廊状态可判别分支、后台空态与 pin 异常、灯箱焦点陷阱、framer 特性包统一异步 `domMax`。
+
+**一个实施中发现的新问题（原报告没有）**：`revalidateTag(tag,'max')` 在 Next 16 是 stale-while-revalidate，而"读己之写"的 `updateTag` 只能用在 Server Action 里。所以给轮询 GET 加缓存后，后台写完立刻重读会拿到旧快照（e2e 的 reorder 用例真实复现：读到旧 `sort_order`）。处理方式是这三个接口**对已登录请求绕过缓存直读**，公开请求走缓存。任何"缓存 + 后台也读"的接口都要照这个模式，别指望 tag 失效能覆盖读己之写。
+
+### 验证链（在本轮最终工作树上执行）
+`lint` 0 错 0 警 · `tsc --noEmit` 0 错 · `test:schema` 通过 · `next build` 成功（`/` Revalidate 5m）· `test:e2e` **44 passed**（含子代理新增 6 个回归用例）。
+
+### 极光改造实测（Chromium + CDP，1440×900，静置，3 轮取中位数）
+| | 主线程 task | scripting | 页面 RAF |
+|---|---|---|---|
+| 改造前 | 996 ms/s | 599 ms/s | **24 fps** |
+| 改造后 | 536 ms/s | **133 ms/s** | **60 fps** |
+
+关键结论：**控制成本的是效果层的渲染分辨率，不是模糊半径**。中间态试过 `mainBlur 12→6 + 30fps`（683 ms/s）和 `mainBlur 0`（截图显示射线变成生硬竖条纹，观感不可接受，已回退）。最终保留 6px 模糊、把桌面 `dynamicScale` 0.96→0.6 让光晕层按 60% 分辨率渲染再放大，脚本耗时降到 1/4.5，帧率回到满帧，截图核对光晕仍然柔和。
+两点诚实的保留意见：① headless Chromium 很可能是软件光栅，`task` 里的 raster 部分在用户真机上会明显更低，别把 536 ms/s 当成用户机器的数字；② 同一份代码在不同时刻测出过 683 与 996，说明本机测量有噪声，因此只采信"同一轮内 画布开/关 对比"这一稳定信号（关到 1px 后 task 37 ms/s，即极光占空闲主线程约 96%）。
+
+### 包体：没有明显改善，别当成已修好
+首页实际加载的 JS 从 785,831 raw 降到 748,772 raw（约 −4.7%）。`LazyMotion` 异步 `domMax` 消除了"动画行为随浏览历史变化"的正确性问题，但没有减掉首屏体积——因为 `AnimatePresence`/`useScroll`/`useTransform` 仍从 `framer-motion` 根入口静态导入，核心与动画特性照样进首屏。要真正减重，得把 hero 的 `useScroll`/`useTransform` 换成手写 scroll→CSS 变量，或去掉 `AnimatePresence` 退场动画，属于有视觉影响的改造，本轮未做。
+
+### 明确未做
+- **S6 全部取消**（用户要求不删功能）：`audit_logs` 只写不读、`details` 死表、`schema_migrations` 装饰性账本、`check-schema-source.mjs` 永真断言、R2 重试队列、三层限流、三条认证路径、极光多实现——全部保留，其中 `schema_migrations` 反而被用作迁移短路的依据之一。
+- 缩略图仍是单档 1080p + `unoptimized`（多档需上传管线加变体并处理存量回退，性价比低于边缘缓存）。
+- `DELETE /api/works/{id}/images` 清空整组图片后 `works.image_url` 仍指向已无图片行引用的对象（"有封面零图片"），本轮只修了单图删除那条崩溃链。
+- 图片宽高入库以彻底消除 4:5 假设（同日另一份报告的第 3 项）。
+- `avi`/`mkv` 仍在允许上传的集合里，浏览器播不出来。
+- Cloudflare 边缘缓存：代码侧 immutable 头已就绪，zone Cache Rule 由并行会话接管。
