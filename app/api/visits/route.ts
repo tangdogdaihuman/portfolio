@@ -87,7 +87,9 @@ export async function GET(req: NextRequest) {
       db.execute({ sql: "SELECT COUNT(DISTINCT ip_hash) AS c FROM visits WHERE ip_hash <> ?", args: [adminIpHash] }),
       db.execute({
         sql: `SELECT COUNT(*) AS c, COUNT(DISTINCT ip_hash) AS u FROM visits
-              WHERE ip_hash <> ? AND date(created_at, '+8 hours') = date('now', '+8 hours')`,
+              WHERE ip_hash <> ?
+                AND created_at >= datetime('now', '+8 hours', 'start of day', '-8 hours')
+                AND created_at < datetime('now', '+8 hours', 'start of day', '+1 day', '-8 hours')`,
         args: [adminIpHash],
       }),
       db.execute({

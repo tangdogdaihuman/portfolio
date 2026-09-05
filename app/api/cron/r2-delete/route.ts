@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { NextRequest } from "next/server";
 import { fail, ok } from "@/lib/api-response";
 import { processR2DeleteJobs } from "@/lib/r2-delete-jobs";
+import { pruneRetentionTables } from "@/lib/retention";
 
 function safeEqual(input: string, expected: string) {
   const a = Buffer.from(input);
@@ -37,9 +38,11 @@ export async function GET(req: NextRequest) {
     : 20;
 
   const result = await processR2DeleteJobs(limit);
+  const retention = await pruneRetentionTables();
   return ok({
     triggeredAt: new Date().toISOString(),
     limit,
     ...result,
+    retention,
   });
 }
