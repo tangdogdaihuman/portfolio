@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
       contentType,
     };
     if (cacheKey) {
-      getIdempotencyStore().set(cacheKey, payload, 10 * 60 * 1000);
+      getIdempotencyStore().set(cacheKey, payload, 4 * 60 * 1000);
     }
     return ok(payload);
   } catch (error) {

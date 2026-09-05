@@ -4,6 +4,10 @@ const buildTime = new Date().toLocaleString("zh-CN", { timeZone: "Asia/Shanghai"
 
 const isDev = process.env.NODE_ENV !== "production";
 
+const r2UploadOrigin = process.env.R2_ACCOUNT_ID
+  ? `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`
+  : "";
+
 const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
@@ -11,7 +15,7 @@ const csp = [
   "font-src 'self' https://fonts.gstatic.com",
   `img-src 'self' data: blob: https:`,
   `media-src 'self' blob: https:`,
-  "connect-src 'self'",
+  `connect-src 'self'${r2UploadOrigin ? ` ${r2UploadOrigin}` : ""}`,
   "worker-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'self'",

@@ -29,6 +29,21 @@ export async function enqueueR2DeleteInTransaction(executor: R2DeleteJobExecutor
   return unique.length;
 }
 
+async function findReferencedUrls(urls: string[]): Promise<Set<string>> {
+  const referenced = new Set<string>();
+  for (const url of urls) {
+    const res = await db.execute({
+      sql: `SELECT 1 AS ref FROM works WHERE image_url = ? OR thumb_url = ?
+            UNION ALL
+            SELECT 1 AS ref FROM work_images WHERE image_url = ? OR thumb_url = ?
+            LIMIT 1`,
+      args: [url, url, url, url],
+    });
+    if (res.rows.length > 0) referenced.add(url);
+  }
+  return referenced;
+}
+
 export async function processR2DeleteJobs(limit = 5) {
   const summary = { processed: 0, succeeded: 0, failed: 0 };
   const jobs = await db.execute({
@@ -53,10 +68,17 @@ export async function processR2DeleteJobs(limit = 5) {
     }
 
     try {
-      await deleteFromR2(urls);
+      const referenced = await findReferencedUrls(urls);
+      const deletable = urls.filter((url) => !referenced.has(url));
+      if (referenced.size > 0) {
+        reportMetric({ scope: "r2.delete.skip_referenced", value: referenced.size, meta: { jobId: id, attempts } });
+      }
+      if (deletable.length > 0) {
+        await deleteFromR2(deletable);
+      }
       await db.execute({ sql: "DELETE FROM r2_delete_jobs WHERE id = ?", args: [id] });
       summary.succeeded += 1;
-      reportMetric({ scope: "r2.delete.succeeded", value: urls.length, meta: { jobId: id, attempts } });
+      reportMetric({ scope: "r2.delete.succeeded", value: deletable.length, meta: { jobId: id, attempts } });
     } catch (error) {
       summary.failed += 1;
       const nextAttempts = attempts + 1;

@@ -27,7 +27,7 @@ npm run test:smoke:prod  # 对线上 tangzihang.top 跑冒烟（SMOKE_ALLOW_WRIT
 - 验证顺序：`lint` → `typecheck` → `test:schema` → `build` → `test:e2e`（CI 执行的顺序）。
 - `db:push` 用 `.env.local` 直连 Turso；实际线上 db.ts 首次访问时自动迁移，通常不需要手动跑。
 - 单跑测试：`npx playwright test e2e/portfolio.spec.ts` 跑单个文件；`npm run test:e2e -- -g "用例名"` 按名过滤；`SMOKE_BASE_URL=http://localhost:3000 npm run test:smoke` 指定 smoke 目标。
-- e2e 基建：`playwright.config.ts` 自动起 dev server（127.0.0.1:3000），注入临时 `file:./e2e.db` SQLite + 假 R2 环境变量；`fullyParallel: false`；共享 helper 在 `e2e/admin-api.ts`；9 个 spec（portfolio / home-gallery / r2-delete / upload-policy / theme-toggle / desktop-cursor / mobile-hero-effects / work-form-state / smoke-settings.spec.js）。
+- e2e 基建：`playwright.config.ts` 自动起 dev server（127.0.0.1:3000），注入临时 `file:./e2e.db` SQLite + 假 R2 环境变量；`fullyParallel: false`；共享 helper 在 `e2e/admin-api.ts`；10 个 spec（portfolio / home-gallery / r2-delete / upload-policy / audit-regressions / theme-toggle / desktop-cursor / mobile-hero-effects / work-form-state / smoke-settings.spec.js）。
 - 端口冲突：dev 与 e2e 固定 3000 端口，与本机 UE MCP（localhost:3000）冲突；UE 编辑器开着时手动起 dev 用 `npx next dev -p 3001`，跑 e2e 前先确认 3000 空闲。
 
 ## 数据与迁移
@@ -54,7 +54,7 @@ npm run test:smoke:prod  # 对线上 tangzihang.top 跑冒烟（SMOKE_ALLOW_WRIT
 - API 写操作约定：先 `requireSameOrigin(req)` → 再 `requireAuth(req)`；返回值非空时直接返回该 `NextResponse`。
 - 写路由成功后必须调 `revalidatePath("/")`（作品类再加 `revalidatePath(`/work/${id}`)`）+ `revalidateTag`，新增写路由照做。
 - 乐观并发控制：更新类接口（`works/[id]`、`works/[id]/save`、`works/reorder`）接受 `expectedUpdatedAt`，与库中 `updated_at` 不匹配返回 409；e2e 有覆盖。
-- 可选 Upstash Redis 做跨实例限流（`lib/rate-limit-store.ts`）；未配置时自动用进程内存。
+- 可选 Upstash Redis 做跨实例限流（`lib/rate-limit-store.ts`）；未配置时默认走 Turso `rate_limits` 表。
 - `app/api/auth/login` 支持三种登录：TOTP、邮箱验证码（QQ SMTP）、管理员密钥；涉及依赖 `nodemailer`、`otplib`、`qrcode`、`@paralleldrive/cuid2`。
 - 邮箱验证码仅限 `1193662756@qq.com`，存 Turso `verification_codes` 表（多实例共享）：5 分钟有效期、单码 5 次尝试上限；发送侧双层限流 = `send-code`（3 次/分钟）+ `send-code-cooldown`（1 次/30 秒），都走共享限流存储。TOTP 绑定走 `/admin/totp-setup` 扫码，仓库里没有独立生成脚本。
 - `lib/email.ts` 的 QQ SMTP 硬编码真实 IP 绕过本地 DNS 污染，改邮件配置时勿恢复为域名解析。

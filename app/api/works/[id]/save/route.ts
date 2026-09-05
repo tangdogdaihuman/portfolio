@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { createId } from "@paralleldrive/cuid2";
 import { z } from "zod";
-import db, { tagsToString } from "@/lib/db";
+import db, { TOUCH_WORK_UPDATED_AT_SQL, tagsToString } from "@/lib/db";
 import { requireSameOrigin } from "@/lib/api-security";
 import { requireAuth } from "@/lib/auth";
 import { reportApiError, reportMetric } from "@/lib/monitoring";
@@ -103,7 +103,7 @@ export async function PUT(
       await transaction.execute({
         sql: `UPDATE works
               SET title = ?, description = ?, tags = ?, software = ?, image_url = ?, thumb_url = ?,
-                  work_date = ?, image_size = ?, size_weight = ?, updated_at = datetime('now')
+                  work_date = ?, image_size = ?, size_weight = ?, ${TOUCH_WORK_UPDATED_AT_SQL}
               WHERE id = ?`,
         args: [
           data.title,
@@ -143,6 +143,7 @@ export async function PUT(
       removedFiles: removedUrls.length,
     });
     revalidatePath("/");
+    revalidatePath("/sitemap.xml");
     revalidatePath(`/work/${workId}`);
     revalidateTag("works", "max");
     revalidateTag(`work:${workId}`, "max");

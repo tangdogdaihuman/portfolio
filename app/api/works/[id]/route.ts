@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
-import db, { tagsToString } from "@/lib/db";
+import db, { TOUCH_WORK_UPDATED_AT_SQL, tagsToString } from "@/lib/db";
 import { requireSameOrigin } from "@/lib/api-security";
 import { requireAuth } from "@/lib/auth";
 import { reportApiError, reportMetric } from "@/lib/monitoring";
@@ -85,7 +85,7 @@ export async function PUT(
       return fail("BAD_REQUEST", "No fields to update", 400);
     }
 
-    updates.push("updated_at = datetime('now')");
+    updates.push(TOUCH_WORK_UPDATED_AT_SQL);
     args.push(id);
     if (expectedUpdatedAt) {
       args.push(expectedUpdatedAt);
@@ -119,6 +119,7 @@ export async function PUT(
     reportMetric({ scope: "audit.work.update", value: 1, path: req.nextUrl.pathname, meta: { id } });
     await writeAuditLog(req, "work.update", { id, fields: Object.keys(parsed.data).filter((k) => k !== "expectedUpdatedAt") });
     revalidatePath("/");
+    revalidatePath("/sitemap.xml");
     revalidatePath(`/work/${id}`);
     revalidateTag("works", "max");
     revalidateTag(`work:${id}`, "max");
@@ -183,6 +184,7 @@ export async function DELETE(
     reportMetric({ scope: "audit.work.delete", value: 1, path: req.nextUrl.pathname, meta: { id } });
     await writeAuditLog(req, "work.delete", { id, fileCount: urls.length });
     revalidatePath("/");
+    revalidatePath("/sitemap.xml");
     revalidatePath(`/work/${id}`);
     revalidateTag("works", "max");
     revalidateTag(`work:${id}`, "max");

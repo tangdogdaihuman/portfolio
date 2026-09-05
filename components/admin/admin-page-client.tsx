@@ -133,8 +133,18 @@ export default function AdminPageClient() {
       return;
     }
 
-    const nextWorkSortOrder = other.sort_order ?? 0;
-    const nextOtherSortOrder = work.sort_order ?? 0;
+    const workSort = work.sort_order ?? 0;
+    const otherSort = other.sort_order ?? 0;
+    const movingUp = swapIndex < index;
+    let nextWorkSortOrder: number;
+    let nextOtherSortOrder: number;
+    if (workSort === otherSort) {
+      nextWorkSortOrder = movingUp ? otherSort + 1 : otherSort - 1;
+      nextOtherSortOrder = otherSort;
+    } else {
+      nextWorkSortOrder = otherSort;
+      nextOtherSortOrder = workSort;
+    }
     const updatedWorks = [...works];
     updatedWorks[index] = { ...other, sort_order: nextOtherSortOrder };
     updatedWorks[swapIndex] = { ...work, sort_order: nextWorkSortOrder };

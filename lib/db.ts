@@ -80,6 +80,9 @@ export async function ensureMigrated() {
   await runMigrations();
 }
 
+export const TOUCH_WORK_UPDATED_AT_SQL =
+  "updated_at = MAX(strftime('%Y-%m-%d %H:%M:%f', 'now'), datetime(updated_at, '+0.001 seconds'))";
+
 export function tagsToArray(s: unknown): string[] {
   if (typeof s !== "string" || !s) return [];
   return s.split(",").filter(Boolean);

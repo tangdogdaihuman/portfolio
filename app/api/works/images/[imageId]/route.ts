@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
-import db from "@/lib/db";
+import db, { TOUCH_WORK_UPDATED_AT_SQL } from "@/lib/db";
 import { requireSameOrigin } from "@/lib/api-security";
 import { requireAuth } from "@/lib/auth";
 import { writeAuditLog } from "@/lib/audit-log";
@@ -54,7 +54,7 @@ export async function DELETE(
           args: [workId],
         });
         await transaction.execute({
-          sql: "UPDATE works SET image_url = ?, thumb_url = ?, updated_at = datetime('now') WHERE id = ?",
+          sql: "UPDATE works SET image_url = ?, thumb_url = ? WHERE id = ?",
           args: [
             (nextImg.rows[0]?.image_url as string) || "",
             (nextImg.rows[0]?.thumb_url as string) || "",
@@ -62,6 +62,11 @@ export async function DELETE(
           ],
         });
       }
+
+      await transaction.execute({
+        sql: `UPDATE works SET ${TOUCH_WORK_UPDATED_AT_SQL} WHERE id = ?`,
+        args: [workId],
+      });
     }
 
     // Re-read current work for cover URL protection
@@ -84,6 +89,7 @@ export async function DELETE(
   }
   await writeAuditLog(req, "work.image.delete", { imageId, workId });
   revalidatePath("/");
+  revalidatePath("/sitemap.xml");
   revalidatePath(`/work/${workId}`);
   revalidateTag("works", "max");
   revalidateTag(`work:${workId}`, "max");

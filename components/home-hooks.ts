@@ -23,7 +23,7 @@ export function useHomeDataRefresh({
   const [tagline, setTagline] = useState(initialTagline || defaultTagline);
   const [detailSections, setDetailSections] = useState<Section[]>(initialSections);
   const [loadError, setLoadError] = useState(initialLoadError);
-  const [loadingWorks, setLoadingWorks] = useState(initialWorks.length === 0 && !initialLoadError);
+  const [loadingWorks, setLoadingWorks] = useState(false);
   const [expandedSection, setExpandedSection] = useState<string | null>(initialSections[0]?.id ?? null);
   const [works, setWorks] = useState<Work[]>(initialWorks);
   const refreshInFlightRef = useRef(false);

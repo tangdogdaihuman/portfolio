@@ -9,6 +9,7 @@ import BackToTopButton from "@/components/back-to-top-button";
 import ThemeToggle from "@/components/theme-toggle";
 import VisitTracker from "@/components/visit-tracker";
 import { rowToWork, rowToWorkImage } from "@/lib/work-mappers";
+import { isVideoUrl } from "@/lib/upload-policy";
 
 export const revalidate = 30;
 
@@ -53,6 +54,10 @@ export async function generateMetadata(
   const data = await getWork(id);
   if (!data) return {};
 
+  const ogCover = isVideoUrl(data.work.thumb_url)
+    ? data.images.find((image) => image.media_type === "image" && image.thumb_url)?.thumb_url || ""
+    : data.work.thumb_url;
+
   return {
     title: data.work.title,
     description: data.work.description,
@@ -60,7 +65,7 @@ export async function generateMetadata(
       title: data.work.title,
       description: data.work.description,
       type: "article",
-      images: data.work.thumb_url ? [{ url: data.work.thumb_url }] : undefined,
+      images: ogCover ? [{ url: ogCover }] : undefined,
     },
     alternates: {
       canonical: `/work/${id}`,

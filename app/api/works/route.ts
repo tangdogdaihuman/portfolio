@@ -113,6 +113,7 @@ export async function POST(req: NextRequest) {
     reportMetric({ scope: "audit.work.create", value: 1, path: req.nextUrl.pathname, meta: { id } });
     await writeAuditLog(req, "work.create", { id, title });
     revalidatePath("/");
+    revalidatePath("/sitemap.xml");
     revalidatePath(`/work/${id}`);
     revalidateTag("works", "max");
     revalidateTag(`work:${id}`, "max");

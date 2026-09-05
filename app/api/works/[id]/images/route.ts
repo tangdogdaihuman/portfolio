@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { createId } from "@paralleldrive/cuid2";
 import { z } from "zod";
-import db from "@/lib/db";
+import db, { TOUCH_WORK_UPDATED_AT_SQL } from "@/lib/db";
 import { requireSameOrigin } from "@/lib/api-security";
 import { requireAuth } from "@/lib/auth";
 import { writeAuditLog } from "@/lib/audit-log";
@@ -115,6 +115,11 @@ export async function POST(
         });
       }
 
+      await transaction.execute({
+        sql: `UPDATE works SET ${TOUCH_WORK_UPDATED_AT_SQL} WHERE id = ?`,
+        args: [workId],
+      });
+
       await transaction.commit();
     } catch (error) {
       if (!transaction.closed) await transaction.rollback();
@@ -126,6 +131,7 @@ export async function POST(
 
   await writeAuditLog(req, "work.images.add", { workId, added: valid.length });
   revalidatePath("/");
+  revalidatePath("/sitemap.xml");
   revalidatePath(`/work/${workId}`);
   revalidateTag("works", "max");
   revalidateTag(`work:${workId}`, "max");
@@ -179,6 +185,10 @@ export async function DELETE(
     if (urlsToDelete.length > 0) {
       await enqueueR2DeleteInTransaction(transaction, urlsToDelete);
     }
+    await transaction.execute({
+      sql: `UPDATE works SET ${TOUCH_WORK_UPDATED_AT_SQL} WHERE id = ?`,
+      args: [workId],
+    });
     await transaction.commit();
   } catch (error) {
     if (!transaction.closed) await transaction.rollback();
@@ -189,6 +199,7 @@ export async function DELETE(
 
   await writeAuditLog(req, "work.images.clear", { workId, removed: removedCount, keepFiles });
   revalidatePath("/");
+  revalidatePath("/sitemap.xml");
   revalidatePath(`/work/${workId}`);
   revalidateTag("works", "max");
   revalidateTag(`work:${workId}`, "max");
@@ -208,12 +219,16 @@ export async function PUT(
 
   const { id: workId } = await params;
   const body = await req.json();
-  const items = Array.isArray(body) ? body : [];
+  if (!Array.isArray(body)) {
+    return fail("BAD_REQUEST", "Images payload must be an array", 400);
+  }
 
   const valid: PreparedWorkImage[] = [];
-  for (const [i, item] of items.entries()) {
+  for (const [i, item] of body.entries()) {
     const parsed = addImageSchema.safeParse(item);
-    if (!parsed.success) continue;
+    if (!parsed.success) {
+      return fail("BAD_REQUEST", `Invalid image payload at index ${i}`, 400, parsed.error.flatten());
+    }
     valid.push({
       id: createId(),
       imageUrl: parsed.data.imageUrl,
@@ -260,10 +275,15 @@ export async function PUT(
     if (valid.length > 0) {
       const cover = chooseCoverImage(valid, currentWork.rows[0] as Record<string, unknown>);
       await transaction.execute({
-        sql: "UPDATE works SET image_url = ?, thumb_url = ?, updated_at = datetime('now') WHERE id = ?",
+        sql: "UPDATE works SET image_url = ?, thumb_url = ? WHERE id = ?",
         args: [cover.imageUrl, cover.thumbUrl, workId],
       });
     }
+
+    await transaction.execute({
+      sql: `UPDATE works SET ${TOUCH_WORK_UPDATED_AT_SQL} WHERE id = ?`,
+      args: [workId],
+    });
 
     await enqueueR2DeleteInTransaction(transaction, removedUrls);
     await transaction.commit();
@@ -281,6 +301,7 @@ export async function PUT(
     removedFiles: removedUrls.length,
   });
   revalidatePath("/");
+  revalidatePath("/sitemap.xml");
   revalidatePath(`/work/${workId}`);
   revalidateTag("works", "max");
   revalidateTag(`work:${workId}`, "max");

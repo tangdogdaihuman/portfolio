@@ -15,6 +15,8 @@ const eslintConfig = defineConfig([
     "scripts/**/*.cjs",
     "public/**/*.js",
     ".qoder/**",
+    ".playwright-mcp/**",
+    "test-results/**",
   ]),
 ]);
 

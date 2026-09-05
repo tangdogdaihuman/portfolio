@@ -39,8 +39,11 @@ export async function verifyCode(ip: string, input: string): Promise<boolean> {
   const a = Buffer.from(String(row.code));
   const b = Buffer.from(input);
   if (a.length === b.length && crypto.timingSafeEqual(a, b)) {
-    await db.execute({ sql: "DELETE FROM verification_codes WHERE ip = ?", args: [ip] });
-    return true;
+    const consumed = await db.execute({
+      sql: "DELETE FROM verification_codes WHERE ip = ? AND code = ? AND expires_at > ?",
+      args: [ip, String(row.code), now],
+    });
+    return consumed.rowsAffected > 0;
   }
 
   return false;

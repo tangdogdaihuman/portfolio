@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import DOMPurify from "dompurify";
 import ConfirmDialog from "@/components/admin/confirm-dialog";
 
 interface Section {
@@ -27,6 +28,10 @@ function toggleSelectionBold(el: HTMLDivElement) {
   nextRange.selectNodeContents(strong);
   nextRange.collapse(false);
   selection.addRange(nextRange);
+}
+
+function sanitizeSectionContent(html: string) {
+  return DOMPurify.sanitize(html, { FORBID_TAGS: ["style", "form", "input", "iframe"], FORBID_ATTR: ["style"] });
 }
 
 export default function DetailSectionsEditor({ showMsg }: { showMsg: (text: string, ok: boolean) => void }) {
@@ -62,8 +67,9 @@ export default function DetailSectionsEditor({ showMsg }: { showMsg: (text: stri
   useEffect(() => {
     for (const s of sections) {
       const el = contentRefs.current[s.id];
-      if (el && el.innerHTML !== s.content) {
-        el.innerHTML = s.content;
+      const clean = sanitizeSectionContent(s.content);
+      if (el && el.innerHTML !== clean) {
+        el.innerHTML = clean;
       }
     }
   }, [sections]);
@@ -91,7 +97,7 @@ export default function DetailSectionsEditor({ showMsg }: { showMsg: (text: stri
         const res = await fetch(`/api/detail-sections/${s.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: s.title, content: s.content, sortOrder: s.sort_order }),
+          body: JSON.stringify({ title: s.title, content: sanitizeSectionContent(s.content), sortOrder: s.sort_order }),
         });
         if (!res.ok) throw new Error(`${s.title} 保存失败`);
         return s.id;

@@ -174,6 +174,10 @@ export default function EditWorkForm({
   };
 
   const handleSave = async () => {
+    if (uploading) {
+      showMsg("请等待上传完成后再保存", false);
+      return;
+    }
     const cleanTitle = title.trim();
     const cleanDescription = description.trim();
     if (!cleanTitle || !cleanDescription || allImages.length === 0) {
@@ -331,7 +335,7 @@ export default function EditWorkForm({
         <UploadFailureList failures={failures} onRetry={retryFailure} onDismiss={dismissFailure} />
       </div>
       <div className="flex gap-3">
-        <button onClick={handleSave} disabled={saving} className="min-h-11 rounded-full bg-accent px-8 py-2.5 text-sm font-medium text-on-accent shadow-[0_14px_36px_-10px_color-mix(in_srgb,var(--color-accent)_55%,transparent)] transition-[transform,box-shadow] duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50">{saving ? saveStep || "保存中..." : "保存修改"}</button>
+        <button onClick={handleSave} disabled={saving || uploading} className="min-h-11 rounded-full bg-accent px-8 py-2.5 text-sm font-medium text-on-accent shadow-[0_14px_36px_-10px_color-mix(in_srgb,var(--color-accent)_55%,transparent)] transition-[transform,box-shadow] duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50">{saving ? saveStep || "保存中..." : uploading ? "上传中..." : "保存修改"}</button>
         <button onClick={onCancel} className="glass-chip rounded-full px-6 py-2.5 text-sm text-text-muted transition-colors hover:text-text">取消</button>
       </div>
     </div>

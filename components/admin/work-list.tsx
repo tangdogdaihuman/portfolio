@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import type { Work } from "@/lib/types";
+import { isVideoUrl } from "@/lib/upload-policy";
 
 export default function WorkList({
   works,
@@ -37,14 +38,24 @@ export default function WorkList({
             className="glass rounded-[24px] p-4 md:p-5"
           >
             <div className="flex items-start gap-4">
-              <Image
-                src={work.thumb_url}
-                alt={work.title}
-                width={80}
-                height={64}
-                unoptimized
-                className="w-20 h-16 object-cover flex-shrink-0 rounded-xl"
-              />
+              {isVideoUrl(work.thumb_url) ? (
+                <video
+                  src={work.thumb_url}
+                  muted
+                  playsInline
+                  preload="metadata"
+                  className="h-16 w-20 flex-shrink-0 rounded-xl object-cover"
+                />
+              ) : (
+                <Image
+                  src={work.thumb_url}
+                  alt={work.title}
+                  width={80}
+                  height={64}
+                  unoptimized
+                  className="w-20 h-16 object-cover flex-shrink-0 rounded-xl"
+                />
+              )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <h3 className="font-display text-text truncate">{work.title}</h3>

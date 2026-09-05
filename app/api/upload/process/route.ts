@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { createId } from "@paralleldrive/cuid2";
-import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
+import { GetObjectCommand, HeadObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { requireSameOrigin } from "@/lib/api-security";
 import { requireAuth } from "@/lib/auth";
 import { generateThumbnail } from "@/lib/image";
@@ -8,7 +8,9 @@ import { r2, R2_BUCKET, publicUrl } from "@/lib/r2";
 import { reportApiError, reportMetric } from "@/lib/monitoring";
 import { getIdempotencyStore } from "@/lib/idempotency-store";
 import { fail, ok } from "@/lib/api-response";
-import { formatBytes, MAX_IMAGE_UPLOAD_BYTES } from "@/lib/upload-policy";
+import { formatBytes, MAX_IMAGE_UPLOAD_BYTES, MAX_VIDEO_UPLOAD_BYTES } from "@/lib/upload-policy";
+
+const VIDEO_KEY_PATTERN = /^originals\/.+\.(mp4|webm|mov|avi|mkv)$/i;
 
 export async function POST(req: NextRequest) {
   try {
@@ -31,6 +33,20 @@ export async function POST(req: NextRequest) {
     if (typeof originalKey !== "string" || !originalKey.startsWith("originals/")) {
       reportMetric({ scope: "upload.process.invalid_key", value: 1, path: req.nextUrl.pathname });
       return fail("BAD_REQUEST", "Invalid originalKey", 400);
+    }
+
+    if (VIDEO_KEY_PATTERN.test(originalKey)) {
+      const head = await r2.send(new HeadObjectCommand({ Bucket: R2_BUCKET, Key: originalKey }));
+      const size = Number(head.ContentLength ?? 0);
+      if (size <= 0 || size > MAX_VIDEO_UPLOAD_BYTES) {
+        reportMetric({ scope: "upload.process.video_too_large", value: 1, path: req.nextUrl.pathname, meta: { originalKey, size } });
+        return fail("PAYLOAD_TOO_LARGE", `视频过大，限制为 ${formatBytes(MAX_VIDEO_UPLOAD_BYTES)}`, 413);
+      }
+      const videoPayload = { imageUrl: publicUrl(originalKey), thumbUrl: publicUrl(originalKey) };
+      if (cacheKey) {
+        getIdempotencyStore().set(cacheKey, videoPayload, 10 * 60 * 1000);
+      }
+      return ok(videoPayload);
     }
 
     const getResponse = await r2.send(

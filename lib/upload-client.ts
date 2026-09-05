@@ -62,9 +62,19 @@ export async function uploadImageToR2(file: File): Promise<UploadedFile> {
   if (!uploadRes.ok) throw new Error("上传原图失败");
 
   if (isVideo) {
+    const videoRes = await fetch("/api/upload/process", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ originalKey, requestId }),
+    });
+    if (!videoRes.ok) {
+      await cleanupUploadedFiles([{ imageUrl, thumbUrl: "" }]);
+      throw new Error(await readError(videoRes, "视频校验失败"));
+    }
+    const videoData = await videoRes.json();
     return {
-      imageUrl,
-      thumbUrl: imageUrl,
+      imageUrl: videoData.imageUrl,
+      thumbUrl: videoData.thumbUrl,
       size: file.size,
       mediaType: "video",
       fileName: file.name.replace(/\.[^.]+$/, ""),

@@ -13,6 +13,7 @@ import {
   useTransform,
 } from "framer-motion";
 import type { Work } from "@/lib/types";
+import { isVideoUrl } from "@/lib/upload-policy";
 import ThemeToggle from "@/components/theme-toggle";
 import { EASE_OUT, SPRING_SOFT, Reveal } from "@/components/reveal";
 import { useActiveHomeSection, useHomeDataRefresh } from "@/components/home-hooks";
@@ -185,6 +186,18 @@ function WorkThumbImage({ work, priority }: { work: Work; priority: boolean }) {
       requestAnimationFrame(() => setReady(true));
     }
   }, [work.thumb_url]);
+
+  if (isVideoUrl(work.thumb_url)) {
+    return (
+      <video
+        src={work.thumb_url}
+        muted
+        playsInline
+        preload="metadata"
+        className="block h-auto w-full object-cover"
+      />
+    );
+  }
 
   return (
     <Image

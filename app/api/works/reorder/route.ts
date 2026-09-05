@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { z } from "zod";
-import db from "@/lib/db";
+import db, { TOUCH_WORK_UPDATED_AT_SQL } from "@/lib/db";
 import { requireSameOrigin } from "@/lib/api-security";
 import { requireAuth } from "@/lib/auth";
 import { reportApiError, reportMetric } from "@/lib/monitoring";
@@ -53,7 +53,7 @@ export async function PUT(req: NextRequest) {
         }
 
         const result = await transaction.execute({
-          sql: "UPDATE works SET sort_order = ?, updated_at = datetime('now') WHERE id = ?",
+          sql: `UPDATE works SET sort_order = ?, ${TOUCH_WORK_UPDATED_AT_SQL} WHERE id = ?`,
           args: [item.sortOrder, item.id],
         });
         if (result.rowsAffected === 0) {
@@ -82,6 +82,7 @@ export async function PUT(req: NextRequest) {
     reportMetric({ scope: "audit.work.reorder", value: parsed.data.items.length, path: req.nextUrl.pathname });
     await writeAuditLog(req, "work.reorder", { items: parsed.data.items.map((item) => ({ id: item.id, sortOrder: item.sortOrder })) });
     revalidatePath("/");
+    revalidatePath("/sitemap.xml");
     revalidateTag("works", "max");
     return ok({ updated });
   } catch (error) {
