@@ -1,0 +1,291 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "唐子航作品集网站 · 运行时架构",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "public-path",
+        "label": "访客路径",
+        "focus": [
+          "visitors",
+          "cf",
+          "vercel",
+          "turso"
+        ],
+        "note": "SSR 渲染作品数据，unstable_cache + 前台 5 分钟轮询"
+      },
+      {
+        "id": "admin-path",
+        "label": "后台管理",
+        "focus": [
+          "admin",
+          "cf",
+          "vercel",
+          "turso"
+        ],
+        "note": "proxy.ts 鉴权后 CRUD，写后 revalidate"
+      },
+      {
+        "id": "upload-path",
+        "label": "上传管线",
+        "focus": [
+          "admin",
+          "vercel",
+          "r2"
+        ],
+        "note": "presigned 直传原图，Sharp 生成 webp 缩略图"
+      },
+      {
+        "id": "cleanup-path",
+        "label": "异步清理",
+        "focus": [
+          "actions",
+          "vercel",
+          "turso",
+          "r2"
+        ],
+        "note": "cron 每 15 分钟消化 r2_delete_jobs"
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "visitors",
+      "type": "external",
+      "label": "访客",
+      "sublabel": "Browser / Mobile",
+      "pos": [
+        40,
+        300
+      ],
+      "size": [
+        120,
+        60
+      ]
+    },
+    {
+      "id": "github",
+      "type": "external",
+      "label": "GitHub",
+      "sublabel": "源码仓库",
+      "pos": [
+        260,
+        110
+      ],
+      "size": [
+        150,
+        56
+      ]
+    },
+    {
+      "id": "actions",
+      "type": "external",
+      "label": "GitHub Actions",
+      "sublabel": "定时任务",
+      "pos": [
+        540,
+        110
+      ],
+      "size": [
+        180,
+        56
+      ]
+    },
+    {
+      "id": "smtp",
+      "type": "external",
+      "label": "QQ SMTP",
+      "sublabel": "邮箱验证码",
+      "pos": [
+        780,
+        110
+      ],
+      "size": [
+        150,
+        56
+      ]
+    },
+    {
+      "id": "cf",
+      "type": "cloud",
+      "label": "Cloudflare",
+      "sublabel": "tangzihang.top 代理",
+      "pos": [
+        260,
+        300
+      ],
+      "size": [
+        150,
+        60
+      ]
+    },
+    {
+      "id": "vercel",
+      "type": "backend",
+      "label": "Vercel · Next.js 16",
+      "sublabel": "SSR · API Routes",
+      "tag": "proxy.ts 鉴权",
+      "pos": [
+        540,
+        300
+      ],
+      "size": [
+        180,
+        72
+      ]
+    },
+    {
+      "id": "turso",
+      "type": "database",
+      "label": "Turso (libsql)",
+      "sublabel": "作品 · 审计 · rate_limits",
+      "pos": [
+        980,
+        300
+      ],
+      "size": [
+        180,
+        64
+      ]
+    },
+    {
+      "id": "admin",
+      "type": "external",
+      "label": "管理员",
+      "sublabel": "/admin 后台",
+      "pos": [
+        40,
+        480
+      ],
+      "size": [
+        120,
+        60
+      ]
+    },
+    {
+      "id": "r2",
+      "type": "cloud",
+      "label": "Cloudflare R2",
+      "sublabel": "originals/ + webp 缩略图",
+      "pos": [
+        540,
+        480
+      ],
+      "size": [
+        180,
+        64
+      ]
+    },
+    {
+      "id": "upstash",
+      "type": "database",
+      "label": "Upstash Redis",
+      "sublabel": "跨实例限流（可选）",
+      "pos": [
+        980,
+        480
+      ],
+      "size": [
+        180,
+        56
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "visitors-to-cf",
+      "from": "visitors",
+      "to": "cf",
+      "label": "HTTPS",
+      "variant": "emphasis"
+    },
+    {
+      "id": "cf-to-vercel",
+      "from": "cf",
+      "to": "vercel"
+    },
+    {
+      "id": "vercel-to-turso",
+      "from": "vercel",
+      "to": "turso",
+      "label": "libsql 读写",
+      "variant": "emphasis"
+    },
+    {
+      "id": "admin-to-cf",
+      "from": "admin",
+      "to": "cf"
+    },
+    {
+      "id": "vercel-to-r2",
+      "from": "vercel",
+      "to": "r2",
+      "label": "缩略图 · 删除对象",
+      "labelDy": 24
+    },
+    {
+      "id": "admin-to-r2",
+      "from": "admin",
+      "to": "r2",
+      "label": "presigned 直传原图"
+    },
+    {
+      "id": "vercel-to-smtp",
+      "from": "vercel",
+      "to": "smtp",
+      "label": "发送验证码"
+    },
+    {
+      "id": "vercel-to-upstash",
+      "from": "vercel",
+      "to": "upstash",
+      "label": "限流（可选）",
+      "variant": "dashed"
+    },
+    {
+      "id": "actions-to-vercel",
+      "from": "actions",
+      "to": "vercel",
+      "label": "r2-delete cron",
+      "labelDy": 24
+    },
+    {
+      "id": "github-to-vercel",
+      "from": "github",
+      "to": "vercel",
+      "label": "push 自动部署",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "入口",
+      "items": [
+        "Cloudflare 代理 tangzihang.top 并回源 Vercel",
+        "首页 SSR + unstable_cache，前台 5 分钟轮询"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "应用",
+      "items": [
+        "/admin 由 proxy.ts 保护，签发 7 天管理 cookie",
+        "登录：TOTP / 邮箱验证码 / 管理密钥",
+        "写操作后 revalidatePath + revalidateTag"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "数据与安全",
+      "items": [
+        "Turso 为 schema 单一来源，上传限图 50MB / 视频 500MB",
+        "限流默认 Turso 表 fail-closed，可选 Upstash Redis",
+        "IP 取 cf-connecting-ip，R2 删除走 cron 退避重试"
+      ]
+    }
+  ]
+}
