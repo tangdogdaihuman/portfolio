@@ -1,0 +1,131 @@
+// Risk & quality map — portfolio full review 2026-09-05
+// Render: dot -Tsvg risk-quality.dot -o risk-quality.svg
+// Producer: architecture-visualization:risk-quality-reviewer (+ graphviz recipe)
+// IDs match finding IDs in ./full-review.md
+digraph risk_quality {
+  rankdir=LR;
+  fontname="Helvetica";
+  node [fontname="Helvetica", fontsize=11, style="rounded,filled"];
+  edge [fontname="Helvetica", fontsize=9];
+
+  graph [label="Portfolio 2026-09-05: quality attributes -> risk clusters -> architecture elements\n(severity fill: red=high, orange=med, grey=over-engineering; dashed=needs runtime data)", labelloc=t, fontsize=14];
+
+  // ---- Quality attributes (the owner's stated goals) ----
+  subgraph cluster_goals {
+    label="quality goals"; style=dashed;
+    LCP     [label="首屏性能\nLCP / FCP", shape=box, fillcolor="#dbeafe"];
+    SMOOTH  [label="交互流畅度\nINP / 续航", shape=box, fillcolor="#dbeafe"];
+    CORRECT [label="正确性\n无静默丢数据", shape=box, fillcolor="#dbeafe"];
+    SIMPLE  [label="架构简洁\n同一职责一处实现", shape=box, fillcolor="#dbeafe"];
+  }
+
+  // ---- Risk clusters ----
+  subgraph cluster_delivery {
+    label="边缘交付 (CDN/R2)"; style=filled; fillcolor="#fef3c7";
+    P02 [label="P-02 R2 未边缘缓存\nDYNAMIC + 无 Cache-Control\n两个图片域名分裂", fillcolor="#fca5a5"];
+    P03 [label="P-03 单档 1080p\n全量 unoptimized", fillcolor="#fdba74"];
+    L07 [label="L-07 R2 删除静默跳过\n未配置前缀 → 字节永久泄漏", fillcolor="#fdba74"];
+  }
+
+  subgraph cluster_font_bundle {
+    label="资源加载"; style=filled; fillcolor="#e0e7ff";
+    P01 [label="P-01 CJK 字体 render-blocking\nfonts.googleapis.com（大陆不稳）", fillcolor="#fca5a5"];
+    P08 [label="P-08 LazyMotion 被根 import 抵消\n248 KB gz 首屏 JS", fillcolor="#fdba74"];
+    U05 [label="U-05 layout/layoutId 特性缺失\n行为随浏览历史变化", fillcolor="#fdba74"];
+  }
+
+  subgraph cluster_coldpath {
+    label="服务端冷路径"; style=filled; fillcolor="#dcfce7";
+    P05 [label="P-05 每 isolate 16 次串行迁移往返\n无 instrumentation.ts", fillcolor="#fdba74"];
+    P07 [label="P-07 revalidate 30s\n命中率≈0", fillcolor="#fdba74"];
+    P09 [label="P-09 /api/works 无缓存\n却承担轮询 + 3 相关子查询", fillcolor="#fdba74"];
+    P06 [label="P-06 catch 结果被 unstable_cache 缓存\n→ 全站空首页 30s+", fillcolor="#fca5a5"];
+    P11 [label="P-11 getWork 调两次\n无 React.cache()", fillcolor="#d1d5db"];
+  }
+
+  subgraph cluster_writepath {
+    label="写路径与并发"; style=filled; fillcolor="#fce7f3";
+    L01 [label="L-01 updated_at '+0.001 seconds'\n被 SQLite 截断（实测）\n单调性不变量不成立", fillcolor="#fca5a5"];
+    L04 [label="L-04 PUT 事务外读回时间戳\n→ OCC 假通过 → 丢更新", fillcolor="#fdba74"];
+    L05 [label="L-05 expectedUpdatedAt:'' 绕过并发校验", fillcolor="#fdba74"];
+    L02 [label="L-02 删到 0 图 → 空封面\n后台无补图入口 → 作品锁死", fillcolor="#fca5a5"];
+    L03 [label="L-03 POST images 静默丢条目\n+ 孤儿 R2 对象 + 500", fillcolor="#fdba74"];
+    L06 [label="L-06 逗号串标签不往返", fillcolor="#fdba74"];
+    L10 [label="L-10 引用检查 N+1\n列无索引 + 不 waitUntil", fillcolor="#fdba74"];
+  }
+
+  subgraph cluster_render_loop {
+    label="客户端常驻开销"; style=filled; fillcolor="#ffedd5";
+    P04 [label="P-04 桌面极光 60fps 永动\n滚动暂停只对粗指针", fillcolor="#fca5a5"];
+    U09 [label="U-09 DPR 变化不重算分辨率\nrender 期创建 2D context", fillcolor="#d1d5db"];
+  }
+
+  subgraph cluster_ux_states {
+    label="前端状态机"; style=filled; fillcolor="#cffafe";
+    U01 [label="U-01 滚动后光标消失\ne2e 自掩盖（轮询中移鼠标）", fillcolor="#fca5a5"];
+    U02 [label="U-02 loadingWorks 恒 false\n骨架屏死代码", fillcolor="#fdba74"];
+    U03 [label="U-03 error 与 empty-filter 同分支\n有数据时出错无提示", fillcolor="#fdba74"];
+    U04 [label="U-04 视频无 poster/宽高\niOS 空白 + CLS", fillcolor="#fdba74"];
+    U06 [label="U-06 后台闪空态 / pin 无 catch", fillcolor="#d1d5db"];
+  }
+
+  subgraph cluster_debt {
+    label="过度设计 / 只写不读"; style=filled; fillcolor="#e5e7eb";
+    T01 [label="T-01 极光 3 套实现 ≈1072 行", fillcolor="#d1d5db"];
+    T02 [label="T-02 audit_logs 零读者\n8 处 await 写", fillcolor="#d1d5db"];
+    T03 [label="T-03 details 死表 / schema_migrations 装饰\ncheck-schema-source 永真", fillcolor="#d1d5db"];
+    T04 [label="T-04 手写 R2 重试队列（表+cron+workflow）\n测试断言的是机制", fillcolor="#d1d5db"];
+    T05 [label="T-05 三层限流服务 3 端点", fillcolor="#d1d5db"];
+    T06 [label="T-06 3 条并行认证路径", fillcolor="#d1d5db"];
+    T07 [label="T-07 路由样板×17 / 重复 BackToTop\n无消费方的 data-hover 等", fillcolor="#d1d5db"];
+  }
+
+  // ---- goals -> risks ----
+  LCP     -> {P01; P02; P03; P05; P08; P09; P06; U04};
+  SMOOTH  -> {P04; U01; U09; P06};
+  CORRECT -> {L01; L02; L03; L04; L05; L06; P06; U02; U03; U05; L07};
+  SIMPLE  -> {T01; T02; T03; T04; T05; T06; T07; U02};
+
+  // ---- causal / coupling edges ----
+  P07 -> P05 [label="30s 再验证放大冷启动"];
+  P05 -> P06 [label="迁移竞态抛错"];
+  P06 -> L02 [label="空封面被当成\n加载失败呈现"];
+  L01 -> L04 [label="版本戳本身不可信\n→ 冲突判定失真"];
+  L02 -> T06 [label="后台无补图入口\n(POST images 只被 e2e 用)"];
+  L03 -> L07 [label="被拒条目未入队\n→ 永久孤儿"];
+  L07 -> P02 [label="同一域名分裂根因"];
+  T04 -> L10 [label="队列设计带来的\n每请求 N+1"];
+  P08 -> U05 [label="特性包配置不一致\n是瘦身失败的后果"];
+  T01 -> P04 [label="三套实现让节流\n只补在其中一个上"];
+  U02 -> U03 [label="状态源重叠"];
+
+  // ---- remediation sequence (S1..S6) ----
+  subgraph cluster_plan {
+    label="路线图"; style=dashed; rankdir=TB;
+    S1 [label="S1 交付层+一行式逻辑修正\n(低风险高回报)", fillcolor="#bbf7d0"];
+    S2 [label="S2 后台自愈性 + 状态塌缩", fillcolor="#bbf7d0"];
+    S3 [label="S3 字体 / 包体 / 缓存 TTL", fillcolor="#a7f3d0"];
+    S4 [label="S4 动效与流畅度（含修 e2e 自掩盖）", fillcolor="#a7f3d0"];
+    S5 [label="S5 数据层长期健康", fillcolor="#e9d5ff"];
+    S6 [label="S6 减复杂度（每项一个 commit）", fillcolor="#e9d5ff"];
+    S1 -> S2 -> S3 -> S4 -> S5 -> S6 [style=invis];
+  }
+  S1 -> {P02; L07; P06; L01; L05};
+  S2 -> {L02; L03; U02; U03};
+  S3 -> {P01; P08; P09; P07};
+  S4 -> {P04; U01; U04; U05; P03};
+  S5 -> {P05; P10x; P11; L10};
+  S6 -> {T01; T02; T03; T04; T05; T07};
+
+  P10 [label="P-10 visits/audit/rate_limits 无保留期\n日期函数不可用索引 → 线性变慢", fillcolor="#fdba74"];
+  LCP -> P10 [style=dotted];
+  S5 -> P10;
+
+  // ---- assumptions needing runtime data ----
+  R1 [label="假设待测：Turso↔Vercel 单次 RTT 40–120ms\n决定 P-05/P-06/P-11 真实秒数", shape=note, fillcolor="#fff7ed", style=filled];
+  R2 [label="假设待测：大陆访客真实 LCP/FCP\n（P-01 未做大陆节点实测）", shape=note, fillcolor="#fff7ed", style=filled];
+  R3 [label="假设待测：并发编辑是否真实发生\n（仅当会发生时 L-04/L-01 才致命）", shape=note, fillcolor="#fff7ed", style=filled];
+  R1 -> P05 [style=dotted];
+  R2 -> P01 [style=dotted];
+  R3 -> L04 [style=dotted];
+}
