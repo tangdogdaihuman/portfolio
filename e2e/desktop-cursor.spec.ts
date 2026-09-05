@@ -70,4 +70,25 @@ test.describe("桌面端自定义光标", () => {
     expect(Math.abs(position.left - 980)).toBeLessThan(70);
     expect(Math.abs(position.top - 620)).toBeLessThan(70);
   });
+
+  test("滚动之后不再移动鼠标，光标也会自行恢复可见", async ({ page, baseURL }) => {
+    await page.goto(`${baseURL}/`);
+
+    const bead = page.locator(".bead-cursor");
+    await expect(bead).toBeAttached();
+
+    await page.mouse.move(640, 420, { steps: 5 });
+    await expect.poll(async () => getCursorOpacity(page, ".bead-cursor"), { timeout: 5000 }).toBeGreaterThan(0.8);
+
+    await page.mouse.wheel(0, 2000);
+    await expect.poll(async () => getCursorOpacity(page, ".bead-cursor"), { timeout: 2000 }).toBeLessThan(0.5);
+
+    await expect
+      .poll(async () => getCursorOpacity(page, ".bead-cursor"), { timeout: 3000 })
+      .toBeGreaterThan(0.8);
+
+    const position = await getCursorPosition(page, ".bead-cursor");
+    expect(Math.abs(position.left - 640)).toBeLessThan(20);
+    expect(Math.abs(position.top - 420)).toBeLessThan(20);
+  });
 });
