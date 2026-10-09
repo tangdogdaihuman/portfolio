@@ -40,8 +40,17 @@ export default function GlassCursor() {
     let ringScale = 0;
     let ringScaleTarget = 0;
     let hasPosition = false;
+    let inField = false;
     let raf = 0;
     let scrollRestoreTimer = 0;
+
+    const present = (visible: boolean) => {
+      const next = visible ? "visible" : "hidden";
+      cursor.style.visibility = next;
+      ring.style.visibility = next;
+      cursor.style.opacity = visible ? "1" : "0";
+      ring.style.opacity = visible ? "1" : "0";
+    };
 
     const render = () => {
       raf = 0;
@@ -73,15 +82,10 @@ export default function GlassCursor() {
         scrollRestoreTimer = 0;
       }
       const field = (event.target as HTMLElement).closest<HTMLElement>(
-        'input, textarea, [contenteditable="true"]'
+        "input, textarea, select, [contenteditable]"
       );
-      if (field) {
-        cursor.style.opacity = "0";
-        ring.style.opacity = "0";
-      } else {
-        cursor.style.opacity = "1";
-        ring.style.opacity = "1";
-      }
+      inField = !!field;
+      present(!field);
       const target = (event.target as HTMLElement).closest<HTMLElement>("[data-cursor], a, button");
       const nextLabel = target?.dataset.cursor ?? "";
       ringScaleTarget = target ? 1 : 0;
@@ -90,20 +94,18 @@ export default function GlassCursor() {
     };
 
     const onLeave = () => {
-      cursor.style.opacity = "0";
-      ring.style.opacity = "0";
+      present(false);
       ringScaleTarget = 0;
       wake();
     };
 
     const onScroll = () => {
-      cursor.style.opacity = "0";
-      ring.style.opacity = "0";
+      if (inField) return;
+      present(false);
       if (scrollRestoreTimer) window.clearTimeout(scrollRestoreTimer);
       scrollRestoreTimer = window.setTimeout(() => {
         scrollRestoreTimer = 0;
-        cursor.style.opacity = "1";
-        ring.style.opacity = "1";
+        if (!inField) present(true);
       }, 140);
     };
 
@@ -123,11 +125,11 @@ export default function GlassCursor() {
 
   return (
     <>
-      <div ref={cursorRef} className="bead-cursor" style={{ opacity: 0 }} aria-hidden="true" />
+      <div ref={cursorRef} className="bead-cursor" style={{ opacity: 0, visibility: "hidden" }} aria-hidden="true" />
       <div
         ref={ringRef}
         className={`bead-ring ${label ? "bead-active" : ""}`}
-        style={{ transform: "translate3d(-100px, -100px, 0) scale(0)", opacity: 0 }}
+        style={{ transform: "translate3d(-100px, -100px, 0) scale(0)", opacity: 0, visibility: "hidden" }}
         aria-hidden="true"
       >
         <span>{label}</span>

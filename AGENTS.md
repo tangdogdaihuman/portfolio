@@ -27,7 +27,7 @@ npm run test:smoke:prod  # 对线上 tangzihang.top 跑冒烟（SMOKE_ALLOW_WRIT
 - 验证顺序：`lint` → `typecheck` → `test:schema` → `build` → `test:e2e`（CI 执行的顺序）。
 - `db:push` 用 `.env.local` 直连 Turso；实际线上 db.ts 首次访问时自动迁移，通常不需要手动跑。
 - 单跑测试：`npx playwright test e2e/portfolio.spec.ts` 跑单个文件；`npm run test:e2e -- -g "用例名"` 按名过滤；`SMOKE_BASE_URL=http://localhost:3000 npm run test:smoke` 指定 smoke 目标。
-- e2e 基建：`playwright.config.ts` 自动起 dev server（127.0.0.1:3000），注入临时 `file:./e2e.db` SQLite + 假 R2 环境变量；`fullyParallel: false`；共享 helper 在 `e2e/admin-api.ts`；10 个 spec（portfolio / home-gallery / r2-delete / upload-policy / audit-regressions / theme-toggle / desktop-cursor / mobile-hero-effects / work-form-state / smoke-settings.spec.js）。
+- e2e 基建：`playwright.config.ts` 自动起 dev server（127.0.0.1:3000），注入临时 `file:./e2e.db` SQLite + 假 R2 环境变量；`fullyParallel: false`；共享 helper 在 `e2e/admin-api.ts`；11 个 spec（portfolio / home-gallery / r2-delete / upload-policy / audit-regressions / theme-toggle / desktop-cursor / admin-input-cursor / mobile-hero-effects / work-form-state / smoke-settings.spec.js）。
 - 端口冲突：dev 与 e2e 固定 3000 端口，与本机 UE MCP（localhost:3000）冲突；UE 编辑器开着时手动起 dev 用 `npx next dev -p 3001`，跑 e2e 前先确认 3000 空闲。
 
 ## 数据与迁移
@@ -80,6 +80,7 @@ npm run test:smoke:prod  # 对线上 tangzihang.top 跑冒烟（SMOKE_ALLOW_WRIT
 - 中文字体策略：正文走设备自带字体（`--font-body` 里 `PingFang SC`/`Microsoft YaHei` 优先，零下载）；标题中文 `Noto Serif SC` 仍走 `app/layout.tsx` 的外部 `<link>`，只请求 400/700/800。**`next/font` 在 Next 16 下无法自托管中文切片**——其 `font-data.json` 里 CJK 字体没有中文子集名，`subsets: ["chinese-simplified"]` 通不过类型检查；要彻底自托管得另写构建期拉取脚本。
 - framer-motion：`layoutId`/`layout`/`drag` 需要投影特性，`domAnimation` 不含它们。首页与详情页灯箱统一用 `<LazyMotion features={loadMotionFeatures}>`（`components/motion-features.ts`，异步取 `domMax`）；从根入口 import `motion` 会把完整特性包拉进首屏。
 - 自定义光标：纯 DOM 操作，不触发 React 渲染。滚动时隐藏但必须在停手 ~140ms 后自动恢复（原生光标已被隐藏，不能等下一次 mousemove 才回来）；文本输入框与 `cursor-zoom-in` 处保留原生光标并隐藏光点，`app/globals.css` 里那组 `hide-native-cursor` 例外规则别退回成 `cursor: none !important`。
+- 隐藏光点必须同时置 `visibility: hidden`，不能只改 `opacity: 0`：`bead-cursor`/`bead-ring` 是 `backdrop-filter` + `will-change` 的 fixed 层，只降透明度仍留在合成树里压在指针位置，Edge 下会把原生光标一起顶掉（表现为"输入框内鼠标消失"）。例外选择器还要覆盖 `[contenteditable] *` 与 `select/range/checkbox/date` 等变体——后台详细介绍的加粗片段是 `<strong>` 子元素，漏了子节点 `hide-native-cursor *` 会重新生效。滚动恢复只在非输入区做（`inField` 守卫），否则滚一下就把光点盖回正在打的文字。回归覆盖在 `e2e/admin-input-cursor.spec.ts`。
 - Tailwind v4 没有 `tailwind.config.*`；主题变量在 `app/globals.css` 的 `@theme inline`，PostCSS 只配 `@tailwindcss/postcss`。
 - 代码不加注释；新增代码英文命名。
 - `app/admin/page.tsx` 表单状态用对象整体替换，别用函数式 `setState`；不可变更新逻辑集中在 `components/admin/work-form-state.ts`。

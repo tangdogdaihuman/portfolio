@@ -371,17 +371,12 @@ html.hide-native-cursor * {
   cursor: none;
 }
 
-html.hide-native-cursor input[type="text"],
-html.hide-native-cursor input[type="email"],
-html.hide-native-cursor input[type="password"],
-html.hide-native-cursor input[type="number"],
-html.hide-native-cursor input[type="search"],
-html.hide-native-cursor input[type="tel"],
-html.hide-native-cursor input[type="url"],
-html.hide-native-cursor input:not([type]),
-html.hide-native-cursor textarea,
-html.hide-native-cursor [contenteditable="true"] {
+html.hide-native-cursor :is(input[type="text"], input[type="email"], input[type="password"], input[type="number"], input[type="search"], input[type="tel"], input[type="url"], input[type="date"], input[type="time"], input[type="datetime-local"], input:not([type]), textarea, [contenteditable], [contenteditable] *) {
   cursor: text !important;
+}
+
+html.hide-native-cursor :is(select, input[type="checkbox"], input[type="radio"], input[type="range"], input[type="file"]) {
+  cursor: auto !important;
 }
 
 html.hide-native-cursor .cursor-zoom-in {
