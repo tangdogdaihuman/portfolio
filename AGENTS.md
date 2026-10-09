@@ -5,7 +5,7 @@
 - 运行栈：React 19、TypeScript strict、Tailwind v4、Framer Motion、Turso(libsql)、Cloudflare R2、Sharp、Zod。
 
 ## 先看哪里
-- 前台入口 `app/page.tsx`（服务端 `unstable_cache` 抓取初始数据）→ `components/home-client.tsx`（筛选、排序、展示）；5 分钟轮询、`visibilitychange` 刷新（30s 节流）、自定义光标等 hooks 在 `components/home-hooks.ts`（`useHomeDataRefresh` / `useCustomCursor`）。
+- 前台入口 `app/page.tsx`（服务端 `unstable_cache` 抓取初始数据）→ `components/home-client.tsx`（筛选、排序、展示）；5 分钟轮询、`visibilitychange` 刷新（30s 节流）在 `components/home-hooks.ts`（`useHomeDataRefresh`）。自定义光标不在 hooks 里，是 `app/layout.tsx` 全局挂载的 `components/cursor.tsx`（`GlassCursor`），所以前台与后台共用、`html` 上会挂 `hide-native-cursor`。
 - 作品详情页 `app/work/[id]/page.tsx`。
 - 后台入口 `app/admin/page.tsx`（含 `admin/login`、`admin/totp-setup` 子路由）；子组件在 `components/admin/`。
 - API 在 `app/api/**/route.ts`；数据库/鉴权封装在 `lib/db.ts`、`lib/auth.ts`、`proxy.ts`。
@@ -74,7 +74,7 @@ npm run test:smoke:prod  # 对线上 tangzihang.top 跑冒烟（SMOKE_ALLOW_WRIT
 - `lib/audit-log.ts`：DB 审计日志。
 
 ## 前端约定
-- 首页 `components/home-client.tsx`：筛选、排序、marquee、hero 等展示逻辑。轮询、`visibilitychange` 刷新（30s 节流）、自定义光标抽到 `components/home-hooks.ts`；初始数据由 `app/page.tsx` 服务端 `unstable_cache` 抓取后通过 props 传入。
+- 首页 `components/home-client.tsx`：筛选、排序、marquee、hero 等展示逻辑。轮询、`visibilitychange` 刷新（30s 节流）在 `components/home-hooks.ts`；自定义光标是 `app/layout.tsx` 全局挂载的 `components/cursor.tsx`（前台后台共用）；初始数据由 `app/page.tsx` 服务端 `unstable_cache` 抓取后通过 props 传入。
 - 动画基线：`spring` 常用 `damping: 28`、`stiffness: 200`、`mass: 0.8`。
 - 画廊状态用可判别分支：`loadingWorks`（重试中且无内容）/ `works.length === 0`（作品集为空或加载失败）/ `filtered.length === 0`（筛选无匹配，带清除筛选入口）/ 正常网格；"已有内容但更新失败"另在网格上方独立提示。别把 error 和 empty 塞进同一个分支。
 - 中文字体策略：正文走设备自带字体（`--font-body` 里 `PingFang SC`/`Microsoft YaHei` 优先，零下载）；标题中文 `Noto Serif SC` 仍走 `app/layout.tsx` 的外部 `<link>`，只请求 400/700/800。**`next/font` 在 Next 16 下无法自托管中文切片**——其 `font-data.json` 里 CJK 字体没有中文子集名，`subsets: ["chinese-simplified"]` 通不过类型检查；要彻底自托管得另写构建期拉取脚本。
