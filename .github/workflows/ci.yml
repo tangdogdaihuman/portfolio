@@ -32,6 +32,17 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          DATABASE_URL: file:./ci-build.db
+          DATABASE_AUTH_TOKEN: ""
+          ADMIN_SECRET_KEY: ci-build-only-secret
+          CRON_SECRET: ci-build-only-cron
+          R2_ACCOUNT_ID: local
+          R2_ACCESS_KEY_ID: local
+          R2_SECRET_ACCESS_KEY: local
+          R2_BUCKET_NAME: local
+          R2_PUBLIC_URL: https://r2.local
+          NEXT_PUBLIC_BASE_URL: http://localhost:3000
 
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps chromium

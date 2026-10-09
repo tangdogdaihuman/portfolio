@@ -44,6 +44,12 @@ e2e.db
 e2e.db-shm
 e2e.db-wal
 tmp-e2e.db
+tmp-*.db
+tmp-*.db-shm
+tmp-*.db-wal
+ci-build.db
+ci-build.db-shm
+ci-build.db-wal
 
 # typescript
 *.tsbuildinfo
