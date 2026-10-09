@@ -796,8 +796,8 @@ export default function HomeClient({
               </a>
               <div className="mt-10 flex flex-wrap items-center gap-3">
                 <a
-                  href="/resume-tangzihang.png"
-                  download="唐子航-3D角色简历.png"
+                  href="/resume-tangzihang.pdf"
+                  download="唐子航-简历-3D角色模型师.pdf"
                   data-cursor="下载"
                   className="inline-flex min-h-12 items-center gap-2.5 rounded-full bg-accent px-7 text-[0.78rem] font-medium tracking-[0.14em] text-on-accent shadow-[0_14px_36px_-10px_color-mix(in_srgb,var(--color-accent)_55%,transparent)] transition-[transform,box-shadow] duration-400 hover:scale-[1.03] hover:shadow-[0_18px_44px_-10px_color-mix(in_srgb,var(--color-accent)_70%,transparent)] active:scale-[0.98]"
                 >
