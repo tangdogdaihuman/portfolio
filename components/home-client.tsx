@@ -333,16 +333,19 @@ function HeroWorkWall({ works, progress, coarse }: { works: Work[]; progress: Mo
   const pool = useMemo(() => works.filter((work) => work.thumb_url && !isVideoUrl(work.thumb_url)), [works]);
   const near = useMemo(() => wallTiles(pool, WALL_NEAR_TILES, 0), [pool]);
   const far = useMemo(() => wallTiles(pool, WALL_FAR_TILES, 2), [pool]);
-  const nearY = useTransform(progress, [0, 1], [0, -170]);
-  const farY = useTransform(progress, [0, 1], [0, -70]);
-  const wallFade = useTransform(progress, [0, 0.8], [1, 0.12]);
+  const nearY = useTransform(progress, [0, 1], [0, -340]);
+  const farY = useTransform(progress, [0, 1], [0, -60]);
+  const nearScale = useTransform(progress, [0, 1], [1, 1.14]);
+  const farScale = useTransform(progress, [0, 1], [1, 1.05]);
+  const nearRotate = useTransform(progress, [0, 1], [0, -2.5]);
+  const wallFade = useTransform(progress, [0, 1], [1, 0.3]);
 
   if (pool.length === 0) return null;
 
   return (
     <div aria-hidden="true" className="wall-stage">
       {!coarse && (
-        <m.div style={{ y: farY, opacity: wallFade }} className="absolute inset-0">
+        <m.div style={{ y: farY, scale: farScale, opacity: wallFade }} className="absolute inset-0">
           <div className="wall-layer wall-layer-far">
             <div className="wall-drift-far grid h-full grid-cols-6 content-start gap-2.5">
               {far.map((work, i) => (
@@ -362,7 +365,7 @@ function HeroWorkWall({ works, progress, coarse }: { works: Work[]; progress: Mo
           </div>
         </m.div>
       )}
-      <m.div style={{ y: nearY, opacity: wallFade }} className="absolute inset-0">
+      <m.div style={{ y: nearY, scale: nearScale, rotate: nearRotate, opacity: wallFade }} className="absolute inset-0">
         <div className="wall-layer">
           <div className="wall-drift grid h-full grid-cols-3 content-start gap-2 md:grid-cols-4 md:gap-3">
             {near.map((work, i) => (
