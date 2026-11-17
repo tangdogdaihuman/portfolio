@@ -329,7 +329,7 @@ function wallTiles(pool: Work[], count: number, offset: number) {
   return Array.from({ length: count }, (_, i) => pool[(i * 5 + offset) % pool.length]);
 }
 
-function HeroWorkWall({ works, progress }: { works: Work[]; progress: MotionValue<number> }) {
+function HeroWorkWall({ works, progress, coarse }: { works: Work[]; progress: MotionValue<number>; coarse: boolean }) {
   const pool = useMemo(() => works.filter((work) => work.thumb_url && !isVideoUrl(work.thumb_url)), [works]);
   const near = useMemo(() => wallTiles(pool, WALL_NEAR_TILES, 0), [pool]);
   const far = useMemo(() => wallTiles(pool, WALL_FAR_TILES, 2), [pool]);
@@ -341,25 +341,27 @@ function HeroWorkWall({ works, progress }: { works: Work[]; progress: MotionValu
 
   return (
     <div aria-hidden="true" className="wall-stage">
-      <m.div style={{ y: farY, opacity: wallFade }} className="absolute inset-0">
-        <div className="wall-layer wall-layer-far">
-          <div className="wall-drift-far grid h-full grid-cols-6 content-start gap-2.5">
-            {far.map((work, i) => (
-              <Image
-                key={`far-${i}`}
-                src={work.thumb_url}
-                alt=""
-                width={600}
-                height={800}
-                unoptimized
-                loading="lazy"
-                sizes="(max-width: 767px) 34vw, 14vw"
-                className="aspect-[3/4] h-auto w-full rounded-[4px] border border-border object-cover shadow-[0_14px_40px_-18px_rgba(0,0,0,0.55)]"
-              />
-            ))}
+      {!coarse && (
+        <m.div style={{ y: farY, opacity: wallFade }} className="absolute inset-0">
+          <div className="wall-layer wall-layer-far">
+            <div className="wall-drift-far grid h-full grid-cols-6 content-start gap-2.5">
+              {far.map((work, i) => (
+                <Image
+                  key={`far-${i}`}
+                  src={work.thumb_url}
+                  alt=""
+                  width={600}
+                  height={800}
+                  unoptimized
+                  loading="lazy"
+                  sizes="(max-width: 767px) 34vw, 14vw"
+                  className="aspect-[3/4] h-auto w-full rounded-[4px] border border-border object-cover shadow-[0_14px_40px_-18px_rgba(0,0,0,0.55)]"
+                />
+              ))}
+            </div>
           </div>
-        </div>
-      </m.div>
+        </m.div>
+      )}
       <m.div style={{ y: nearY, opacity: wallFade }} className="absolute inset-0">
         <div className="wall-layer">
           <div className="wall-drift grid h-full grid-cols-3 content-start gap-2 md:grid-cols-4 md:gap-3">
@@ -451,7 +453,7 @@ export default function HomeClient({
 
         <main className="relative">
           <section ref={heroRef} className="relative flex min-h-svh flex-col justify-center overflow-hidden px-5 md:px-12">
-            <HeroWorkWall works={works} progress={scrollYProgress} />
+            <HeroWorkWall works={works} progress={scrollYProgress} coarse={isCoarsePointer} />
             <m.div
               style={isCoarsePointer ? { opacity: heroOpacity } : { opacity: heroOpacity, scale: heroScale, filter: heroFilter }}
               className="relative z-10 w-full"
