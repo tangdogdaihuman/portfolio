@@ -59,3 +59,7 @@
 通过后按 Git 约定 commit + push（先确认当前分支；线上 tangzihang.top 只跟 master，若在 redesign 分支则按既定方式合入 master）。
 
 真机验证（用户侧）：重点感受打开移动菜单、展开"关于我"手风琴、BackToTop 出现、首屏 hero 入场、作品卡入场这些**动效**是否顺滑，以及深浅色切换后观感。
+
+## 2026-11-17 补充：首页平面化（preview/flat-immersive 分支样品）
+
+用户确认新方向：参考 Elias Voss 模板平面化 + 更强沉浸感。首页 `home-client.tsx` 的玻璃层全部替换为新增平面类 `.panel` / `.panel-strong` / `.chip`（纯 alpha 合成、无 backdrop-filter，移动端零模糊开销）；`.glass*` 仅保留给后台与作品详情页。首屏新增双层透视作品墙（`.wall-*`：CSS 3D 倾斜 + 慢漂移 + 滚动差速视差，移动端隐藏远层、减弱倾斜），复用 R2 webp 缩略图；极光背景与其移动端档位不变。`ThemeToggle` 新增 `flat` prop，首页传 `flat`。本文档前述"桌面端零改动"约束已被该新方向取代。

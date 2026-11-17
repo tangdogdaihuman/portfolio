@@ -10,6 +10,7 @@ import {
   m,
   useScroll,
   useTransform,
+  type MotionValue,
 } from "framer-motion";
 import type { Work } from "@/lib/types";
 import { isVideoUrl } from "@/lib/upload-policy";
@@ -97,7 +98,7 @@ const SiteNav = memo(function SiteNav({
         initial={{ y: -64, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.9, delay: 0.2, ease: EASE_OUT }}
-        className="glass-strong flex items-center justify-between gap-2 rounded-full py-1.5 pl-5 pr-1.5"
+        className="panel-strong flex items-center justify-between gap-2 rounded-full py-1.5 pl-5 pr-1.5"
       >
         <a href="#" data-hover className="font-display text-[0.95rem] tracking-wide text-text">
           TZH<span className="text-accent">.</span>
@@ -124,13 +125,13 @@ const SiteNav = memo(function SiteNav({
           ))}
         </div>
         <div className="flex items-center gap-2">
-          <ThemeToggle />
+          <ThemeToggle flat />
           <button
             type="button"
             aria-label={open ? "关闭导航菜单" : "打开导航菜单"}
             aria-expanded={open}
             onClick={() => setOpen((value) => !value)}
-            className="glass-chip inline-flex h-10 w-10 items-center justify-center rounded-full text-text md:hidden"
+            className="chip inline-flex h-10 w-10 items-center justify-center rounded-full text-text md:hidden"
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
               {open ? (
@@ -155,7 +156,7 @@ const SiteNav = memo(function SiteNav({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.98 }}
             transition={{ duration: 0.35, ease: EASE_OUT }}
-            className="glass-strong mt-2 rounded-3xl p-2 md:hidden"
+            className="panel-strong mt-2 rounded-3xl p-2 md:hidden"
           >
             {links.map((link) => (
               <a
@@ -228,7 +229,7 @@ function WorkCard({ work, index, priority }: { work: Work; index: number; priori
       className="group block outline-none"
       aria-label={work.title}
     >
-      <div className="relative overflow-hidden rounded-[24px] border border-border/60 bg-surface/40 shadow-[0_18px_50px_-24px_rgba(0,0,0,0.45)] transition-[border-color,box-shadow] duration-500 group-hover:border-accent/35 group-hover:shadow-[0_28px_70px_-24px_color-mix(in_srgb,var(--color-accent)_35%,transparent)]">
+      <div className="relative overflow-hidden rounded-[6px] border border-border/60 bg-surface/40 shadow-[0_18px_50px_-24px_rgba(0,0,0,0.45)] transition-[border-color,box-shadow] duration-500 group-hover:border-accent/35 group-hover:shadow-[0_28px_70px_-24px_color-mix(in_srgb,var(--color-accent)_35%,transparent)]">
         <div className="overflow-hidden">
           <div className="transition-transform duration-[1.1s] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.05]">
             <WorkThumbImage work={work} priority={priority} />
@@ -245,13 +246,13 @@ function WorkCard({ work, index, priority }: { work: Work; index: number; priori
           className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 via-black/0 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100"
         />
         <div className="work-card-hover pointer-events-none absolute inset-x-4 bottom-4">
-          <div className="glass-strong flex translate-y-3 items-center justify-between gap-3 rounded-2xl px-4 py-3 opacity-0 transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-y-0 group-hover:opacity-100">
+          <div className="panel-strong flex translate-y-3 items-center justify-between gap-3 rounded-[6px] px-4 py-3 opacity-0 transition-[transform,opacity] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:translate-y-0 group-hover:opacity-100">
             <span className="truncate text-sm font-medium text-text">{work.title}</span>
             <span className="meta-label shrink-0 text-text-muted!">查看 ↗</span>
           </div>
         </div>
         {work.pinned && (
-          <span className="glass-chip absolute right-3 top-3 rounded-full px-3 py-1.5 text-[0.58rem] font-medium tracking-[0.2em] text-accent-strong">
+          <span className="chip absolute right-3 top-3 rounded-full px-3 py-1.5 text-[0.58rem] font-medium tracking-[0.2em] text-accent-strong">
             FEATURED
           </span>
         )}
@@ -310,7 +311,7 @@ function BackToTop() {
           onClick={scrollTop}
           aria-label="回到顶部"
           data-hover
-          className="glass-strong fixed bottom-6 right-6 z-[60] inline-flex h-11 w-11 items-center justify-center rounded-full text-text transition-transform duration-300 hover:scale-105 active:scale-95"
+          className="panel-strong fixed bottom-6 right-6 z-[60] inline-flex h-11 w-11 items-center justify-center rounded-full text-text transition-transform duration-300 hover:scale-105 active:scale-95"
         >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="18 15 12 9 6 15" />
@@ -318,6 +319,68 @@ function BackToTop() {
         </m.button>
       )}
     </AnimatePresence>
+  );
+}
+
+const WALL_NEAR_TILES = 24;
+const WALL_FAR_TILES = 36;
+
+function wallTiles(pool: Work[], count: number, offset: number) {
+  return Array.from({ length: count }, (_, i) => pool[(i * 5 + offset) % pool.length]);
+}
+
+function HeroWorkWall({ works, progress }: { works: Work[]; progress: MotionValue<number> }) {
+  const pool = useMemo(() => works.filter((work) => work.thumb_url && !isVideoUrl(work.thumb_url)), [works]);
+  const near = useMemo(() => wallTiles(pool, WALL_NEAR_TILES, 0), [pool]);
+  const far = useMemo(() => wallTiles(pool, WALL_FAR_TILES, 2), [pool]);
+  const nearY = useTransform(progress, [0, 1], [0, -170]);
+  const farY = useTransform(progress, [0, 1], [0, -70]);
+  const wallFade = useTransform(progress, [0, 0.8], [1, 0.12]);
+
+  if (pool.length === 0) return null;
+
+  return (
+    <div aria-hidden="true" className="wall-stage">
+      <m.div style={{ y: farY, opacity: wallFade }} className="absolute inset-0">
+        <div className="wall-layer wall-layer-far">
+          <div className="wall-drift-far grid h-full grid-cols-6 content-start gap-2.5">
+            {far.map((work, i) => (
+              <Image
+                key={`far-${i}`}
+                src={work.thumb_url}
+                alt=""
+                width={600}
+                height={800}
+                unoptimized
+                loading="lazy"
+                sizes="(max-width: 767px) 34vw, 14vw"
+                className="aspect-[3/4] h-auto w-full rounded-[4px] border border-border object-cover shadow-[0_14px_40px_-18px_rgba(0,0,0,0.55)]"
+              />
+            ))}
+          </div>
+        </div>
+      </m.div>
+      <m.div style={{ y: nearY, opacity: wallFade }} className="absolute inset-0">
+        <div className="wall-layer">
+          <div className="wall-drift grid h-full grid-cols-3 content-start gap-2 md:grid-cols-4 md:gap-3">
+            {near.map((work, i) => (
+              <Image
+                key={`near-${i}`}
+                src={work.thumb_url}
+                alt=""
+                width={600}
+                height={800}
+                unoptimized
+                loading={i < 4 ? "eager" : "lazy"}
+                sizes="(max-width: 767px) 34vw, 19vw"
+                className="aspect-[3/4] h-auto w-full rounded-[4px] border border-border object-cover shadow-[0_18px_50px_-20px_rgba(0,0,0,0.6)]"
+              />
+            ))}
+          </div>
+        </div>
+      </m.div>
+      <div className="wall-scrim" />
+    </div>
   );
 }
 
@@ -388,9 +451,10 @@ export default function HomeClient({
 
         <main className="relative">
           <section ref={heroRef} className="relative flex min-h-svh flex-col justify-center overflow-hidden px-5 md:px-12">
+            <HeroWorkWall works={works} progress={scrollYProgress} />
             <m.div
               style={isCoarsePointer ? { opacity: heroOpacity } : { opacity: heroOpacity, scale: heroScale, filter: heroFilter }}
-              className="relative z-10 mx-auto w-full max-w-6xl"
+              className="relative z-10 w-full"
             >
               <div className="meta-label flex items-center justify-between gap-4 border-b border-border/50 pb-4">
                 <m.span
@@ -404,6 +468,7 @@ export default function HomeClient({
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.7, delay: 0.25, ease: EASE_OUT }}
+                  className="chip rounded-full px-3.5 py-1.5"
                 >
                   {String(works.length).padStart(2, "0")} Works — {new Date().getFullYear()}
                 </m.span>
@@ -418,20 +483,20 @@ export default function HomeClient({
                     initial={{ y: "108%" }}
                     animate={{ y: 0 }}
                     transition={{ duration: 1.1, delay: 0.3, ease: EASE_OUT }}
-                    className="hero-title-line font-display-sc block text-[clamp(3.4rem,11vw,8.5rem)] leading-[1.04] text-text"
+                    className="hero-title-line font-display-sc block text-[clamp(4.4rem,16vw,12.5rem)] font-extrabold leading-[0.98] tracking-[-0.02em] text-text"
                   >
                     唐子航
                   </m.span>
                 </span>
-                <span className={`mt-2 block ${heroTitleSettled ? "" : "overflow-hidden"}`}>
+                <span className={`mt-1 block ${heroTitleSettled ? "" : "overflow-hidden"}`}>
                   <m.span
                     initial={{ y: "108%" }}
                     animate={{ y: 0 }}
                     transition={{ duration: 1.1, delay: 0.42, ease: EASE_OUT }}
                     onAnimationComplete={() => setHeroTitleSettled(true)}
-                    className="hero-title-line font-display block text-[clamp(1.6rem,4.6vw,3.4rem)] italic leading-[1.1] tracking-tight text-text-muted"
+                    className="hero-title-line font-display block text-[clamp(2.6rem,9.5vw,7.2rem)] uppercase leading-[1.02] tracking-[0.01em] text-text"
                   >
-                    Tang Zihang<span className="not-italic text-accent"> — </span>CG Works
+                    Tang <span className="text-accent">Zihang</span>
                   </m.span>
                 </span>
               </h1>
@@ -444,22 +509,6 @@ export default function HomeClient({
               >
                 {tagline}
               </m.p>
-
-              {introLines.length > 0 && (
-                <div className="mt-6 max-w-xl space-y-3">
-                  {introLines.map((line, i) => (
-                    <m.p
-                      key={`${i}-${line}`}
-                      initial={{ opacity: 0, y: 14 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.7, delay: 0.72 + i * 0.07, ease: EASE_OUT }}
-                      className="text-[0.95rem] leading-[1.85] text-text-muted"
-                    >
-                      {line}
-                    </m.p>
-                  ))}
-                </div>
-              )}
 
               <div className="mt-10 flex flex-wrap items-center gap-3">
                 <m.a
@@ -482,7 +531,7 @@ export default function HomeClient({
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.8, delay: 0.95, ease: EASE_OUT }}
-                  className="glass inline-flex min-h-12 items-center rounded-full px-7 text-[0.78rem] font-medium tracking-[0.14em] text-text transition-transform duration-400 hover:scale-[1.03] active:scale-[0.98]"
+                  className="panel inline-flex min-h-12 items-center rounded-full px-7 text-[0.78rem] font-medium tracking-[0.14em] text-text transition-transform duration-400 hover:scale-[1.03] active:scale-[0.98]"
                 >
                   联系我
                 </m.a>
@@ -495,7 +544,7 @@ export default function HomeClient({
               animate={{ opacity: 1 }}
               transition={{ duration: 1, delay: 1.4 }}
               style={{ opacity: heroOpacity }}
-              className="absolute bottom-7 left-1/2 flex -translate-x-1/2 flex-col items-center gap-3"
+              className="absolute bottom-7 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-3"
             >
               <span className="meta-label">Scroll</span>
               <span className="relative block h-9 w-px overflow-hidden bg-border">
@@ -507,15 +556,7 @@ export default function HomeClient({
           <div
             aria-hidden="true"
             className="relative overflow-hidden border-y border-border/50 py-4 md:py-5"
-            style={
-              isCoarsePointer
-                ? { background: "color-mix(in srgb, var(--theme-bg) 82%, transparent)" }
-                : {
-                    background: "color-mix(in srgb, var(--theme-bg) 45%, transparent)",
-                    WebkitBackdropFilter: "blur(6px)",
-                    backdropFilter: "blur(6px)",
-                  }
-            }
+            style={{ background: "color-mix(in srgb, var(--theme-bg) 78%, transparent)" }}
           >
             <div className="animate-marquee inline-flex whitespace-nowrap will-change-transform">
               {[0, 1].map((dup) => (
@@ -549,14 +590,14 @@ export default function HomeClient({
             </div>
           </div>
 
-          <section id="works" className="relative mx-auto max-w-7xl scroll-mt-28 px-5 pb-24 pt-20 md:px-8 md:pt-24">
+          <section id="works" className="relative mx-auto max-w-[90rem] scroll-mt-28 px-5 pb-24 pt-20 md:px-8 md:pt-24">
             <Reveal>
               <div className="flex items-end justify-between gap-6">
                 <div>
                   <p className="meta-label">01 / Selected Works</p>
-                  <h2 className="font-display mt-3 font-extrabold text-[clamp(2.4rem,7vw,5.2rem)] leading-none text-text">作品集</h2>
+                  <h2 className="font-display mt-3 font-extrabold text-[clamp(2.8rem,8vw,6.4rem)] leading-none text-text">作品集</h2>
                 </div>
-                <p className="meta-label hidden pb-1 md:block">
+                <p className="meta-label chip hidden rounded-full px-3.5 py-1.5 md:block">
                   {String(sorted.length).padStart(2, "0")} / {String(works.length).padStart(2, "0")} 件
                 </p>
               </div>
@@ -568,7 +609,7 @@ export default function HomeClient({
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-60px" }}
                 transition={{ duration: 0.85, delay: 0.08, ease: EASE_OUT }}
-                className="glass-solid relative z-40 mt-9 flex flex-wrap items-center gap-2 rounded-[24px] p-2 md:rounded-full"
+                className="panel-strong relative z-40 mt-9 flex flex-wrap items-center gap-2 rounded-[24px] p-2 md:rounded-full"
               >
                   <div className="flex flex-wrap items-center gap-1.5">
                     <button
@@ -600,7 +641,7 @@ export default function HomeClient({
                     ))}
                   </div>
                   <span className="flex-1" />
-                  <div className="glass-chip relative flex rounded-full p-1">
+                  <div className="chip relative flex rounded-full p-1">
                     {SORT_OPTIONS.map((option) => (
                       <button
                         key={option.value}
@@ -628,7 +669,7 @@ export default function HomeClient({
 
             <div className="mt-10 md:mt-14" aria-live="polite">
               {loadError && works.length > 0 && (
-                <div className="glass mb-8 flex flex-wrap items-center justify-between gap-4 rounded-[20px] px-6 py-4">
+                <div className="panel mb-8 flex flex-wrap items-center justify-between gap-4 rounded-[20px] px-6 py-4">
                   <p className="meta-label tracking-[0.2em]! text-text-muted">内容更新失败，当前显示的是上次加载的结果</p>
                   <button
                     type="button"
@@ -644,13 +685,13 @@ export default function HomeClient({
                 <div className="grid grid-cols-1 gap-x-8 gap-y-12 md:grid-cols-12" aria-hidden="true">
                   {[8, 4, 7, 5].map((span, i) => (
                     <div key={i} className={span >= 8 ? "md:col-span-8" : span >= 7 ? "md:col-span-7" : span >= 5 ? "md:col-span-5" : "md:col-span-4"}>
-                      <div className="skeleton h-72 rounded-[24px] md:h-96" />
+                      <div className="skeleton h-72 rounded-[6px] md:h-96" />
                       <div className="skeleton mt-4 h-3 w-1/2 rounded-full" />
                     </div>
                   ))}
                 </div>
               ) : works.length === 0 ? (
-                <div className="glass rounded-[28px] px-8 py-20 text-center">
+                <div className="panel rounded-[10px] px-8 py-20 text-center">
                   <p className="meta-label tracking-[0.3em]!">
                     {loadError ? "内容暂时加载失败" : "作品集还没有公开作品"}
                   </p>
@@ -666,7 +707,7 @@ export default function HomeClient({
                   )}
                 </div>
               ) : filtered.length === 0 ? (
-                <div className="glass rounded-[28px] px-8 py-20 text-center">
+                <div className="panel rounded-[10px] px-8 py-20 text-center">
                   <p className="meta-label tracking-[0.3em]!">「{activeTag}」下还没有作品</p>
                   <button
                     type="button"
@@ -706,12 +747,25 @@ export default function HomeClient({
           </section>
 
           {detailSections.length > 0 && (
-            <section id="about" className="relative mx-auto max-w-7xl scroll-mt-28 px-5 pb-24 md:px-8">
+            <section id="about" className="relative mx-auto max-w-[90rem] scroll-mt-28 px-5 pb-24 md:px-8">
               <Reveal>
                 <p className="meta-label">02 / About</p>
-                <h2 className="font-display mt-3 font-extrabold text-[clamp(2.4rem,7vw,5.2rem)] leading-none text-text">关于我</h2>
+                <h2 className="font-display mt-3 font-extrabold text-[clamp(2.8rem,8vw,6.4rem)] leading-none text-text">关于我</h2>
               </Reveal>
-              <div className="mt-12 max-w-4xl space-y-4">
+              {introLines.length > 0 && (
+                <Reveal delay={0.06}>
+                  <div className="panel mt-10 max-w-3xl rounded-[10px] px-6 py-5 md:px-8 md:py-6">
+                    <div className="space-y-3 border-l-2 border-accent/40 pl-5 md:pl-6">
+                      {introLines.map((line, i) => (
+                        <p key={`${i}-${line}`} className="text-base leading-[1.9] text-text-muted md:text-lg">
+                          {line}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                </Reveal>
+              )}
+              <div className="mt-10 max-w-4xl space-y-4">
                 {detailSections.map((section, i) => {
                   const isOpen = expandedSection === section.id;
                   return (
@@ -721,7 +775,7 @@ export default function HomeClient({
                       whileInView={{ opacity: 1, y: 0 }}
                       viewport={{ once: true, margin: "-60px" }}
                       transition={{ duration: 0.85, delay: i * 0.05, ease: EASE_OUT }}
-                      className={`glass overflow-hidden rounded-[28px] transition-[border-color] duration-500 ${
+                      className={`panel overflow-hidden rounded-[28px] transition-[border-color] duration-500 ${
                         isOpen ? "border-accent/35!" : ""
                       }`}
                     >
@@ -746,7 +800,7 @@ export default function HomeClient({
                           <m.span
                             animate={{ rotate: isOpen ? 45 : 0 }}
                             transition={SPRING_SOFT}
-                            className={`glass-chip inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-xl ${
+                            className={`chip inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-xl ${
                               isOpen ? "text-accent-strong" : "text-text-muted"
                             }`}
                           >
@@ -778,10 +832,10 @@ export default function HomeClient({
             </section>
           )}
 
-          <section id="contact" className="relative mx-auto max-w-7xl scroll-mt-28 px-5 pb-20 md:px-8">
+          <section id="contact" className="relative mx-auto max-w-[90rem] scroll-mt-28 px-5 pb-20 md:px-8">
             <Reveal>
               <p className="meta-label">03 / Contact</p>
-              <h2 className="font-display mt-3 font-extrabold text-[clamp(2.4rem,7vw,5.2rem)] leading-none text-text">联系我</h2>
+              <h2 className="font-display mt-3 font-extrabold text-[clamp(2.8rem,8vw,6.4rem)] leading-none text-text">联系我</h2>
             </Reveal>
             <Reveal delay={0.06}>
               <p className="mt-10 max-w-2xl text-base leading-[1.9] text-text-muted md:text-lg">
@@ -812,7 +866,7 @@ export default function HomeClient({
                   href="/portfolio-tangzihang.pdf"
                   download="唐子航-作品集.pdf"
                   data-cursor="下载"
-                  className="glass inline-flex min-h-12 items-center gap-2.5 rounded-full px-7 text-[0.78rem] font-medium tracking-[0.14em] text-text transition-transform duration-400 hover:scale-[1.03] active:scale-[0.98]"
+                  className="panel inline-flex min-h-12 items-center gap-2.5 rounded-full px-7 text-[0.78rem] font-medium tracking-[0.14em] text-text transition-transform duration-400 hover:scale-[1.03] active:scale-[0.98]"
                 >
                   作品集 PDF
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -883,7 +937,7 @@ export default function HomeClient({
                 </p>
               </Reveal>
               <Reveal delay={0.08}>
-                <p className="font-display mt-6 text-[clamp(3.2rem,13vw,12rem)] uppercase leading-[0.92] tracking-[0.01em] text-text">
+                <p className="font-display mt-6 text-[clamp(3.6rem,15vw,14rem)] uppercase leading-[0.92] tracking-[0.01em] text-text">
                   Let&apos;s{" "}
                   <span style={{ color: "transparent", WebkitTextStroke: "1.5px var(--color-text)" }}>
                     Build
@@ -901,7 +955,7 @@ export default function HomeClient({
                 </a>
               </Reveal>
             </div>
-            <div className="meta-label mx-auto flex max-w-7xl flex-col items-center justify-between gap-2 border-t border-border/40 px-5 py-8 md:flex-row md:px-8">
+            <div className="meta-label mx-auto flex max-w-[90rem] flex-col items-center justify-between gap-2 border-t border-border/40 px-5 py-8 md:flex-row md:px-8">
               <p>&copy; {new Date().getFullYear()} 唐子航 · Tang Zihang</p>
               <p className="hidden md:block">Hard Surface · Stylized Character · Game Art</p>
               <p>All Rights Reserved</p>

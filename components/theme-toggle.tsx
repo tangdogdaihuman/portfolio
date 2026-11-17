@@ -22,7 +22,7 @@ const moonIcon = (
   <path d="M20.4 14.2A8.4 8.4 0 0 1 9.8 3.6a8.4 8.4 0 1 0 10.6 10.6Z" />
 );
 
-export default function ThemeToggle({ className = "" }: { className?: string }) {
+export default function ThemeToggle({ className = "", flat = false }: { className?: string; flat?: boolean }) {
   const theme = useResolvedTheme();
   const [animated, setAnimated] = useState(false);
   const restoreTimer = useRef<number | null>(null);
@@ -71,7 +71,7 @@ export default function ThemeToggle({ className = "" }: { className?: string }) 
       aria-pressed={theme === "dark"}
       data-theme-toggle
       data-hover
-      className={`glass-chip relative inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full text-text transition-transform duration-300 hover:scale-105 active:scale-95 ${className}`}
+      className={`${flat ? "chip" : "glass-chip"} relative inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-full text-text transition-transform duration-300 hover:scale-105 active:scale-95 ${className}`}
     >
       <svg
         aria-hidden="true"
