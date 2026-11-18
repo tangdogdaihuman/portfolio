@@ -1,9 +1,10 @@
 "use client";
 
-import { Suspense, useState, useRef, useCallback } from "react";
+import { Suspense, useState, useRef, useCallback, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { LazyMotion, domAnimation, m } from "framer-motion";
+import { LazyMotion, m } from "framer-motion";
 import { EASE_OUT, SPRING_SOFT } from "@/components/reveal";
+import { loadMotionFeatures } from "@/components/motion-features";
 
 type LoginMode = "totp" | "email" | "key";
 
@@ -25,6 +26,15 @@ function LoginForm() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      const queryError = new URLSearchParams(window.location.search).get("error");
+      if (queryError === "rate_limited") setError("尝试过于频繁，请 5 分钟后再试");
+      else if (queryError === "invalid_key") setError("密钥无效");
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   const clearCountdown = useCallback(() => {
     if (timerRef.current) {
@@ -227,7 +237,7 @@ export default function AdminLoginPage() {
           <p className="mt-2 text-center text-sm text-text-muted">登录后可编辑作品、排序与内容</p>
           <div className="mt-8">
             <Suspense fallback={<div className="meta-label py-8 text-center">加载中…</div>}>
-              <LazyMotion features={domAnimation}>
+              <LazyMotion features={loadMotionFeatures}>
                 <LoginForm />
               </LazyMotion>
             </Suspense>

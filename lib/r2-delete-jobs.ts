@@ -143,34 +143,48 @@ export async function enqueueR2DeleteInTransaction(executor: R2DeleteJobExecutor
 
 export async function processR2DeleteJobs(limit = 5) {
   const summary = { processed: 0, succeeded: 0, failed: 0 };
-  const jobs = await db.execute({
-    sql: `SELECT id, urls_json, attempts
+  const due = await db.execute({
+    sql: `SELECT id
           FROM r2_delete_jobs
           WHERE next_run_at <= datetime('now')
           ORDER BY next_run_at ASC
           LIMIT ?`,
     args: [limit],
   });
+  if (due.rows.length === 0) return summary;
 
-  const pendingJobs = jobs.rows.map((row) => parseJob(row));
-  if (pendingJobs.length === 0) return summary;
-
-  const allUrls = [...new Set(pendingJobs.flatMap((job) => job.urls))];
-  let referenced: Set<string>;
-  try {
-    referenced = await findReferencedUrls(allUrls);
-  } catch (error) {
-    reportApiError({
-      scope: "r2.delete.reference_check_failed",
-      message: errorMessage(error),
-      meta: { jobCount: pendingJobs.length, urlCount: allUrls.length },
+  for (const dueRow of due.rows) {
+    const claimed = await db.execute({
+      sql: `UPDATE r2_delete_jobs
+            SET next_run_at = datetime('now', '+120 seconds')
+            WHERE id = ? AND next_run_at <= datetime('now')
+            RETURNING id, urls_json, attempts`,
+      args: [dueRow.id],
     });
-    return summary;
-  }
-
-  for (const job of pendingJobs) {
+    if (claimed.rows.length === 0) continue;
+    const job = parseJob(claimed.rows[0]);
     summary.processed += 1;
     const { id, attempts, urls } = job;
+    let referenced: Set<string>;
+    try {
+      referenced = await findReferencedUrls(urls);
+    } catch (error) {
+      summary.failed += 1;
+      const nextAttempts = attempts + 1;
+      const errMsg = errorMessage(error);
+      await db.execute({
+        sql: `UPDATE r2_delete_jobs
+              SET attempts = ?, last_error = ?, next_run_at = datetime('now', ?)
+              WHERE id = ?`,
+        args: [nextAttempts, errMsg, `+${backoffSeconds(nextAttempts)} seconds`, id],
+      });
+      reportApiError({
+        scope: "r2.delete.reference_check_failed",
+        message: errMsg,
+        meta: { jobId: id, urlCount: urls.length, attempts: nextAttempts },
+      });
+      continue;
+    }
     const deletable = urls.filter((url) => !referenced.has(url));
 
     try {

@@ -14,12 +14,14 @@ import {
   replaceWorkImagesInTransaction,
   type PreparedWorkImage,
 } from "@/lib/work-images-replace";
+import { rowToWorkImage } from "@/lib/work-mappers";
+import { fileSizeField, urlField } from "@/lib/validate/work-fields";
 
 const addImageSchema = z.object({
-  imageUrl: z.string().url(),
-  thumbUrl: z.string().url(),
+  imageUrl: urlField,
+  thumbUrl: urlField,
   mediaType: z.enum(["image", "video"]).default("image"),
-  imageSize: z.number().int().default(0),
+  imageSize: fileSizeField.default(0),
   sortOrder: z.number().int().optional(),
 });
 
@@ -32,14 +34,16 @@ export async function GET(
     sql: "SELECT * FROM work_images WHERE work_id = ? ORDER BY sort_order ASC, created_at ASC",
     args: [id],
   });
-  if (result.rows.length > 0) return ok(result.rows);
+  if (result.rows.length > 0) {
+    return ok(result.rows.map((row) => rowToWorkImage(row as Record<string, unknown>)));
+  }
 
   const work = await db.execute({
     sql: "SELECT image_url, thumb_url FROM works WHERE id = ?",
     args: [id],
   });
   if (work.rows.length > 0 && work.rows[0].image_url) {
-    return ok([{
+    return ok([rowToWorkImage({
       id: "",
       work_id: id,
       image_url: work.rows[0].image_url,
@@ -48,7 +52,7 @@ export async function GET(
       sort_order: 0,
       image_size: 0,
       created_at: "",
-    }]);
+    })]);
   }
   return ok([]);
 }

@@ -430,8 +430,7 @@ html.vt-theme::view-transition-new(root) {
   .aurora-ribbon {
     animation: none;
   }
-  .wall-drift,
-  .wall-drift-far {
+  .animate-fade-up {
     animation: none;
   }
 }
@@ -501,5 +500,12 @@ html.vt-theme::view-transition-new(root) {
 
   .wall-scrim {
     background: linear-gradient(to top, var(--theme-bg) 4%, color-mix(in srgb, var(--theme-bg) 78%, transparent) 40%, color-mix(in srgb, var(--theme-bg) 52%, transparent) 78%, color-mix(in srgb, var(--theme-bg) 30%, transparent) 100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wall-drift,
+  .wall-drift-far {
+    animation: none;
   }
 }

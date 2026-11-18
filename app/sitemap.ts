@@ -18,16 +18,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: baseUrl, lastModified: new Date(), changeFrequency: "weekly", priority: 1 },
   ];
 
-  try {
-    const works = await db.execute("SELECT id, updated_at FROM works ORDER BY created_at DESC");
-    const workEntries: MetadataRoute.Sitemap = works.rows.map((row) => ({
-      url: `${baseUrl}/work/${row.id}`,
-      lastModified: parseSqliteTimestamp(row.updated_at),
-      changeFrequency: "monthly" as const,
-      priority: 0.7,
-    }));
-    return [...base, ...workEntries];
-  } catch {
-    return base;
-  }
+  const works = await db.execute("SELECT id, updated_at FROM works ORDER BY created_at DESC");
+  const workEntries: MetadataRoute.Sitemap = works.rows.map((row) => ({
+    url: `${baseUrl}/work/${row.id}`,
+    lastModified: parseSqliteTimestamp(row.updated_at),
+    changeFrequency: "monthly" as const,
+    priority: 0.7,
+  }));
+  return [...base, ...workEntries];
 }

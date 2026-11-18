@@ -151,18 +151,55 @@ export default function WorkDetailGallery({
       if (event.key === "Escape") closeViewer();
       if (event.key === "ArrowRight" && openIndex < images.length - 1) goNext();
       if (event.key === "ArrowLeft" && openIndex > 0) goPrev();
+      if (event.key === "Tab") {
+        const dialog = closeButtonRef.current?.closest('[role="dialog"]');
+        if (!dialog) return;
+        const focusable = dialog.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input, select, textarea, video[controls], [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        const active = document.activeElement;
+        if (!dialog.contains(active)) {
+          event.preventDefault();
+          first.focus();
+          return;
+        }
+        if (!event.shiftKey && active === last) {
+          event.preventDefault();
+          first.focus();
+        } else if (event.shiftKey && active === first) {
+          event.preventDefault();
+          last.focus();
+        }
+      }
     };
 
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [openIndex, images.length, closeViewer, goNext, goPrev]);
+
+  const isOpen = openIndex !== null;
+  useEffect(() => {
+    if (!isOpen) return;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    window.addEventListener("keydown", onKeyDown);
-    requestAnimationFrame(() => closeButtonRef.current?.focus());
-
+    const frame = requestAnimationFrame(() => closeButtonRef.current?.focus());
     return () => {
       document.body.style.overflow = prevOverflow;
-      window.removeEventListener("keydown", onKeyDown);
+      cancelAnimationFrame(frame);
     };
-  }, [openIndex, images.length, closeViewer, goNext, goPrev]);
+  }, [isOpen]);
+
+  useEffect(() => {
+    const viewer = viewerFrameRef.current;
+    if (!viewer || openIndex === null) return;
+    for (const video of viewer.querySelectorAll("video")) {
+      const slide = video.closest("[data-gallery-slide]");
+      if (Number(slide?.getAttribute("data-gallery-slide")) !== openIndex) video.pause();
+    }
+  }, [openIndex]);
 
   useEffect(() => {
     const viewer = viewerFrameRef.current;
@@ -258,22 +295,6 @@ export default function WorkDetailGallery({
           aria-label={`${workTitle} 图片查看器`}
           className="fixed inset-0 z-[90] flex items-center justify-center bg-[var(--scrim)] backdrop-blur-xl"
           onClick={closeViewer}
-          onKeyDown={(event) => {
-            if (event.key !== "Tab") return;
-            const focusable = event.currentTarget.querySelectorAll<HTMLElement>(
-              'button:not([disabled]), [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-            );
-            if (focusable.length === 0) return;
-            const first = focusable[0];
-            const last = focusable[focusable.length - 1];
-            if (!event.shiftKey && document.activeElement === last) {
-              event.preventDefault();
-              first.focus();
-            } else if (event.shiftKey && document.activeElement === first) {
-              event.preventDefault();
-              last.focus();
-            }
-          }}
         >
           <button
             ref={closeButtonRef}

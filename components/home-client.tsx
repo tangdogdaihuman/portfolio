@@ -8,6 +8,8 @@ import {
   LazyMotion,
   MotionConfig,
   m,
+  useMotionValue,
+  useReducedMotion,
   useScroll,
   useTransform,
   type MotionValue,
@@ -325,11 +327,28 @@ function BackToTop() {
 const WALL_NEAR_TILES = 24;
 const WALL_FAR_TILES = 36;
 
+function gcd(a: number, b: number): number {
+  return b === 0 ? a : gcd(b, a % b);
+}
+
+function wallStride(len: number) {
+  for (const stride of [5, 7, 11, 13]) {
+    if (gcd(stride, len) === 1) return stride;
+  }
+  return 1;
+}
+
 function wallTiles(pool: Work[], count: number, offset: number) {
-  return Array.from({ length: count }, (_, i) => pool[(i * 5 + offset) % pool.length]);
+  const stride = wallStride(pool.length);
+  return Array.from({ length: count }, (_, i) => pool[(i * stride + offset) % pool.length]);
+}
+
+function subscribeNever() {
+  return () => {};
 }
 
 function HeroWorkWall({ works, progress, coarse }: { works: Work[]; progress: MotionValue<number>; coarse: boolean }) {
+  const mounted = useSyncExternalStore(subscribeNever, () => true, () => false);
   const pool = useMemo(() => works.filter((work) => work.thumb_url && !isVideoUrl(work.thumb_url)), [works]);
   const near = useMemo(() => wallTiles(pool, WALL_NEAR_TILES, 0), [pool]);
   const far = useMemo(() => wallTiles(pool, WALL_FAR_TILES, 2), [pool]);
@@ -344,7 +363,7 @@ function HeroWorkWall({ works, progress, coarse }: { works: Work[]; progress: Mo
 
   return (
     <div aria-hidden="true" className="wall-stage">
-      {!coarse && (
+      {mounted && !coarse && (
         <m.div style={{ y: farY, scale: farScale, opacity: wallFade }} className="absolute inset-0">
           <div className="wall-layer wall-layer-far">
             <div className="wall-drift-far grid h-full grid-cols-6 content-start gap-2.5">
@@ -442,9 +461,12 @@ export default function HomeClient({
   }, [filtered, sortMode]);
 
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.55], [1, 0]);
-  const heroScale = useTransform(scrollYProgress, [0, 0.55], [1, 0.94]);
-  const heroBlur = useTransform(scrollYProgress, [0, 0.55], [0, 10]);
+  const reduceMotion = useReducedMotion();
+  const zeroProgress = useMotionValue(0);
+  const heroProgress = reduceMotion ? zeroProgress : scrollYProgress;
+  const heroOpacity = useTransform(heroProgress, [0, 0.55], [1, 0]);
+  const heroScale = useTransform(heroProgress, [0, 0.55], [1, 0.94]);
+  const heroBlur = useTransform(heroProgress, [0, 0.55], [0, 10]);
   const heroFilter = useTransform(heroBlur, (v) => `blur(${v}px)`);
 
   const introLines = useMemo(() => intro.split("\n").map((l) => l.trim()).filter(Boolean).slice(0, 6), [intro]);
@@ -456,7 +478,7 @@ export default function HomeClient({
 
         <main className="relative">
           <section ref={heroRef} className="relative flex min-h-svh flex-col justify-center overflow-hidden px-5 md:px-12">
-            <HeroWorkWall works={works} progress={scrollYProgress} coarse={isCoarsePointer} />
+            <HeroWorkWall works={works} progress={heroProgress} coarse={isCoarsePointer} />
             <m.div
               style={isCoarsePointer ? { opacity: heroOpacity } : { opacity: heroOpacity, scale: heroScale, filter: heroFilter }}
               className="relative z-10 w-full"
@@ -548,13 +570,14 @@ export default function HomeClient({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 1, delay: 1.4 }}
-              style={{ opacity: heroOpacity }}
-              className="absolute bottom-7 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-3"
+              className="absolute bottom-7 left-1/2 z-10 -translate-x-1/2"
             >
-              <span className="meta-label">Scroll</span>
-              <span className="relative block h-9 w-px overflow-hidden bg-border">
-                <span className="scroll-cue-dot absolute left-0 top-0 block h-2 w-px bg-text" />
-              </span>
+              <m.div style={{ opacity: heroOpacity }} className="flex flex-col items-center gap-3">
+                <span className="meta-label">Scroll</span>
+                <span className="relative block h-9 w-px overflow-hidden bg-border">
+                  <span className="scroll-cue-dot absolute left-0 top-0 block h-2 w-px bg-text" />
+                </span>
+              </m.div>
             </m.div>
           </section>
 

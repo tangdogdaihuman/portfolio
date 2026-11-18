@@ -33,6 +33,8 @@ export async function POST(req: NextRequest) {
 
     const limited = await rateLimit(req, "visits.track", 30, 60_000);
     if (limited) return limited;
+    const flood = await rateLimit(req, "visits.track:global", 300, 60_000, "global");
+    if (flood) return flood;
 
     if (await verifyAuthRequest(req)) {
       return ok({ tracked: false, reason: "admin" });

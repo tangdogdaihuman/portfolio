@@ -24,16 +24,19 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { originalKey } = body;
     const requestId = typeof body.requestId === "string" ? body.requestId : "";
-    const cacheKey = requestId ? `upload:process:${requestId}` : "";
-    const cached = cacheKey
-      ? getIdempotencyStore().get<{ imageUrl: string; thumbUrl: string }>(cacheKey)
-      : null;
-    if (cached) {
-      return ok(cached);
-    }
     if (typeof originalKey !== "string" || !originalKey.startsWith("originals/")) {
       reportMetric({ scope: "upload.process.invalid_key", value: 1, path: req.nextUrl.pathname });
       return fail("BAD_REQUEST", "Invalid originalKey", 400);
+    }
+    const cacheKey = requestId ? `upload:process:${requestId}` : "";
+    const cached = cacheKey
+      ? getIdempotencyStore().get<{ originalKey: string; imageUrl: string; thumbUrl: string }>(cacheKey)
+      : null;
+    if (cached) {
+      if (cached.originalKey !== originalKey) {
+        return fail("BAD_REQUEST", "requestId reused with a different originalKey", 400);
+      }
+      return ok({ imageUrl: cached.imageUrl, thumbUrl: cached.thumbUrl });
     }
 
     if (VIDEO_KEY_PATTERN.test(originalKey)) {
@@ -45,7 +48,7 @@ export async function POST(req: NextRequest) {
       }
       const videoPayload = { imageUrl: publicUrl(originalKey), thumbUrl: publicUrl(originalKey) };
       if (cacheKey) {
-        getIdempotencyStore().set(cacheKey, videoPayload, 10 * 60 * 1000);
+        getIdempotencyStore().set(cacheKey, { originalKey, ...videoPayload }, 10 * 60 * 1000);
       }
       return ok(videoPayload);
     }
@@ -90,7 +93,7 @@ export async function POST(req: NextRequest) {
       thumbUrl: publicUrl(thumbKey),
     };
     if (cacheKey) {
-      getIdempotencyStore().set(cacheKey, payload, 10 * 60 * 1000);
+      getIdempotencyStore().set(cacheKey, { originalKey, ...payload }, 10 * 60 * 1000);
     }
     return ok(payload);
   } catch (error) {

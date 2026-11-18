@@ -51,9 +51,10 @@ export async function rateLimit(
   req: NextRequest,
   key: string,
   limit: number,
-  windowMs: number
+  windowMs: number,
+  scope: "ip" | "global" = "ip"
 ): Promise<NextResponse | null> {
-  const bucketKey = `${key}:${getClientIp(req)}`;
+  const bucketKey = scope === "global" ? key : `${key}:${getClientIp(req)}`;
   const now = Date.now();
   let bucket: { count: number; resetAt: number };
   try {

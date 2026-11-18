@@ -107,7 +107,7 @@ function startWorkerRenderer(
   };
 
   const fail = () => {
-    if (failed) return;
+    if (failed || stopped) return;
     failed = true;
     cleanupSelf();
     onFail();

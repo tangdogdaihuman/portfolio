@@ -20,6 +20,10 @@ export default function ConfirmDialog({
   const cancelRef = useRef<HTMLButtonElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const onCancelRef = useRef(onCancel);
+  useEffect(() => {
+    onCancelRef.current = onCancel;
+  }, [onCancel]);
 
   useEffect(() => {
     if (!open) return;
@@ -28,7 +32,7 @@ export default function ConfirmDialog({
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        onCancel();
+        onCancelRef.current();
         return;
       }
       if (event.key === "Tab") {
@@ -52,7 +56,7 @@ export default function ConfirmDialog({
       previousFocusRef.current?.focus?.();
       previousFocusRef.current = null;
     };
-  }, [open, onCancel]);
+  }, [open]);
 
   if (!open) return null;
 

@@ -11,13 +11,13 @@ export async function POST(req: NextRequest) {
     const blockedOrigin = requireSameOrigin(req);
     if (blockedOrigin) return blockedOrigin;
 
-    const limited = await rateLimit(req, "send-code", 3, 60 * 1000);
+    const limited = await rateLimit(req, "send-code", 3, 60 * 1000, "global");
     if (limited) {
       reportMetric({ scope: "sendcode.rate_limited", value: 1, path: req.nextUrl.pathname });
       return limited;
     }
 
-    if (await rateLimit(req, "send-code-cooldown", 1, 30 * 1000)) {
+    if (await rateLimit(req, "send-code-cooldown", 1, 30 * 1000, "global")) {
       return fail("RATE_LIMITED", "发送过于频繁，请30秒后再试", 429);
     }
 

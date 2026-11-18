@@ -84,6 +84,10 @@ export async function PUT(req: NextRequest) {
     revalidatePath("/");
     revalidatePath("/sitemap.xml");
     revalidateTag("works", "max");
+    for (const item of parsed.data.items) {
+      revalidatePath(`/work/${item.id}`);
+      revalidateTag(`work:${item.id}`, "max");
+    }
     return ok({ updated });
   } catch (error) {
     reportApiError({

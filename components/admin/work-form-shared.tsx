@@ -70,12 +70,11 @@ export function useMultiFileUpload({ onUploaded }: { onUploaded: (files: Uploade
   }, [runBatch]);
 
   const retryFailure = useCallback((name: string) => {
-    setFailures((current) => {
-      const target = current.find((failure) => failure.name === name);
-      if (target) void runBatch([target.file]);
-      return current.filter((failure) => failure.name !== name);
-    });
-  }, [runBatch]);
+    const target = failures.find((failure) => failure.name === name);
+    if (!target) return;
+    setFailures((current) => current.filter((failure) => failure.name !== name));
+    void runBatch([target.file]);
+  }, [failures, runBatch]);
 
   const dismissFailure = useCallback((name: string) => {
     setFailures((current) => current.filter((failure) => failure.name !== name));

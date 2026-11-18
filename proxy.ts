@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { signToken, verifyToken } from "@/lib/auth";
+import { rateLimit } from "@/lib/api-security";
 
 const COOKIE_NAME = "admin_token";
 const MAX_AGE = 60 * 60 * 24 * 7;
 
-function proxy(req: NextRequest) {
+async function proxy(req: NextRequest) {
   const url = new URL(req.url);
   const { pathname } = url;
   const secret = process.env.ADMIN_SECRET_KEY;
@@ -18,6 +19,10 @@ function proxy(req: NextRequest) {
 
   const keyParam = url.searchParams.get("key");
   if (keyParam) {
+    const limited = await rateLimit(req, "admin-key-guess", 20, 5 * 60 * 1000, "global");
+    if (limited) {
+      return NextResponse.redirect(new URL("/admin/login?error=rate_limited", req.url));
+    }
     const a = Buffer.from(keyParam);
     const b = Buffer.from(secret);
     if (a.length === b.length && crypto.timingSafeEqual(a, b)) {

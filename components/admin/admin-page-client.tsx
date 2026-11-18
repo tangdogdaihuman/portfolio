@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AnimatePresence, LazyMotion, domAnimation, m } from "framer-motion";
+import { AnimatePresence, LazyMotion, m } from "framer-motion";
 import type { Work } from "@/lib/types";
 import ThemeToggle from "@/components/theme-toggle";
 import { EASE_OUT, SPRING_SOFT } from "@/components/reveal";
@@ -16,6 +16,7 @@ import StoragePanel from "@/components/admin/storage-panel";
 import VisitorsPanel from "@/components/admin/visitors-panel";
 import WorkList from "@/components/admin/work-list";
 import { createEmptyWorkFormState } from "@/components/admin/work-form-state";
+import { loadMotionFeatures } from "@/components/motion-features";
 
 const MAIN_TABS = ["works", "add", "intro", "detail", "visitors", "storage"] as const;
 
@@ -40,11 +41,14 @@ function getTabLabel(tab: MainTab) {
 }
 
 export default function AdminPageClient() {
-  const [tab, setTab] = useState<AdminTab>(() => {
-    if (typeof window === "undefined") return "works";
-    const queryTab = new URLSearchParams(window.location.search).get("tab");
-    return isMainTab(queryTab) ? queryTab : "works";
-  });
+  const [tab, setTab] = useState<AdminTab>("works");
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      const queryTab = new URLSearchParams(window.location.search).get("tab");
+      if (isMainTab(queryTab)) setTab(queryTab);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formState, setFormState] = useState(createEmptyWorkFormState);
   const [works, setWorks] = useState<Work[]>([]);
@@ -227,7 +231,7 @@ export default function AdminPageClient() {
   };
 
   return (
-    <LazyMotion features={domAnimation}>
+    <LazyMotion features={loadMotionFeatures}>
       <div className="mx-auto max-w-4xl px-5 pb-16 pt-24 md:px-6">
         <header className="animate-fade-up fixed left-1/2 top-4 z-[70] w-[calc(100%-2rem)] max-w-3xl -translate-x-1/2">
           <nav className="glass-strong flex items-center justify-between gap-2 rounded-full py-1.5 pl-5 pr-1.5">

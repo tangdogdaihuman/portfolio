@@ -428,14 +428,39 @@ test("含逗号的标签在写入时归一化且回读不再漂移", async ({ ba
   }
 });
 
-test("站点地图可访问且 lastmod 可解析", async ({ request }) => {
-  const response = await request.get("/sitemap.xml");
-  expect(response.status()).toBe(200);
-  const body = await response.text();
-  expect(body).toContain("<urlset");
-  const lastMods = [...body.matchAll(/<lastmod>([^<]+)<\/lastmod>/g)].map((match) => match[1]);
-  expect(lastMods.length).toBeGreaterThan(0);
-  for (const lastMod of lastMods) {
-    expect(Number.isNaN(new Date(lastMod).getTime())).toBe(false);
+test("站点地图包含作品条目且 lastmod 可解析", async ({ request, baseURL }) => {
+  if (!baseURL) throw new Error("baseURL is required");
+  const api = await newAdminApi(baseURL);
+  const created = await api.post("/api/works", {
+    data: {
+      title: `sitemap-${Date.now()}`,
+      description: "sitemap e2e",
+      tags: [],
+      imageUrl: "https://placehold.co/1400x1800.png",
+      thumbUrl: "https://placehold.co/700x900.webp",
+      pinned: false,
+      sortOrder: 0,
+      workDate: "2026-01",
+      imageSize: 1024,
+      sizeWeight: 1,
+    },
+  });
+  expect(created.status(), await created.text()).toBe(201);
+  const workId = (await created.json()).id as string;
+
+  try {
+    const response = await request.get("/sitemap.xml");
+    expect(response.status()).toBe(200);
+    const body = await response.text();
+    expect(body).toContain("<urlset");
+    expect(body).toContain(`/work/${workId}`);
+    const lastMods = [...body.matchAll(/<lastmod>([^<]+)<\/lastmod>/g)].map((match) => match[1]);
+    expect(lastMods.length).toBeGreaterThan(1);
+    for (const lastMod of lastMods) {
+      expect(Number.isNaN(new Date(lastMod).getTime())).toBe(false);
+    }
+  } finally {
+    await api.delete(`/api/works/${workId}`);
+    await api.dispose();
   }
 });

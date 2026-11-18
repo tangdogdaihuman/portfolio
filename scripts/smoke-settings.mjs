@@ -26,7 +26,7 @@ export function resolveSmokeSettings({ argv = process.argv, env = process.env } 
     getArgValue(argv, "--base-url") ||
       env.SMOKE_BASE_URL ||
       env.BASE_URL ||
-      (productionMode ? env.NEXT_PUBLIC_BASE_URL || DEFAULT_PRODUCTION_BASE_URL : env.NEXT_PUBLIC_BASE_URL || DEFAULT_LOCAL_BASE_URL)
+      (productionMode ? env.NEXT_PUBLIC_BASE_URL || DEFAULT_PRODUCTION_BASE_URL : DEFAULT_LOCAL_BASE_URL)
   );
   const adminKey = env.ADMIN_KEY || env.ADMIN_SECRET_KEY || "";
   const localTarget = isLocalBaseUrl(baseUrl);

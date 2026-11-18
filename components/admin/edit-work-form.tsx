@@ -58,12 +58,13 @@ export default function EditWorkForm({
     conflict,
   } = form;
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (isCancelled: () => boolean = () => false) => {
     try {
       const [workRes, imagesRes] = await Promise.all([
         fetch(`/api/works/${workId}`),
         fetch(`/api/works/${workId}/images`),
       ]);
+      if (isCancelled()) return;
 
       const patch: Partial<EditWorkFormState> = { loading: false, conflict: false };
 
@@ -107,6 +108,7 @@ export default function EditWorkForm({
 
       setForm((current) => patchEditWorkFormState(current, patch));
     } catch {
+      if (isCancelled()) return;
       showMsg("加载作品失败，请重试", false);
       updateForm({ loading: false });
     }
@@ -116,11 +118,7 @@ export default function EditWorkForm({
     let cancelled = false;
 
     async function initialLoad() {
-      try {
-        await load();
-      } finally {
-        if (cancelled) return;
-      }
+      await load(() => cancelled);
     }
 
     void initialLoad();

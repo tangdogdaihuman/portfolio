@@ -61,7 +61,7 @@ npm run test:smoke:prod  # 对线上 tangzihang.top 跑冒烟（SMOKE_ALLOW_WRIT
 - 乐观并发控制：更新类接口（`works/[id]`、`works/[id]/save`、`works/reorder`）接受 `expectedUpdatedAt`，与库中 `updated_at` 不匹配返回 409；e2e 有覆盖。该字段是 `.min(1).optional()`，空串会被判 400，客户端在没有版本号时应**省略该字段**而不是传空串。
 - **`updated_at` 的推进表达式只能用 `strftime('%Y-%m-%d %H:%M:%f', ...)`**（见 `lib/db.ts` 的 `TOUCH_WORK_UPDATED_AT_SQL`）：`datetime()` 会静默截断毫秒，同秒内 bump 不出更大值；而 `'+1 millisecond'` 不是合法的 SQLite 修饰符单位（毫秒要写成 `'+0.001 seconds'`），且标量 `MAX()` 任一参数为 NULL 就整体返回 NULL，会把 `updated_at` 写空撞 NOT NULL。
 - **写完要回给客户端的新版本号必须在同一事务里读回**（或 `RETURNING`）。条件 UPDATE 之后再单独 `SELECT updated_at` 会在并发写交错时把别人会话的时间戳发回去，导致下一次保存通过校验却覆盖对方的修改。
-- 可选 Upstash Redis 做跨实例限流（`lib/rate-limit-store.ts`）；未配置时默认走 Turso `rate_limits` 表。
+- 可选 Upstash Redis 做跨实例限流（`lib/rate-limit-store.ts`）；未配置时默认走 Turso `rate_limits` 表。鉴权类桶（`admin-login`、`send-code`、`send-code-cooldown`、proxy 的 `admin-key-guess`）用 **global 作用域**（单管理员站；直连部署域名时 `cf-connecting-ip` 可被伪造，IP 桶会失效）；`visits.track` 保留 IP 桶并叠加 global 兜底桶防伪造 IP 洪泛。
 - `app/api/auth/login` 支持三种登录：TOTP、邮箱验证码（QQ SMTP）、管理员密钥；涉及依赖 `nodemailer`、`otplib`、`qrcode`、`@paralleldrive/cuid2`。
 - 邮箱验证码仅限 `1193662756@qq.com`，存 Turso `verification_codes` 表（多实例共享）：5 分钟有效期、单码 5 次尝试上限；发送侧双层限流 = `send-code`（3 次/分钟）+ `send-code-cooldown`（1 次/30 秒），都走共享限流存储。TOTP 绑定走 `/admin/totp-setup` 扫码，仓库里没有独立生成脚本。
 - `lib/email.ts` 的 QQ SMTP 硬编码真实 IP 绕过本地 DNS 污染，改邮件配置时勿恢复为域名解析。

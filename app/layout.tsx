@@ -37,6 +37,11 @@ export const metadata: Metadata = {
     siteName: "Tang Zihang Portfolio",
     type: "website",
     locale: "zh_CN",
+    images: [{ url: "/og-default.jpg", width: 1792, height: 1024, alt: "Tang Zihang — CG Portfolio" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    images: ["/og-default.jpg"],
   },
   alternates: { canonical: "/" },
   robots: { index: true, follow: true },

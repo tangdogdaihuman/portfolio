@@ -3,14 +3,21 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 function subscribeFinePointer(callback: () => void) {
-  const mq = window.matchMedia("(pointer: fine)");
-  mq.addEventListener("change", callback);
-  return () => mq.removeEventListener("change", callback);
+  const mqs = [
+    window.matchMedia("(pointer: fine)"),
+    window.matchMedia("(max-width: 767.98px)"),
+    window.matchMedia("(prefers-reduced-motion: reduce)"),
+  ];
+  for (const mq of mqs) mq.addEventListener("change", callback);
+  return () => {
+    for (const mq of mqs) mq.removeEventListener("change", callback);
+  };
 }
 
 function getFinePointerSnapshot() {
   return (
     window.matchMedia("(pointer: fine)").matches &&
+    !window.matchMedia("(max-width: 767.98px)").matches &&
     !window.matchMedia("(prefers-reduced-motion: reduce)").matches
   );
 }

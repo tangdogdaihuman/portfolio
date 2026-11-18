@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     const loginRateLimit = Number.isFinite(configuredLoginRateLimit) && configuredLoginRateLimit > 0
       ? Math.floor(configuredLoginRateLimit)
       : 10;
-    const limited = await rateLimit(req, "admin-login", loginRateLimit, 5 * 60 * 1000);
+    const limited = await rateLimit(req, "admin-login", loginRateLimit, 5 * 60 * 1000, "global");
     if (limited) {
       reportMetric({ scope: "auth.login.rate_limited", value: 1, path: req.nextUrl.pathname });
       return limited;
