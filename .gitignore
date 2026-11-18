@@ -60,3 +60,6 @@ handoff.md
 
 # qoder
 .qoder/
+
+# local agent tool state
+.dsh-meow/
