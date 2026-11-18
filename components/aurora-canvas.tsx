@@ -98,8 +98,8 @@ function startWorkerRenderer(
     stopped = true;
     clearTimeout(watchdog);
     cancelAnimationFrame(monitorRaf);
-    if (scrollPauseTimer !== null) clearTimeout(scrollPauseTimer);
-    window.removeEventListener("scroll", onScrollPause);
+    if (scrollCalmTimer !== null) clearTimeout(scrollCalmTimer);
+    window.removeEventListener("scroll", onScrollCalm);
     resizeObserver.disconnect();
     document.removeEventListener("visibilitychange", onVisibilityChange);
     unsubscribeTheme();
@@ -160,17 +160,17 @@ function startWorkerRenderer(
   };
   document.addEventListener("visibilitychange", onVisibilityChange);
 
-  let scrollPauseTimer: ReturnType<typeof setTimeout> | null = null;
-  const onScrollPause = () => {
-    worker.postMessage({ type: "paused", paused: true });
-    if (scrollPauseTimer !== null) clearTimeout(scrollPauseTimer);
-    scrollPauseTimer = setTimeout(() => {
-      scrollPauseTimer = null;
-      worker.postMessage({ type: "paused", paused: false });
+  let scrollCalmTimer: ReturnType<typeof setTimeout> | null = null;
+  const onScrollCalm = () => {
+    worker.postMessage({ type: "scrolling", scrolling: true });
+    if (scrollCalmTimer !== null) clearTimeout(scrollCalmTimer);
+    scrollCalmTimer = setTimeout(() => {
+      scrollCalmTimer = null;
+      worker.postMessage({ type: "scrolling", scrolling: false });
     }, 200);
   };
   if (profile.coarsePointer) {
-    window.addEventListener("scroll", onScrollPause, { passive: true });
+    window.addEventListener("scroll", onScrollCalm, { passive: true });
   }
 
   const unsubscribeTheme = subscribeResolvedTheme(postTheme);
@@ -519,13 +519,14 @@ export default function AuroraCanvas() {
         return;
       }
 
-      if (!profile.reducedMotion && ts - lastFrameTs < frameBudget) {
+      const calm = scrolling;
+      if (!profile.reducedMotion && ts - lastFrameTs < (calm ? frameBudget * 4 : frameBudget)) {
         raf = requestAnimationFrame(drawFrame);
         return;
       }
       lastFrameTs = ts;
 
-      tick += motionScale;
+      tick += motionScale * (calm ? 4 : 1);
       ctxA.clearRect(0, 0, w, h);
       ctxA.globalCompositeOperation = lightMode ? "source-over" : "lighter";
       for (let i = 0; i < total; i += RAY_PROPS) {
@@ -550,19 +551,14 @@ export default function AuroraCanvas() {
       raf = requestAnimationFrame(drawFrame);
     };
 
-    let scrollPaused = false;
-    let scrollResumeTimer: ReturnType<typeof setTimeout> | null = null;
-    const onScrollPause = () => {
-      if (!scrollPaused) {
-        scrollPaused = true;
-        cancelAnimationFrame(raf);
-        running = false;
-      }
-      if (scrollResumeTimer !== null) clearTimeout(scrollResumeTimer);
-      scrollResumeTimer = setTimeout(() => {
-        scrollResumeTimer = null;
-        scrollPaused = false;
-        runIfNeeded();
+    let scrolling = false;
+    let scrollCalmTimer: ReturnType<typeof setTimeout> | null = null;
+    const onScrollCalm = () => {
+      scrolling = true;
+      if (scrollCalmTimer !== null) clearTimeout(scrollCalmTimer);
+      scrollCalmTimer = setTimeout(() => {
+        scrollCalmTimer = null;
+        scrolling = false;
       }, 200);
     };
 
@@ -608,13 +604,13 @@ export default function AuroraCanvas() {
     document.addEventListener("visibilitychange", onVisibilityChange);
     const unsubscribeTheme = subscribeResolvedTheme(onThemeChange);
     if (!profile.reducedMotion) {
-      window.addEventListener("scroll", onScrollPause, { passive: true });
+      window.addEventListener("scroll", onScrollCalm, { passive: true });
     }
 
     return () => {
       cancelAnimationFrame(raf);
-      if (scrollResumeTimer !== null) clearTimeout(scrollResumeTimer);
-      window.removeEventListener("scroll", onScrollPause);
+      if (scrollCalmTimer !== null) clearTimeout(scrollCalmTimer);
+      window.removeEventListener("scroll", onScrollCalm);
       resizeObserver.disconnect();
       document.removeEventListener("visibilitychange", onVisibilityChange);
       unsubscribeTheme();

@@ -99,6 +99,7 @@ function createRenderer(init) {
   let palette = init.palette;
   let hidden = false;
   let paused = false;
+  let scrolling = false;
   let staticMode = false;
   let degradeScale = 1;
   let baseRatio = 1;
@@ -281,7 +282,7 @@ function createRenderer(init) {
   }
 
   function renderFrame() {
-    tick += motionScale;
+    tick += motionScale * (scrolling ? 2 : 1);
     ctxA.clearRect(0, 0, w, h);
     ctxA.globalCompositeOperation = lightMode ? "source-over" : "lighter";
     for (let i = 0; i < total; i += RAY_PROPS) {
@@ -291,7 +292,7 @@ function createRenderer(init) {
     ctxA.globalAlpha = 1;
     composeFrame();
     frameCounter += 1;
-    if (frameCounter % 24 === 0) postToMain({ type: "frame", tick: frameCounter });
+    if (frameCounter % 6 === 0) postToMain({ type: "frame", tick: frameCounter });
   }
 
   function step() {
@@ -306,13 +307,13 @@ function createRenderer(init) {
       return;
     }
     running = true;
-    timer = setTimeout(step, budget);
+    timer = setTimeout(step, scrolling ? budget * 2 : budget);
   }
 
   function runIfNeeded() {
     if (running || hidden || paused) return;
     running = true;
-    timer = setTimeout(step, budget);
+    timer = setTimeout(step, scrolling ? budget * 2 : budget);
   }
 
   applyTiming();
@@ -372,6 +373,9 @@ function createRenderer(init) {
       if (staticMode || profile.reducedMotion || hidden) return;
       runIfNeeded();
     },
+    setScrolling(nextScrolling) {
+      scrolling = nextScrolling;
+    },
     degrade(level) {
       if (level >= 1) {
         profile.targetFps = Math.min(profile.targetFps, 15);
@@ -410,6 +414,9 @@ self.onmessage = function (event) {
       break;
     case "paused":
       if (renderer) renderer.setPaused(data.paused);
+      break;
+    case "scrolling":
+      if (renderer) renderer.setScrolling(data.scrolling);
       break;
     case "degrade":
       if (renderer) renderer.degrade(data.level);

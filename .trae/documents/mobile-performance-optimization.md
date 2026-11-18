@@ -60,6 +60,10 @@
 
 真机验证（用户侧）：重点感受打开移动菜单、展开"关于我"手风琴、BackToTop 出现、首屏 hero 入场、作品卡入场这些**动效**是否顺滑，以及深浅色切换后观感。
 
+## 2026-11-18 补充二：滚动不再暂停极光
+
+用户反馈滚动时极光"停了"。原 scroll → paused（停手 200ms 恢复）保护移除：改为 scroll → `scrolling` 标志，滚动期间**主线程路径全设备 1/4 帧率**（`frameBudget*4` + `motionScale*4` 补偿流速；CI 双核软件渲染实测全帧率会拖慢交互）、**worker 路径粗指针半帧率**（`budget*2` + `motionScale*2`），桌面 worker 全帧率；极光为慢速环境动画，降帧后漂移仍清晰可见。`document.hidden` 暂停与 reduced-motion 静态保留。worker 帧遥测改为每 6 帧一次以便 e2e 在降帧下采样（`mobile-hero-effects.spec.ts` 新增"滚动期间极光保持动态"）。
+
 ## 2026-11-17 补充：首页平面化（preview/flat-immersive 分支样品）
 
 用户确认新方向：参考 Elias Voss 模板平面化 + 更强沉浸感。首页 `home-client.tsx` 的玻璃层全部替换为新增平面类 `.panel` / `.panel-strong` / `.chip`（纯 alpha 合成、无 backdrop-filter，移动端零模糊开销）；`.glass*` 仅保留给后台与作品详情页。首屏新增双层透视作品墙（`.wall-*`：CSS 3D 倾斜 + 慢漂移 + 滚动差速视差，移动端隐藏远层、减弱倾斜），复用 R2 webp 缩略图；极光背景与其移动端档位不变。`ThemeToggle` 新增 `flat` prop，首页传 `flat`。本文档前述"桌面端零改动"约束已被该新方向取代。

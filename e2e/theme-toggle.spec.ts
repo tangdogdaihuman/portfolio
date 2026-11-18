@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { expect, test } from "@playwright/test";
 import { newAdminApi } from "./admin-api";
 
-const TEST_IMAGE_URL = "https://placehold.co/theme-toggle-thumb.png";
+const TEST_IMAGE_URL = "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='700'%20height='900'%3E%3Crect%20width='700'%20height='900'%20fill='%23334455'/%3E%3C/svg%3E";
 const TINY_PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=",
   "base64"

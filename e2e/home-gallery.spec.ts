@@ -1,8 +1,8 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 import { newAdminApi } from "./admin-api";
 
-const WORK_IMAGE = "https://placehold.co/1400x1800.png";
-const WORK_THUMB = "https://placehold.co/700x900.webp";
+const WORK_IMAGE = "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='1400'%20height='1800'%3E%3Crect%20width='1400'%20height='1800'%20fill='%23101010'/%3E%3C/svg%3E";
+const WORK_THUMB = "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='700'%20height='900'%3E%3Crect%20width='700'%20height='900'%20fill='%23334455'/%3E%3C/svg%3E";
 
 const runId = `${Date.now()}`;
 const tagX = `gallery-x-${runId}`;

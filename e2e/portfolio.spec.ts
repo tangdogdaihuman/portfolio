@@ -2,12 +2,12 @@ import { expect, request, test, type APIRequestContext, type Page, type Response
 import { createClient } from "@libsql/client";
 import { ADMIN_SECRET, newAdminApi, toAdminBaseURL } from "./admin-api";
 
-const WORK_IMAGE = "https://placehold.co/1400x1800.png";
-const WORK_THUMB = "https://placehold.co/700x900.webp";
+const WORK_IMAGE = "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='1400'%20height='1800'%3E%3Crect%20width='1400'%20height='1800'%20fill='%23101010'/%3E%3C/svg%3E";
+const WORK_THUMB = "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='700'%20height='900'%3E%3Crect%20width='700'%20height='900'%20fill='%23334455'/%3E%3C/svg%3E";
 const GALLERY_IMAGES = [
-  { imageUrl: "https://placehold.co/1400x1800/101010/f5f1e8.png?text=1", thumbUrl: "https://placehold.co/700x900/101010/f5f1e8.webp?text=1" },
-  { imageUrl: "https://placehold.co/1400x1800/1a2435/f5f1e8.png?text=2", thumbUrl: "https://placehold.co/700x900/1a2435/f5f1e8.webp?text=2" },
-  { imageUrl: "https://placehold.co/1400x1800/352018/f5f1e8.png?text=3", thumbUrl: "https://placehold.co/700x900/352018/f5f1e8.webp?text=3" },
+  { imageUrl: "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='1400'%20height='1800'%3E%3Crect%20width='1400'%20height='1800'%20fill='%23101010'/%3E%3C/svg%3E", thumbUrl: "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='700'%20height='900'%3E%3Crect%20width='700'%20height='900'%20fill='%23101010'/%3E%3C/svg%3E" },
+  { imageUrl: "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='1400'%20height='1800'%3E%3Crect%20width='1400'%20height='1800'%20fill='%231a2435'/%3E%3C/svg%3E", thumbUrl: "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='700'%20height='900'%3E%3Crect%20width='700'%20height='900'%20fill='%231a2435'/%3E%3C/svg%3E" },
+  { imageUrl: "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='1400'%20height='1800'%3E%3Crect%20width='1400'%20height='1800'%20fill='%23352018'/%3E%3C/svg%3E", thumbUrl: "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='700'%20height='900'%3E%3Crect%20width='700'%20height='900'%20fill='%23352018'/%3E%3C/svg%3E" },
 ];
 
 let createdWorkId = "";
