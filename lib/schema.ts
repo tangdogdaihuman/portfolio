@@ -18,6 +18,8 @@ export const BASE_SCHEMA_SQL = `
     updated_at TEXT DEFAULT (datetime('now'))
   );
 
+  UPDATE works SET updated_at = datetime('now') WHERE updated_at IS NULL OR updated_at = '';
+
   CREATE TABLE IF NOT EXISTS work_images (
     id TEXT PRIMARY KEY,
     work_id TEXT NOT NULL,

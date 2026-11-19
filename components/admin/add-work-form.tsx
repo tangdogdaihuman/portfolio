@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { cleanupUploadedFiles, type UploadedFile } from "@/lib/upload-client";
 import { UPLOAD_LIMIT_HINT } from "@/lib/upload-policy";
 import {
@@ -27,11 +27,13 @@ export default function AddWorkForm({
   setFormState,
   onDone,
   showMsg,
+  onUploadingChange,
 }: {
   formState: WorkFormState;
   setFormState: Dispatch<SetStateAction<WorkFormState>>;
   onDone: () => void;
   showMsg: (text: string, ok: boolean) => void;
+  onUploadingChange?: (uploading: boolean) => void;
 }) {
   const [previewIndex, setPreviewIndex] = useState(0);
   const [submitting, setSubmitting] = useState(false);
@@ -68,12 +70,28 @@ export default function AddWorkForm({
     dismissFailure,
   } = useMultiFileUpload({ onUploaded: handleUploaded });
 
+  useEffect(() => {
+    onUploadingChange?.(uploading);
+  }, [onUploadingChange, uploading]);
+
   const handleUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
     const fileArray = Array.from(files);
     event.target.value = "";
     startUpload(fileArray);
+  };
+
+  const clearForm = () => {
+    if (uploading) {
+      showMsg("请等待上传完成后再清空", false);
+      return;
+    }
+    if (uploadedFiles.length > 0) {
+      void cleanupUploadedFiles(uploadedFiles);
+    }
+    setFormState(createEmptyWorkFormState());
+    setPreviewIndex(0);
   };
 
   const createWork = async () => {
@@ -261,7 +279,17 @@ export default function AddWorkForm({
           {submitting ? "提交中..." : uploadedFiles.length > 1 ? `发布作品（${uploadedFiles.length} 张图）` : "发布作品"}
         </button>
         {uploadedFiles.length > 0 && (
-          <span className="text-xs text-text-muted">{uploadedFiles.length} 张图片，单击缩略图可预览原图，封面用按钮单独设置</span>
+          <>
+            <button
+              type="button"
+              onClick={clearForm}
+              disabled={uploading || submitting}
+              className="glass-chip rounded-full px-6 py-2.5 text-sm text-text-muted transition-colors hover:text-text disabled:pointer-events-none disabled:opacity-50"
+            >
+              清空表单
+            </button>
+            <span className="text-xs text-text-muted">{uploadedFiles.length} 张图片，单击缩略图可预览原图，封面用按钮单独设置</span>
+          </>
         )}
       </div>
     </div>

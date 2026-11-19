@@ -14,7 +14,7 @@ import {
   useTransform,
   type MotionValue,
 } from "framer-motion";
-import type { Work } from "@/lib/types";
+import type { HomeWork } from "@/lib/types";
 import { isVideoUrl } from "@/lib/upload-policy";
 import ThemeToggle from "@/components/theme-toggle";
 import { EASE_OUT, SPRING_SOFT, Reveal } from "@/components/reveal";
@@ -45,8 +45,28 @@ const SORT_OPTIONS: Array<{ value: SortMode; label: string }> = [
   { value: "oldest", label: "最早" },
 ];
 
+const HTML_ENTITY_MAP: Record<string, string> = {
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+  nbsp: " ",
+};
+
+function decodeHtmlEntities(text: string): string {
+  return text.replace(/&(#x?[0-9a-f]+|[a-z][a-z0-9]+);/gi, (match, entity: string) => {
+    if (entity[0] === "#") {
+      const hex = entity[1]?.toLowerCase() === "x";
+      const code = Number.parseInt(entity.slice(hex ? 2 : 1), hex ? 16 : 10);
+      return Number.isFinite(code) && code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : match;
+    }
+    return HTML_ENTITY_MAP[entity.toLowerCase()] ?? match;
+  });
+}
+
 function htmlToSafeText(html: string): string {
-  return html
+  const stripped = html
     .replace(/<\s*(script|style|iframe|object|embed|form|svg|math)[\s\S]*?<\s*\/\s*\1\s*>/gi, "")
     .replace(/<\s*br\s*\/?\s*>/gi, "\n")
     .replace(/<\s*\/\s*p\s*>/gi, "\n")
@@ -56,6 +76,7 @@ function htmlToSafeText(html: string): string {
     .replace(/<\s*(em|i|u)\s*>/gi, "")
     .replace(/<\s*\/\s*(em|i|u)\s*>/gi, "")
     .replace(/<[^>]+>/g, "");
+  return decodeHtmlEntities(stripped);
 }
 
 function renderBoldContent(text: string) {
@@ -179,14 +200,15 @@ const SiteNav = memo(function SiteNav({
   );
 });
 
-function WorkThumbImage({ work, priority }: { work: Work; priority: boolean }) {
+function WorkThumbImage({ work, priority }: { work: HomeWork; priority: boolean }) {
   const imageRef = useRef<HTMLImageElement>(null);
-  const [ready, setReady] = useState(false);
+  const [readyUrl, setReadyUrl] = useState<string | null>(null);
+  const ready = readyUrl === work.thumb_url;
 
   useEffect(() => {
     const image = imageRef.current;
     if (image?.complete && image.naturalWidth > 0) {
-      requestAnimationFrame(() => setReady(true));
+      requestAnimationFrame(() => setReadyUrl(work.thumb_url));
     }
   }, [work.thumb_url]);
 
@@ -216,14 +238,14 @@ function WorkThumbImage({ work, priority }: { work: Work; priority: boolean }) {
         ready ? "opacity-100" : "opacity-0"
       }`}
       onLoad={(event) => {
-        if (event.currentTarget.naturalWidth > 0) setReady(true);
+        if (event.currentTarget.naturalWidth > 0) setReadyUrl(work.thumb_url);
       }}
-      onError={() => setReady(true)}
+      onError={() => setReadyUrl(work.thumb_url)}
     />
   );
 }
 
-function WorkCard({ work, index, priority }: { work: Work; index: number; priority: boolean }) {
+function WorkCard({ work, index, priority }: { work: HomeWork; index: number; priority: boolean }) {
   return (
     <Link
       href={`/work/${work.id}`}
@@ -338,7 +360,7 @@ function wallStride(len: number) {
   return 1;
 }
 
-function wallTiles(pool: Work[], count: number, offset: number) {
+function wallTiles(pool: HomeWork[], count: number, offset: number) {
   const stride = wallStride(pool.length);
   return Array.from({ length: count }, (_, i) => pool[(i * stride + offset) % pool.length]);
 }
@@ -347,7 +369,7 @@ function subscribeNever() {
   return () => {};
 }
 
-function HeroWorkWall({ works, progress, coarse }: { works: Work[]; progress: MotionValue<number>; coarse: boolean }) {
+function HeroWorkWall({ works, progress, coarse }: { works: HomeWork[]; progress: MotionValue<number>; coarse: boolean }) {
   const mounted = useSyncExternalStore(subscribeNever, () => true, () => false);
   const pool = useMemo(() => works.filter((work) => work.thumb_url && !isVideoUrl(work.thumb_url)), [works]);
   const near = useMemo(() => wallTiles(pool, WALL_NEAR_TILES, 0), [pool]);
@@ -417,7 +439,7 @@ export default function HomeClient({
 }: {
   initialIntro: string;
   initialTagline: string;
-  initialWorks: Work[];
+  initialWorks: HomeWork[];
   initialSections: { id: string; title: string; content: string }[];
   initialLoadError: boolean;
 }) {
@@ -643,6 +665,7 @@ export default function HomeClient({
                     <button
                       type="button"
                       onClick={() => setActiveTag(null)}
+                      aria-pressed={activeTag === null}
                       data-hover
                       className={`min-h-10 rounded-full px-4 text-[0.72rem] tracking-[0.1em] transition-colors duration-300 ${
                         activeTag === null
@@ -657,6 +680,7 @@ export default function HomeClient({
                         key={tag}
                         type="button"
                         onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+                        aria-pressed={activeTag === tag}
                         data-hover
                         className={`min-h-10 rounded-full px-4 text-[0.72rem] tracking-[0.1em] transition-colors duration-300 ${
                           activeTag === tag
@@ -774,7 +798,7 @@ export default function HomeClient({
             </div>
           </section>
 
-          {detailSections.length > 0 && (
+          {(introLines.length > 0 || detailSections.length > 0) && (
             <section id="about" className="relative mx-auto max-w-[90rem] scroll-mt-28 px-5 pb-24 md:px-8">
               <Reveal>
                 <p className="meta-label">02 / About</p>

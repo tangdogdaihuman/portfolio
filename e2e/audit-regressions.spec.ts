@@ -464,3 +464,15 @@ test("站点地图包含作品条目且 lastmod 可解析", async ({ request, ba
     await api.dispose();
   }
 });
+
+test("登录页不会把管理员重定向到外部站点", async ({ page, baseURL }) => {
+  if (!baseURL) throw new Error("baseURL is required");
+  const adminBaseURL = toAdminBaseURL(baseURL);
+  await page.goto(`${adminBaseURL}/admin/login?redirect=%2F%5Cevil.com`);
+  await page.getByRole("button", { name: "管理密钥", exact: true }).click();
+  await page.locator('input[aria-label="管理密钥"]').fill(ADMIN_SECRET);
+  await page.getByRole("button", { name: "登录", exact: true }).click();
+
+  await expect(page).toHaveURL(new RegExp(`^${adminBaseURL.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/admin`));
+  expect(new URL(page.url()).hostname).toBe(new URL(adminBaseURL).hostname);
+});

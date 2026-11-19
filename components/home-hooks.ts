@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Section, Work } from "@/lib/types";
+import type { HomeWork, Section } from "@/lib/types";
 
 const WORKS_REFRESH_MIN_INTERVAL = 30000;
 const META_REFRESH_MIN_INTERVAL = 600000;
@@ -14,7 +14,7 @@ export function useHomeDataRefresh({
 }: {
   initialIntro: string;
   initialTagline: string;
-  initialWorks: Work[];
+  initialWorks: HomeWork[];
   initialSections: Section[];
   initialLoadError: boolean;
   defaultTagline: string;
@@ -25,8 +25,8 @@ export function useHomeDataRefresh({
   const [loadError, setLoadError] = useState(initialLoadError);
   const [loadingWorks, setLoadingWorks] = useState(false);
   const [expandedSection, setExpandedSection] = useState<string | null>(initialSections[0]?.id ?? null);
-  const [works, setWorks] = useState<Work[]>(initialWorks);
-  const worksRef = useRef<Work[]>(initialWorks);
+  const [works, setWorks] = useState<HomeWork[]>(initialWorks);
+  const worksRef = useRef<HomeWork[]>(initialWorks);
   const refreshInFlightRef = useRef(false);
   const lastWorksRefreshAtRef = useRef(0);
   const lastMetaRefreshAtRef = useRef(0);
@@ -47,7 +47,7 @@ export function useHomeDataRefresh({
       const worksRes = await worksRequest;
       if (!worksRes.ok) throw new Error("refresh failed");
 
-      const nextWorks = (await worksRes.json()) as Work[];
+      const nextWorks = (await worksRes.json()) as HomeWork[];
       worksRef.current = nextWorks;
       setWorks(nextWorks);
       setLoadError(false);

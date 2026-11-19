@@ -3,27 +3,20 @@ import type { Section } from "@/lib/types";
 import db from "@/lib/db";
 import HomeClient from "@/components/home-client";
 import VisitTracker from "@/components/visit-tracker";
-import { rowToWork } from "@/lib/work-mappers";
+import { getHomeWorks } from "@/lib/home-works";
 
 export const revalidate = 300;
 
-const getData = unstable_cache(
+const getMeta = unstable_cache(
   async () => {
-    const [introRes, worksRes, sectionsRes] = await Promise.all([
+    const [introRes, sectionsRes] = await Promise.all([
       db.execute("SELECT content, tagline FROM intro WHERE id = 1"),
-      db.execute(
-        `SELECT w.*, (SELECT COUNT(*) FROM work_images WHERE work_id = w.id) as image_count
-         FROM works w ORDER BY w.pinned DESC, w.sort_order DESC, w.created_at DESC`
-      ),
       db.execute("SELECT id, title, content, sort_order, updated_at FROM detail_sections ORDER BY sort_order ASC, created_at ASC"),
     ]);
-
-    const works = worksRes.rows.map((row) => rowToWork(row as Record<string, unknown>));
 
     return {
       intro: (introRes.rows[0]?.content as string) || "",
       tagline: (introRes.rows[0]?.tagline as string) || "",
-      works,
       sections: sectionsRes.rows.map((row) => ({
         id: row.id as string,
         title: row.title as string,
@@ -31,16 +24,22 @@ const getData = unstable_cache(
       })) satisfies Section[],
     };
   },
-  ["home-data"],
-  { revalidate: 300, tags: ["works", "intro", "detail-sections"] }
+  ["home-meta"],
+  { revalidate: 300, tags: ["intro", "detail-sections"] }
 );
 
 export default async function HomePage() {
-  const { intro, tagline, works, sections } = await getData();
+  const [meta, works] = await Promise.all([getMeta(), getHomeWorks()]);
   return (
     <>
       <VisitTracker />
-      <HomeClient initialIntro={intro} initialTagline={tagline} initialWorks={works} initialSections={sections} initialLoadError={false} />
+      <HomeClient
+        initialIntro={meta.intro}
+        initialTagline={meta.tagline}
+        initialWorks={works}
+        initialSections={meta.sections}
+        initialLoadError={false}
+      />
     </>
   );
 }

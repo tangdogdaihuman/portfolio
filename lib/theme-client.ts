@@ -68,7 +68,3 @@ export function setResolvedTheme(theme: ThemeName) {
   applyTheme(theme);
   emitThemeChange();
 }
-
-export function toggleResolvedTheme() {
-  setResolvedTheme(getResolvedTheme() === "dark" ? "light" : "dark");
-}

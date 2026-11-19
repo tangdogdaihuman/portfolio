@@ -29,7 +29,10 @@ export default function ThemeToggle({ className = "", flat = false }: { classNam
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => setAnimated(true));
-    return () => cancelAnimationFrame(frame);
+    return () => {
+      cancelAnimationFrame(frame);
+      if (restoreTimer.current !== null) window.clearTimeout(restoreTimer.current);
+    };
   }, []);
 
   const toggle = (event: MouseEvent<HTMLButtonElement>) => {

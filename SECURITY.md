@@ -128,8 +128,8 @@ Strict-Transport-Security: max-age=15552000; includeSubDomains
 ## 五、剩余风险与建议
 
 1. **CSP 仍含 `unsafe-inline`（script/style）**：Next.js App Router 的内联 bootstrap 脚本与主题初始化脚本需要它；彻底移除需引入 nonce 方案，改动面大，当前与 X-XSS 缓解（React 转义 + 唯一静态内联脚本）叠加后风险可接受。
-2. **登录限流为每 IP 令牌桶**：分布式爆破可横向分摊；可选配置 Upstash Redis 跨实例限流（代码已支持，仅需环境变量）。
-3. **TOTP 密钥与邮件验证码**：TOTP_SECRET 缺失时仅密钥登录可用；验证码存进程内存，重启失效——均为既有设计取舍，非漏洞。
+2. **登录限流使用 global 桶**：鉴权类桶不依赖客户端 IP，避免伪造 `cf-connecting-ip` 绕过；访客统计仍保留 IP 桶并叠加 global 兜底。
+3. **TOTP 密钥与邮件验证码**：TOTP_SECRET 缺失时仅密钥登录可用；验证码存 Turso `verification_codes` 表，多实例共享，5 分钟有效、5 次尝试上限。
 4. **`/admin?key=` 书签登录**：URL 中的密钥可能进入浏览器历史/代理日志；建议仅在可信网络使用，用后及时登出轮换密钥。
 
 ## 六、轮次记录
@@ -172,4 +172,4 @@ Strict-Transport-Security: max-age=15552000; includeSubDomains
 ### 回归验证（第 4 轮修复后）
 
 - `npm run lint` / `typecheck` / `test:schema` / `build` ✅
-- `npm run test:e2e` ✅ 30 passed
+- `npm run test:e2e` ✅ 当前套件 54 项通过

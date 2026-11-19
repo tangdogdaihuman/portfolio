@@ -8,6 +8,19 @@ import { loadMotionFeatures } from "@/components/motion-features";
 
 type LoginMode = "totp" | "email" | "key";
 
+function safeAdminRedirect(raw: string | null): string {
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//") || raw.includes("\\")) {
+    return "/admin";
+  }
+  try {
+    const url = new URL(raw, window.location.origin);
+    if (url.origin !== window.location.origin) return "/admin";
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return "/admin";
+  }
+}
+
 const MODES: Array<{ value: LoginMode; label: string }> = [
   { value: "totp", label: "动态口令" },
   { value: "email", label: "邮箱验证码" },
@@ -42,6 +55,8 @@ function LoginForm() {
       timerRef.current = null;
     }
   }, []);
+
+  useEffect(() => () => clearCountdown(), [clearCountdown]);
 
   const startCountdown = useCallback(() => {
     clearCountdown();
@@ -101,9 +116,7 @@ function LoginForm() {
       });
 
       if (res.ok) {
-        const raw = searchParams.get("redirect");
-        const redirect = raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : "/admin";
-        router.push(redirect);
+        router.push(safeAdminRedirect(searchParams.get("redirect")));
         return;
       }
 

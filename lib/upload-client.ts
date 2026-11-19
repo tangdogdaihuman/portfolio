@@ -1,4 +1,4 @@
-import { formatBytes, getUploadLimitForType } from "@/lib/upload-policy";
+import { formatBytes, getUploadLimitForType, IMMUTABLE_CACHE_CONTROL } from "@/lib/upload-policy";
 
 export interface UploadedFile {
   imageUrl: string;
@@ -57,7 +57,10 @@ export async function uploadImageToR2(file: File): Promise<UploadedFile> {
   const uploadRes = await fetch(uploadUrl, {
     method: "PUT",
     body: file,
-    headers: { "Content-Type": file.type },
+    headers: {
+      "Content-Type": file.type,
+      "Cache-Control": IMMUTABLE_CACHE_CONTROL,
+    },
   });
   if (!uploadRes.ok) throw new Error("上传原图失败");
 

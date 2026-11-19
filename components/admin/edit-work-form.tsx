@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { cleanupUploadedFiles, type UploadedFile } from "@/lib/upload-client";
 import { UPLOAD_LIMIT_HINT } from "@/lib/upload-policy";
 import {
@@ -11,6 +11,7 @@ import {
   nextTempImageId,
   patchEditWorkFormState,
   removeEditableImage,
+  type EditableImage,
   type EditWorkFormState,
 } from "@/components/admin/work-form-state";
 import {
@@ -28,11 +29,13 @@ export default function EditWorkForm({
   onDone,
   onCancel,
   showMsg,
+  onUploadingChange,
 }: {
   workId: string;
   onDone: () => void;
   onCancel: () => void;
   showMsg: (text: string, ok: boolean) => void;
+  onUploadingChange?: (uploading: boolean) => void;
 }) {
   const [form, setForm] = useState<EditWorkFormState>(createEditWorkFormState);
 
@@ -57,6 +60,26 @@ export default function EditWorkForm({
     baseUpdatedAt,
     conflict,
   } = form;
+
+  const handledRef = useRef(false);
+  const imagesRef = useRef<EditableImage[]>([]);
+
+  const cleanupNewImages = useCallback((images: EditableImage[]) => {
+    const newFiles = images.filter((image) => image.source === "new");
+    if (newFiles.length === 0) return;
+    void cleanupUploadedFiles(newFiles.map((image) => ({ imageUrl: image.image_url, thumbUrl: image.thumb_url })));
+  }, []);
+
+  useEffect(() => {
+    imagesRef.current = allImages;
+  }, [allImages]);
+
+  useEffect(() => {
+    return () => {
+      if (handledRef.current) return;
+      cleanupNewImages(imagesRef.current);
+    };
+  }, [cleanupNewImages]);
 
   const load = useCallback(async (isCancelled: () => boolean = () => false) => {
     try {
@@ -155,6 +178,10 @@ export default function EditWorkForm({
     dismissFailure,
   } = useMultiFileUpload({ onUploaded: handleUploaded });
 
+  useEffect(() => {
+    onUploadingChange?.(uploading);
+  }, [onUploadingChange, uploading]);
+
   const uploadNewFiles = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
@@ -169,6 +196,23 @@ export default function EditWorkForm({
       cleanupUploadedFiles([{ imageUrl: removed.image_url, thumbUrl: removed.thumb_url }]).catch(() => {});
     }
     setForm((current) => removeEditableImage(current, index));
+  };
+
+  const handleCancel = () => {
+    if (uploading) {
+      showMsg("请等待上传完成后再取消", false);
+      return;
+    }
+    if (handledRef.current) return;
+    handledRef.current = true;
+    cleanupNewImages(allImages);
+    onCancel();
+  };
+
+  const reloadAfterConflict = () => {
+    cleanupNewImages(allImages);
+    updateForm({ loading: true });
+    void load();
   };
 
   const handleSave = async () => {
@@ -224,6 +268,7 @@ export default function EditWorkForm({
       }
 
       const saveBody = await saveRes.json().catch(() => null) as { updatedAt?: string } | null;
+      handledRef.current = true;
       updateForm({
         saving: false,
         saveStep: "",
@@ -243,7 +288,7 @@ export default function EditWorkForm({
   return (
     <div className="glass space-y-5 rounded-[28px] p-5 md:p-7">
       <div className="flex items-center gap-4 mb-2">
-        <button onClick={onCancel} className="text-sm text-text-muted hover:text-text">← 返回</button>
+        <button onClick={handleCancel} className="text-sm text-text-muted hover:text-text">← 返回</button>
         <span className="text-sm text-text">编辑作品</span>
       </div>
       {conflict && (
@@ -251,10 +296,7 @@ export default function EditWorkForm({
           <span className="flex-1 text-sm text-text-muted">检测到他人已修改该作品，当前编辑内容已过期。</span>
           <button
             type="button"
-            onClick={() => {
-              updateForm({ loading: true });
-              void load();
-            }}
+            onClick={reloadAfterConflict}
             className="text-sm text-accent hover:underline"
           >
             放弃本地修改并重新加载
@@ -334,7 +376,7 @@ export default function EditWorkForm({
       </div>
       <div className="flex gap-3">
         <button onClick={handleSave} disabled={saving || uploading} className="min-h-11 rounded-full bg-accent px-8 py-2.5 text-sm font-medium text-on-accent shadow-[0_14px_36px_-10px_color-mix(in_srgb,var(--color-accent)_55%,transparent)] transition-[transform,box-shadow] duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50">{saving ? saveStep || "保存中..." : uploading ? "上传中..." : "保存修改"}</button>
-        <button onClick={onCancel} className="glass-chip rounded-full px-6 py-2.5 text-sm text-text-muted transition-colors hover:text-text">取消</button>
+        <button onClick={handleCancel} className="glass-chip rounded-full px-6 py-2.5 text-sm text-text-muted transition-colors hover:text-text">取消</button>
       </div>
     </div>
   );

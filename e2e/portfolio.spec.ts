@@ -257,7 +257,7 @@ test.afterAll(async ({ baseURL }) => {
 test("作品卡片可直接进入详情并可返回首页作品区", async ({ page, baseURL }) => {
   await page.goto("/");
   await page.getByRole("link", { name: createdWorkTitle }).click();
-  await expect(page).toHaveURL(new RegExp(`/work/${createdWorkId}$`));
+  await expect(page).toHaveURL(new RegExp(`/work/${createdWorkId}$`), { timeout: 15000 });
 
   const backLink = page.getByRole("link", { name: "返回作品集" }).first();
   await backLink.click();

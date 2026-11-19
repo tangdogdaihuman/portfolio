@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { createId } from "@paralleldrive/cuid2";
 import { z } from "zod";
 import db, { tagsToString } from "@/lib/db";
@@ -8,6 +8,7 @@ import { requireAuth, verifyAuthRequest } from "@/lib/auth";
 import { reportApiError, reportMetric } from "@/lib/monitoring";
 import { writeAuditLog } from "@/lib/audit-log";
 import { fail, ok } from "@/lib/api-response";
+import { readJsonBody } from "@/lib/request-body";
 import { processR2DeleteJobs } from "@/lib/r2-delete-jobs";
 import {
   descriptionField,
@@ -20,6 +21,7 @@ import {
 } from "@/lib/validate/work-fields";
 import { replaceWorkImagesInTransaction, type PreparedWorkImage } from "@/lib/work-images-replace";
 import { rowToWork } from "@/lib/work-mappers";
+import { getHomeWorks } from "@/lib/home-works";
 
 const imageSchema = z.object({
   imageUrl: urlField,
@@ -55,16 +57,11 @@ async function loadWorksList() {
   return result.rows.map((row) => rowToWork(row as Record<string, unknown>));
 }
 
-const getWorksList = unstable_cache(loadWorksList, ["works-list"], {
-  revalidate: 300,
-  tags: ["works"],
-});
-
 export async function GET(req: NextRequest) {
   if (await verifyAuthRequest(req)) {
     return ok(await loadWorksList());
   }
-  return ok(await getWorksList());
+  return ok(await getHomeWorks());
 }
 
 export async function POST(req: NextRequest) {
@@ -76,8 +73,9 @@ export async function POST(req: NextRequest) {
     if (unauth) return unauth;
     void processR2DeleteJobs().catch(() => {});
 
-    const body = await req.json();
-    const parsed = workSchema.safeParse(body);
+    const body = await readJsonBody(req);
+    if (!body.ok) return body.response;
+    const parsed = workSchema.safeParse(body.data);
     if (!parsed.success) {
       return fail("BAD_REQUEST", "Invalid work payload", 400, parsed.error.flatten());
     }

@@ -28,7 +28,18 @@ export function normalizeTagList(values: string[]): string[] {
 
 export const titleField = z.string().min(1).max(MAX_TITLE_LENGTH);
 export const descriptionField = z.string().min(1).max(MAX_DESCRIPTION_LENGTH);
-export const urlField = z.string().url().max(MAX_URL_LENGTH);
+export const urlField = z
+  .string()
+  .url()
+  .max(MAX_URL_LENGTH)
+  .refine((value) => {
+    try {
+      const { protocol } = new URL(value);
+      return protocol === "http:" || protocol === "https:" || (protocol === "data:" && value.startsWith("data:image/"));
+    } catch {
+      return false;
+    }
+  }, "Unsupported URL protocol");
 export const workDateField = z.string().max(MAX_WORK_DATE_LENGTH);
 export const fileSizeField = z.number().int().nonnegative().max(MAX_FILE_SIZE_BYTES);
 export const sizeWeightField = z.number().min(0.5).max(2);

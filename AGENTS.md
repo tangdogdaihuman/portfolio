@@ -27,14 +27,14 @@ npm run test:smoke:prod  # 对线上 tangzihang.top 跑冒烟（SMOKE_ALLOW_WRIT
 - 验证顺序：`lint` → `typecheck` → `test:schema` → `build` → `test:e2e`（CI 执行的顺序）。
 - `db:push` 用 `.env.local` 直连 Turso；实际线上 db.ts 首次访问时自动迁移，通常不需要手动跑。
 - 单跑测试：`npx playwright test e2e/portfolio.spec.ts` 跑单个文件；`npm run test:e2e -- -g "用例名"` 按名过滤；`SMOKE_BASE_URL=http://localhost:3000 npm run test:smoke` 指定 smoke 目标。
-- e2e 基建：`playwright.config.ts` 自动起 dev server（127.0.0.1:3000），注入临时 `file:./e2e.db` SQLite + 假 R2 环境变量；`fullyParallel: false`；共享 helper 在 `e2e/admin-api.ts`；11 个 spec（portfolio / home-gallery / r2-delete / upload-policy / audit-regressions / theme-toggle / desktop-cursor / admin-input-cursor / mobile-hero-effects / work-form-state / smoke-settings.spec.js）。
+- e2e 基建：`playwright.config.ts` 自动起 dev server（127.0.0.1:3000），注入临时 `file:./e2e.db` SQLite + 假 R2 环境变量；`fullyParallel: false`；共享 helper 在 `e2e/admin-api.ts`；12 个 spec（portfolio / home-gallery / home-redesign / r2-delete / upload-policy / audit-regressions / theme-toggle / desktop-cursor / admin-input-cursor / mobile-hero-effects / work-form-state / smoke-settings.spec.js）。
 - 端口冲突：dev 与 e2e 固定 3000 端口，与本机 UE MCP（localhost:3000）冲突；UE 编辑器开着时手动起 dev 用 `npx next dev -p 3001`，跑 e2e 前先确认 3000 空闲。
 
 ## 数据与迁移
 - `lib/db.ts` 的 `db` 是 `Proxy`；首次 DB 访问自动 `runMigrations()`。
 - **`lib/schema.ts` 是 schema 单一来源**：`BASE_SCHEMA_SQL` + `COLUMN_PATCHES` + `RECORDED_MIGRATIONS`。`lib/db.ts` 和 `scripts/push-schema.ts` 都引用它；`test:schema` 会验证这一点。改 schema 只改 `lib/schema.ts` 一处。
 - `tags`、`software` 在库里是逗号字符串；`lib/db.ts` 的 `tagsToArray()` / `tagsToString()` 负责转换。`lib/work-mappers.ts` 的 `rowToWork()` 统一做 DB 行到类型的映射。
-- 公共类型在 `lib/types.ts`（前台 `home-client.tsx` 也从这里导入 `Work`）；改 API 返回字段只动 `lib/types.ts` + `lib/work-mappers.ts` 两处。
+- 公共类型在 `lib/types.ts`（前台 `home-client.tsx` 导入裁剪后的 `HomeWork`，后台与详情页用 `Work`）；改 API 返回字段只动 `lib/types.ts` + `lib/work-mappers.ts` 两处。
 - 数据表：`works`、`work_images`（work_id 仅建索引 `idx_work_images_work_id_sort`，无外键约束，关联由 API 维护）、`intro`、`details`、`detail_sections`、`schema_migrations`、`audit_logs`、`r2_delete_jobs`、`visits`、`rate_limits`、`verification_codes`。
 - `works.software` 字段与 `tags` 一样是逗号串，API 返回数组。
 - `COLUMN_PATCHES` 共 7 条后期 patch 列（`work_date`、`software`、`image_size`、`media_type`、`intro.tagline`、`works.size_weight` 等，见 `lib/schema.ts`）。
@@ -74,16 +74,16 @@ npm run test:smoke:prod  # 对线上 tangzihang.top 跑冒烟（SMOKE_ALLOW_WRIT
 - `lib/audit-log.ts`：DB 审计日志。
 
 ## 前端约定
-- 首页 `components/home-client.tsx`：筛选、排序、marquee、hero 等展示逻辑。轮询、`visibilitychange` 刷新（30s 节流）在 `components/home-hooks.ts`；自定义光标是 `app/layout.tsx` 全局挂载的 `components/cursor.tsx`（前台后台共用）；初始数据由 `app/page.tsx` 服务端 `unstable_cache` 抓取后通过 props 传入。
+- 首页 `components/home-client.tsx`：筛选、排序、marquee、hero 等展示逻辑。轮询、`visibilitychange` 刷新（30s 节流）在 `components/home-hooks.ts`；列表数据由 `lib/home-works.ts` 的 `getHomeWorks()` 裁剪字段后缓存，`app/page.tsx` 与公开 `/api/works` 共用；自定义光标是 `app/layout.tsx` 全局挂载的 `components/cursor.tsx`（前台后台共用）。
 - 动画基线：`spring` 常用 `damping: 28`、`stiffness: 200`、`mass: 0.8`。
 - 画廊状态用可判别分支：`loadingWorks`（重试中且无内容）/ `works.length === 0`（作品集为空或加载失败）/ `filtered.length === 0`（筛选无匹配，带清除筛选入口）/ 正常网格；"已有内容但更新失败"另在网格上方独立提示。别把 error 和 empty 塞进同一个分支。
-- 中文字体策略：正文走设备自带字体（`--font-body` 里 `PingFang SC`/`Microsoft YaHei` 优先，零下载）；标题中文 `Noto Serif SC` 仍走 `app/layout.tsx` 的外部 `<link>`，只请求 400/700/800。**`next/font` 在 Next 16 下无法自托管中文切片**——其 `font-data.json` 里 CJK 字体没有中文子集名，`subsets: ["chinese-simplified"]` 通不过类型检查；要彻底自托管得另写构建期拉取脚本。
+- 中文字体策略：正文走设备自带字体（`--font-body` 里 `PingFang SC`/`Microsoft YaHei` 优先，零下载）；标题中文 `Noto Serif SC` 由 `components/deferred-font-stylesheet.tsx` 在 hydration 后非阻塞注入，只请求 400/700/800。**`next/font` 在 Next 16 下无法自托管中文切片**——其 `font-data.json` 里 CJK 字体没有中文子集名，`subsets: ["chinese-simplified"]` 通不过类型检查；要彻底自托管得另写构建期拉取脚本。
 - framer-motion：`layoutId`/`layout`/`drag` 需要投影特性，`domAnimation` 不含它们。首页与详情页灯箱统一用 `<LazyMotion features={loadMotionFeatures}>`（`components/motion-features.ts`，异步取 `domMax`）；从根入口 import `motion` 会把完整特性包拉进首屏。
 - 自定义光标：纯 DOM 操作，不触发 React 渲染。滚动时隐藏但必须在停手 ~140ms 后自动恢复（原生光标已被隐藏，不能等下一次 mousemove 才回来）；文本输入框与 `cursor-zoom-in` 处保留原生光标并隐藏光点，`app/globals.css` 里那组 `hide-native-cursor` 例外规则别退回成 `cursor: none !important`。
 - 隐藏光点必须同时置 `visibility: hidden`，不能只改 `opacity: 0`：`bead-cursor`/`bead-ring` 是 `backdrop-filter` + `will-change` 的 fixed 层，只降透明度仍留在合成树里压在指针位置，Edge 下会把原生光标一起顶掉（表现为"输入框内鼠标消失"）。例外选择器还要覆盖 `[contenteditable] *` 与 `select/range/checkbox/date` 等变体——后台详细介绍的加粗片段是 `<strong>` 子元素，漏了子节点 `hide-native-cursor *` 会重新生效。滚动恢复只在非输入区做（`inField` 守卫），否则滚一下就把光点盖回正在打的文字。回归覆盖在 `e2e/admin-input-cursor.spec.ts`。
 - Tailwind v4 没有 `tailwind.config.*`；主题变量在 `app/globals.css` 的 `@theme inline`，PostCSS 只配 `@tailwindcss/postcss`。
 - 代码不加注释；新增代码英文命名。
-- `app/admin/page.tsx` 表单状态用对象整体替换，别用函数式 `setState`；不可变更新逻辑集中在 `components/admin/work-form-state.ts`。
+- 后台表单状态更新集中在 `components/admin/work-form-state.ts`，使用不可变对象替换；异步/批量更新可用函数式 `setState` 避免竞态。
 - 子目录约定：`components/admin/AGENTS.md`（禁引 server-only 模块、保持表单对象替换风格）、`app/work/AGENTS.md`（详情页数据读取保持服务端，不加客户端 fetch）。改对应目录前先读。
 
 ## 环境

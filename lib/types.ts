@@ -17,6 +17,11 @@ export interface Work {
   total_size?: number;
 }
 
+export type HomeWork = Pick<
+  Work,
+  "id" | "title" | "thumb_url" | "tags" | "work_date" | "pinned" | "image_count" | "size_weight"
+>;
+
 export interface WorkImage {
   id: string;
   work_id: string;

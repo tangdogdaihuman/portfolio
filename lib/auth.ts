@@ -23,7 +23,12 @@ export function verifyToken(token: string, secret: string): boolean {
   // Optional global token revocation: tokens issued before this time are rejected
   const notBefore = process.env.ADMIN_TOKEN_NOT_BEFORE;
   if (notBefore) {
-    const threshold = Number(notBefore) || new Date(notBefore).getTime();
+    const numeric = Number(notBefore);
+    const threshold = Number.isFinite(numeric)
+      ? numeric < 1e12
+        ? numeric * 1000
+        : numeric
+      : new Date(notBefore).getTime();
     if (!Number.isNaN(threshold) && issuedAt < threshold) return false;
   }
 
@@ -49,13 +54,6 @@ export async function setAuthCookie() {
     maxAge: MAX_AGE,
     path: "/",
   });
-}
-
-export async function verifyAuth(): Promise<boolean> {
-  const jar = await cookies();
-  const token = jar.get(COOKIE_NAME);
-  if (!token) return false;
-  return verifyToken(token.value, process.env.ADMIN_SECRET_KEY!);
 }
 
 export async function verifyAuthRequest(req: NextRequest): Promise<boolean> {

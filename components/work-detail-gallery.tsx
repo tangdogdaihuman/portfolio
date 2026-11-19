@@ -238,6 +238,7 @@ export default function WorkDetailGallery({
                 type="button"
                 onClick={() => openViewer(index)}
                 tabIndex={activeImage ? -1 : 0}
+                aria-label={`查看${workTitle}第 ${index + 1} 个媒体`}
                 className="relative block w-full cursor-zoom-in overflow-hidden rounded-[24px] border border-border/60 bg-surface/40 transition-colors duration-500 group-hover:border-accent/40"
               >
                 {isVideo ? (
@@ -248,7 +249,6 @@ export default function WorkDetailGallery({
                     muted
                     preload="metadata"
                     className="w-full h-auto"
-                    onClick={(e) => e.stopPropagation()}
                     onLoadedMetadata={() => markReady(imageKey)}
                   />
                 ) : (

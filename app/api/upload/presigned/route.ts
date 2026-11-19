@@ -9,6 +9,7 @@ import { IMMUTABLE_CACHE_CONTROL } from "@/lib/media-url";
 import { reportApiError, reportMetric } from "@/lib/monitoring";
 import { getIdempotencyStore } from "@/lib/idempotency-store";
 import { fail, ok } from "@/lib/api-response";
+import { readJsonBody } from "@/lib/request-body";
 import { formatBytes, getUploadLimitForType } from "@/lib/upload-policy";
 
 const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "image/avif", "video/mp4", "video/webm", "video/quicktime", "video/x-msvideo", "video/x-matroska"]);
@@ -33,10 +34,15 @@ export async function POST(req: NextRequest) {
     const unauth = await requireAuth(req);
     if (unauth) return unauth;
 
-    const body = await req.json();
-    const contentType = body.contentType as string;
-    const fileSize = Number(body.fileSize);
-    const requestId = typeof body.requestId === "string" ? body.requestId : "";
+    const body = await readJsonBody(req);
+    if (!body.ok) return body.response;
+    if (!body.data || typeof body.data !== "object") {
+      return fail("BAD_REQUEST", "Invalid upload payload", 400);
+    }
+    const input = body.data as Record<string, unknown>;
+    const contentType = input.contentType as string;
+    const fileSize = Number(input.fileSize);
+    const requestId = typeof input.requestId === "string" ? input.requestId : "";
     if (!ALLOWED.has(contentType)) {
       reportMetric({ scope: "upload.presigned.invalid_type", value: 1, path: req.nextUrl.pathname, meta: { contentType } });
       return fail("BAD_REQUEST", "Invalid file type", 400);
@@ -71,7 +77,7 @@ export async function POST(req: NextRequest) {
         ContentType: contentType,
         CacheControl: IMMUTABLE_CACHE_CONTROL,
       }),
-      { expiresIn: 300 }
+      { expiresIn: 300, signableHeaders: new Set(["cache-control"]) }
     );
 
     const payload = {

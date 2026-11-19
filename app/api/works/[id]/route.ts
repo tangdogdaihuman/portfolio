@@ -7,6 +7,7 @@ import { requireAuth } from "@/lib/auth";
 import { reportApiError, reportMetric } from "@/lib/monitoring";
 import { writeAuditLog } from "@/lib/audit-log";
 import { fail, ok } from "@/lib/api-response";
+import { readJsonBody } from "@/lib/request-body";
 import { enqueueR2DeleteInTransaction, processR2DeleteJobs } from "@/lib/r2-delete-jobs";
 import {
   descriptionField,
@@ -63,8 +64,9 @@ export async function PUT(
     void processR2DeleteJobs().catch(() => {});
 
     const { id } = await params;
-    const body = await req.json();
-    const parsed = updateSchema.safeParse(body);
+    const body = await readJsonBody(req);
+    if (!body.ok) return body.response;
+    const parsed = updateSchema.safeParse(body.data);
     if (!parsed.success) {
       return fail("BAD_REQUEST", "Invalid update payload", 400, parsed.error.flatten());
     }

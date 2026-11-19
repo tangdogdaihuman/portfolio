@@ -4,6 +4,9 @@ import "./globals.css";
 import AuroraCanvas from "@/components/aurora-canvas";
 import SmoothScroll from "@/components/smooth-scroll";
 import GlassCursor from "@/components/cursor";
+import DeferredFontStylesheet from "@/components/deferred-font-stylesheet";
+
+const NOTO_SERIF_SC_URL = "https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700;800&display=swap";
 
 const anton = Anton({
   variable: "--font-display-en",
@@ -69,11 +72,10 @@ export default function RootLayout({
         <meta name="nightmode" content="disable" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
-        <link
-          href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700;800&display=swap"
-          rel="stylesheet"
-        />
+        <link rel="preload" as="style" href={NOTO_SERIF_SC_URL} />
+        <noscript>
+          <link rel="stylesheet" href={NOTO_SERIF_SC_URL} />
+        </noscript>
         {imageOrigin && (
           <>
             <link rel="preconnect" href={imageOrigin} crossOrigin="anonymous" />
@@ -87,6 +89,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen bg-bg text-text antialiased">
+        <DeferredFontStylesheet href={NOTO_SERIF_SC_URL} />
         <AuroraCanvas />
         <SmoothScroll />
         <GlassCursor />

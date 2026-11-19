@@ -7,6 +7,7 @@ import { requireSameOrigin } from "@/lib/api-security";
 import { requireAuth } from "@/lib/auth";
 import { writeAuditLog } from "@/lib/audit-log";
 import { fail, ok } from "@/lib/api-response";
+import { readJsonBody } from "@/lib/request-body";
 import { enqueueR2Delete, enqueueR2DeleteInTransaction, processR2DeleteJobs } from "@/lib/r2-delete-jobs";
 import {
   chooseCoverImage,
@@ -77,7 +78,7 @@ export async function POST(
   }
 
   const items = Array.isArray(body) ? body : [body];
-  const valid: { id: string; imageUrl: string; thumbUrl: string; mediaType: string; imageSize: number }[] = [];
+  const valid: { id: string; imageUrl: string; thumbUrl: string; mediaType: string; imageSize: number; sortOrder?: number }[] = [];
   const batchUrls: string[] = [];
   let rejected = 0;
   for (const item of items) {
@@ -98,6 +99,7 @@ export async function POST(
       thumbUrl: parsed.data.thumbUrl,
       mediaType: parsed.data.mediaType,
       imageSize: parsed.data.imageSize,
+      sortOrder: parsed.data.sortOrder,
     });
   }
 
@@ -128,7 +130,7 @@ export async function POST(
         valid.map((it, i) => ({
           sql: `INSERT INTO work_images (id, work_id, image_url, thumb_url, media_type, sort_order, image_size)
                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          args: [it.id, workId, it.imageUrl, it.thumbUrl, it.mediaType, startSort + i, it.imageSize],
+          args: [it.id, workId, it.imageUrl, it.thumbUrl, it.mediaType, it.sortOrder ?? startSort + i, it.imageSize],
         }))
       );
 
@@ -243,13 +245,14 @@ export async function PUT(
   void processR2DeleteJobs().catch(() => {});
 
   const { id: workId } = await params;
-  const body = await req.json();
-  if (!Array.isArray(body)) {
+  const body = await readJsonBody(req);
+  if (!body.ok) return body.response;
+  if (!Array.isArray(body.data)) {
     return fail("BAD_REQUEST", "Images payload must be an array", 400);
   }
 
   const valid: PreparedWorkImage[] = [];
-  for (const [i, item] of body.entries()) {
+  for (const [i, item] of body.data.entries()) {
     const parsed = addImageSchema.safeParse(item);
     if (!parsed.success) {
       return fail("BAD_REQUEST", `Invalid image payload at index ${i}`, 400, parsed.error.flatten());

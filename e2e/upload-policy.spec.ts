@@ -65,3 +65,27 @@ test("process rejects originalKey outside originals/", async ({ baseURL }) => {
     await api.dispose();
   }
 });
+
+test("presigned upload URL omits empty-body checksum and signs cache-control", async ({ baseURL }) => {
+  if (!baseURL) throw new Error("baseURL is required");
+  const api = await newAdminApi(baseURL);
+
+  try {
+    const response = await api.post("/api/upload/presigned", {
+      data: {
+        contentType: "image/png",
+        fileSize: 1024,
+        requestId: `url-shape-${Date.now()}`,
+      },
+    });
+
+    expect(response.status(), await response.text()).toBe(200);
+    const body = await response.json();
+    const uploadUrl = new URL(body.uploadUrl as string);
+
+    expect(uploadUrl.searchParams.has("x-amz-checksum-crc32")).toBe(false);
+    expect(uploadUrl.searchParams.get("X-Amz-SignedHeaders")).toContain("cache-control");
+  } finally {
+    await api.dispose();
+  }
+});

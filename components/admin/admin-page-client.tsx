@@ -27,8 +27,8 @@ function isMainTab(value: string | null): value is MainTab {
   return value !== null && MAIN_TABS.includes(value as MainTab);
 }
 
-function getWorkUpdatedAt(work: Work): string {
-  return work.updated_at;
+function expectedVersion(work: Work) {
+  return work.updated_at ? { expectedUpdatedAt: work.updated_at } : {};
 }
 
 function getTabLabel(tab: MainTab) {
@@ -58,9 +58,13 @@ export default function AdminPageClient() {
   const [message, setMessage] = useState<{ text: string; ok: boolean } | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Work | null>(null);
   const [reordering, setReordering] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [addUploading, setAddUploading] = useState(false);
+  const [editUploading, setEditUploading] = useState(false);
   const router = useRouter();
   const messageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reorderingRef = useRef(false);
+  const addSubmittedRef = useRef(false);
 
   const showMsg = useCallback((text: string, ok: boolean) => {
     if (messageTimerRef.current) {
@@ -104,6 +108,19 @@ export default function AdminPageClient() {
   }, []);
 
   const setMainTab = (nextTab: MainTab) => {
+    if (
+      tab === "add" &&
+      nextTab !== "add" &&
+      !addSubmittedRef.current &&
+      (addUploading || formState.uploadedFiles.length > 0)
+    ) {
+      showMsg("请先等待上传完成，或发布/清空已上传文件", false);
+      return;
+    }
+    if (tab === "edit" && editUploading) {
+      showMsg("请等待上传完成后再离开编辑页", false);
+      return;
+    }
     setTab(nextTab);
     router.replace(`/admin?tab=${nextTab}`, { scroll: false });
   };
@@ -121,6 +138,17 @@ export default function AdminPageClient() {
       showMsg("保存失败，请检查网络后重试", false);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const logout = async () => {
+    setLoggingOut(true);
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      router.replace("/admin/login");
+    } catch {
+      showMsg("退出登录失败，请检查网络", false);
+      setLoggingOut(false);
     }
   };
 
@@ -163,8 +191,8 @@ export default function AdminPageClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           items: [
-            { id: work.id, sortOrder: nextWorkSortOrder, expectedUpdatedAt: getWorkUpdatedAt(work) },
-            { id: other.id, sortOrder: nextOtherSortOrder, expectedUpdatedAt: getWorkUpdatedAt(other) },
+            { id: work.id, sortOrder: nextWorkSortOrder, ...expectedVersion(work) },
+            { id: other.id, sortOrder: nextOtherSortOrder, ...expectedVersion(other) },
           ],
         }),
       });
@@ -213,7 +241,7 @@ export default function AdminPageClient() {
       const response = await fetch(`/api/works/${work.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pinned: !work.pinned, expectedUpdatedAt: getWorkUpdatedAt(work) }),
+        body: JSON.stringify({ pinned: !work.pinned, ...expectedVersion(work) }),
       });
       if (response.ok) {
         refresh();
@@ -239,7 +267,18 @@ export default function AdminPageClient() {
               TZH<span className="text-accent">.</span>
             </Link>
             <span className="meta-label hidden sm:block">Admin Console</span>
-            <ThemeToggle />
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={logout}
+                disabled={loggingOut}
+                data-hover
+                className="chip inline-flex h-10 items-center rounded-full px-4 text-[0.68rem] tracking-[0.08em] text-text-muted transition-colors hover:text-text disabled:opacity-50"
+              >
+                {loggingOut ? "退出中" : "退出"}
+              </button>
+              <ThemeToggle />
+            </div>
           </nav>
         </header>
 
@@ -304,9 +343,13 @@ export default function AdminPageClient() {
             <AddWorkForm
               formState={formState}
               setFormState={setFormState}
+              onUploadingChange={setAddUploading}
               onDone={() => {
+                addSubmittedRef.current = true;
+                setFormState(createEmptyWorkFormState());
                 refresh();
                 setMainTab("works");
+                addSubmittedRef.current = false;
               }}
               showMsg={showMsg}
             />
@@ -332,6 +375,7 @@ export default function AdminPageClient() {
           <div className="animate-fade-up">
             <EditWorkForm
               workId={editingId}
+              onUploadingChange={setEditUploading}
               onDone={() => {
                 refresh();
                 setEditingId(null);

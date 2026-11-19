@@ -132,13 +132,6 @@ export function mergeSoftwareValues(selected: string[], customInput: string): st
   return Array.from(new Set([...selected, ...splitCommaValues(customInput)]));
 }
 
-export function formatUploadResult(successCount: number, total: number, failures: string[], unit: string) {
-  if (failures.length === 0) return `${successCount}/${total} ${unit}上传成功`;
-  const shown = failures.slice(0, 3).join("；");
-  const more = failures.length > 3 ? `；另有 ${failures.length - 3} 个失败` : "";
-  return `${successCount}/${total} ${unit}上传成功，${failures.length} 个失败：${shown}${more}`;
-}
-
 export interface EditableImage {
   id: string;
   image_url: string;

@@ -9,6 +9,7 @@ import { IMMUTABLE_CACHE_CONTROL } from "@/lib/media-url";
 import { reportApiError, reportMetric } from "@/lib/monitoring";
 import { getIdempotencyStore } from "@/lib/idempotency-store";
 import { fail, ok } from "@/lib/api-response";
+import { readJsonBody } from "@/lib/request-body";
 import { formatBytes, MAX_IMAGE_UPLOAD_BYTES, MAX_VIDEO_UPLOAD_BYTES } from "@/lib/upload-policy";
 
 const VIDEO_KEY_PATTERN = /^originals\/.+\.(mp4|webm|mov|avi|mkv)$/i;
@@ -21,9 +22,14 @@ export async function POST(req: NextRequest) {
     const unauth = await requireAuth(req);
     if (unauth) return unauth;
 
-    const body = await req.json();
-    const { originalKey } = body;
-    const requestId = typeof body.requestId === "string" ? body.requestId : "";
+    const body = await readJsonBody(req);
+    if (!body.ok) return body.response;
+    if (!body.data || typeof body.data !== "object") {
+      return fail("BAD_REQUEST", "Invalid process payload", 400);
+    }
+    const input = body.data as Record<string, unknown>;
+    const originalKey = input.originalKey;
+    const requestId = typeof input.requestId === "string" ? input.requestId : "";
     if (typeof originalKey !== "string" || !originalKey.startsWith("originals/")) {
       reportMetric({ scope: "upload.process.invalid_key", value: 1, path: req.nextUrl.pathname });
       return fail("BAD_REQUEST", "Invalid originalKey", 400);

@@ -48,7 +48,7 @@ npm run test:e2e
 
 - `NEXT_PUBLIC_BASE_URL`
 - `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`  
-  用于跨实例持久化登录限流；未配置时自动回退到进程内存限流。
+  用于跨实例持久化登录限流；未配置时使用 Turso `rate_limits` 表，多实例共享计数。
 - `MONITORING_WEBHOOK_URL`  
   监控事件 webhook，不配置时只打本地结构化日志。
 - `ADMIN_KEY`  
@@ -81,9 +81,7 @@ HTTP 冒烟检查：
 
 Playwright 交互测试（自动起本地 Next 服务 + 本地临时 SQLite）：
 
-1. 首页作品卡片直达详情并可通过“返回作品集”回到 `/#works`
-2. 详情页大图双击放大 + 鼠标拖拽
-3. 更新并发冲突返回 `409 CONFLICT`
+覆盖首页筛选/排序、详情页灯箱、后台 CRUD/排序/并发冲突、上传策略、主题与光标等。
 
 ## 定时清理重试队列
 

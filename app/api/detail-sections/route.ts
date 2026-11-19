@@ -6,6 +6,7 @@ import db, { ensureMigrated } from "@/lib/db";
 import { requireSameOrigin } from "@/lib/api-security";
 import { requireAuth, verifyAuthRequest } from "@/lib/auth";
 import { fail, ok } from "@/lib/api-response";
+import { readJsonBody } from "@/lib/request-body";
 
 const sectionSchema = z.object({
   title: z.string().min(1),
@@ -40,8 +41,9 @@ export async function POST(req: NextRequest) {
   const unauth = await requireAuth(req);
   if (unauth) return unauth;
 
-  const body = await req.json();
-  const parsed = sectionSchema.safeParse(body);
+  const body = await readJsonBody(req);
+  if (!body.ok) return body.response;
+  const parsed = sectionSchema.safeParse(body.data);
   if (!parsed.success) {
     return fail("BAD_REQUEST", "Invalid detail section payload", 400, parsed.error.flatten());
   }

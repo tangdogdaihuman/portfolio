@@ -1,6 +1,6 @@
-const OBJECT_PREFIXES = ["originals/", "thumbnails/"];
+export { IMMUTABLE_CACHE_CONTROL } from "@/lib/upload-policy";
 
-export const IMMUTABLE_CACHE_CONTROL = "public, max-age=31536000, immutable";
+const OBJECT_PREFIXES = ["originals/", "thumbnails/"];
 
 function configuredPublicOrigin(): string | null {
   const raw = process.env.R2_PUBLIC_URL;
