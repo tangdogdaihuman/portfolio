@@ -19,6 +19,8 @@ import { createEmptyWorkFormState } from "@/components/admin/work-form-state";
 import { loadMotionFeatures } from "@/components/motion-features";
 
 const MAIN_TABS = ["works", "add", "intro", "detail", "visitors", "storage"] as const;
+const MAINTENANCE_STORAGE_KEY = "admin:last-maintenance";
+const MAINTENANCE_INTERVAL_MS = 60 * 60 * 1000;
 
 type MainTab = typeof MAIN_TABS[number];
 type AdminTab = MainTab | "edit";
@@ -73,6 +75,78 @@ export default function AdminPageClient() {
     setMessage({ text, ok });
     messageTimerRef.current = setTimeout(() => setMessage(null), 3000);
   }, []);
+
+  const [maintenanceRunning, setMaintenanceRunning] = useState(false);
+  const maintenanceRunningRef = useRef(false);
+
+  const runMaintenance = useCallback(async (silent: boolean) => {
+    if (maintenanceRunningRef.current) return;
+    maintenanceRunningRef.current = true;
+    setMaintenanceRunning(true);
+
+    try {
+      const response = await fetch("/api/maintenance", { method: "POST" });
+      const body = await response.json().catch(() => null) as {
+        message?: string;
+        succeeded?: number;
+        pending?: number | null;
+        retention?: {
+          rateLimits: number;
+          verificationCodes: number;
+          auditLogs: number;
+          visits: number;
+        };
+      } | null;
+
+      if (!response.ok) {
+        if (!silent) showMsg(body?.message || "清理失败", false);
+        return;
+      }
+
+      try {
+        window.localStorage.setItem(MAINTENANCE_STORAGE_KEY, String(Date.now()));
+      } catch {
+        // Storage can be unavailable in private mode; the cleanup already succeeded.
+      }
+
+      if (!silent) {
+        const retentionCount = body?.retention
+          ? Object.values(body.retention).reduce((sum, value) => sum + value, 0)
+          : 0;
+        const total = (body?.succeeded ?? 0) + retentionCount;
+        const pending = body?.pending ?? 0;
+        if (total > 0) {
+          showMsg(
+            pending > 0 ? `已清理 ${total} 项，还有 ${pending} 个文件任务待重试` : `已清理 ${total} 项`,
+            true
+          );
+        } else if (pending > 0) {
+          showMsg(`没有新内容，还有 ${pending} 个文件任务待重试`, true);
+        } else {
+          showMsg("没有需要清理的内容", true);
+        }
+      }
+    } catch {
+      if (!silent) showMsg("清理失败，请检查网络后重试", false);
+    } finally {
+      maintenanceRunningRef.current = false;
+      setMaintenanceRunning(false);
+    }
+  }, [showMsg]);
+
+  const maybeRunMaintenance = useCallback(() => {
+    try {
+      const last = Number(window.localStorage.getItem(MAINTENANCE_STORAGE_KEY) || 0);
+      if (Number.isFinite(last) && Date.now() - last < MAINTENANCE_INTERVAL_MS) return;
+    } catch {
+      // localStorage unavailable; run the pass anyway.
+    }
+    void runMaintenance(true);
+  }, [runMaintenance]);
+
+  useEffect(() => {
+    void Promise.resolve().then(maybeRunMaintenance);
+  }, [maybeRunMaintenance, tab]);
 
   const refresh = useCallback(async () => {
     try {
@@ -396,7 +470,11 @@ export default function AdminPageClient() {
         )}
         {tab === "storage" && (
           <div id="admin-panel-storage" role="tabpanel" aria-labelledby="admin-tab-storage" className="animate-fade-up">
-            <StoragePanel works={works} />
+            <StoragePanel
+              works={works}
+              onMaintenance={() => void runMaintenance(false)}
+              maintenanceRunning={maintenanceRunning}
+            />
           </div>
         )}
 

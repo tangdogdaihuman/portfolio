@@ -54,7 +54,7 @@ npm run test:e2e
 - `ADMIN_KEY`  
   `test:smoke` 优先读取；未设置时会回退到 `ADMIN_SECRET_KEY`。
 - `CRON_SECRET`  
-  用于触发 `GET /api/cron/r2-delete` 的定时清理任务鉴权。支持 `Authorization: Bearer <secret>` 或 `x-cron-secret`。
+  仅在使用外部定时任务调用 `GET /api/cron/r2-delete` 时需要。支持 `Authorization: Bearer <secret>` 或 `x-cron-secret`。后台「容量」页的「立即清理」不依赖它。
 
 ## 测试说明
 
@@ -83,16 +83,21 @@ Playwright 交互测试（自动起本地 Next 服务 + 本地临时 SQLite）�
 
 覆盖首页筛选/排序、详情页灯箱、后台 CRUD/排序/并发冲突、上传策略、主题与光标等。
 
-## 定时清理重试队列
+## 清理重试队列
 
-可配置外部定时任务调用：
+默认不需要定时任务：
+
+- 后台「容量」页提供「立即清理」按钮，调用 `POST /api/maintenance`（需登录 + 同源）。
+- 打开后台或切换后台标签时，如果距上次清理超过 1 小时，会自动补一次。
+
+如希望无人值守，也可配置外部定时任务调用：
 
 - `GET /api/cron/r2-delete?limit=20`
 - Header: `Authorization: Bearer <CRON_SECRET>`（或 `x-cron-secret`）
 
-返回示例字段：`processed` / `succeeded` / `failed`。
+两者都会返回 `processed` / `succeeded` / `failed`，后台接口还会返回 `pending` 与 `retention` 计数。
 
-仓库已提供 `r2-delete-cron.yml`（每 15 分钟），需要在 GitHub Secrets 配置：
+仓库提供 `.github/workflows/r2-delete-cron.yml`，当前只保留手动触发；需要自动运行时自行添加 `schedule`，并在 GitHub Secrets 配置：
 
 - `CRON_ENDPOINT`（例如 `https://your-domain.com/api/cron/r2-delete?limit=20`）
 - `CRON_SECRET`

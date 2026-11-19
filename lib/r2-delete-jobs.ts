@@ -124,6 +124,11 @@ function parseJob(row: Record<string, unknown>): R2DeleteJob {
   return { id: row.id as string, attempts: Number(row.attempts || 0), urls };
 }
 
+export async function countR2DeleteJobs() {
+  const result = await db.execute("SELECT COUNT(*) AS count FROM r2_delete_jobs");
+  return Number(result.rows[0]?.count ?? 0);
+}
+
 export async function enqueueR2Delete(urls: string[]) {
   const unique = [...new Set(urls.filter(Boolean))];
   if (unique.length === 0) return;

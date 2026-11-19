@@ -47,7 +47,7 @@ npm run test:smoke:prod  # 对线上 tangzihang.top 跑冒烟（SMOKE_ALLOW_WRIT
 - 上传限制：图片 50MB / 视频 500MB，定义在 `lib/upload-policy.ts`（e2e `upload-policy.spec.ts` 有覆盖）。
 - 面向 Vercel/R2；不要引入本地文件持久化，服务端不依赖可写磁盘。
 - `Sharp`、`@libsql/client`、R2/S3、`crypto` 只能留在服务端文件，不能混进 `'use client'`。
-- **R2 删除是异步的**：删除作品/图片时在事务内调用 `enqueueR2DeleteInTransaction()` 写入 `r2_delete_jobs` 表；`processR2DeleteJobs()` 由 cron（`/api/cron/r2-delete`）按退避重试处理，也在多个写路由内联同步调用做 opportunistic 清理。`enqueueR2Delete()` 由 `/api/upload/cleanup` 与整批被拒的上传载荷调用；删除前一定先用 `findReferencedUrls()` 复核库内引用，所以整批 URL 可以安全入队。
+- **R2 删除是异步的**：删除作品/图片时在事务内调用 `enqueueR2DeleteInTransaction()` 写入 `r2_delete_jobs` 表；`processR2DeleteJobs()` 由后台维护接口 `/api/maintenance`（「立即清理」或打开后台时每小时自动补一次）和 cron（`/api/cron/r2-delete`）按退避重试处理，也在多个写路由内联同步调用做 opportunistic 清理。`enqueueR2Delete()` 由 `/api/upload/cleanup` 与整批被拒的上传载荷调用；删除前一定先用 `findReferencedUrls()` 复核库内引用，所以整批 URL 可以安全入队。
 - **媒体 URL 只在 `lib/media-url.ts` 一处解释**：`normalizeMediaUrl()` 在 `lib/work-mappers.ts` 的行映射出口把历史 `*.r2.dev` 地址统一成 `R2_PUBLIC_URL` 的域名（库里数据不需要改写）；`mediaUrlToKey()`/`urlToKey()` 按 `originals/`、`thumbnails/` 前缀 + 自有域名解析对象键。新增图片字段务必走 mapper，别在组件里自己拼域名；判定"自有域名"时记得把 `R2_PUBLIC_URL` 本身算进去，否则删除会被静默跳过。
 - **上传对象必须带 `CacheControl: IMMUTABLE_CACHE_CONTROL`**（`public, max-age=31536000, immutable`）：对象键是一次性 cuid 永不覆写；没有这个头，Cloudflare 对 R2 自定义域名不会做边缘缓存（实测一直 `cf-cache-status: DYNAMIC`）。另需在 Cloudflare **zone 的 Cache Rules** 里建规则开启边缘缓存（R2 面板里没有缓存开关）：匹配 Hostname equals `cdn.tangzihang.top`（只圈图片子域，主站 HTML 由 Vercel ISR 自管），Then 设 Cache eligibility = Eligible for cache、Edge TTL = Override origin 30 天（存量对象没有 Cache-Control 头，靠 override 才能命中）。
 - **作品至少保留一张图片**：`DELETE /api/works/images/[imageId]` 在事务内先 `COUNT(*)`，删到最后一张返回 409。不要退回成"删除后把 `works.image_url` 写成空串"——空串能过 NOT NULL，会让首页与 OG 变成空封面，而后台没有补图入口。
@@ -98,10 +98,10 @@ npm run test:smoke:prod  # 对线上 tangzihang.top 跑冒烟（SMOKE_ALLOW_WRIT
 - 改动完成后自动 commit 并 push，无需确认。
 
 ## 修改时最容易漏的点
-- 作品删除/图片删除走异步 R2 清理（`enqueueR2DeleteInTransaction` + cron retry），不是同步删。改相关接口时检查 `app/api/works/[id]/route.ts` 和图片删除路由。
+- 作品删除/图片删除走异步 R2 清理（`enqueueR2DeleteInTransaction` + 后台维护/cron retry），不是同步删。改相关接口时检查 `app/api/works/[id]/route.ts` 和图片删除路由。
 - 仓库里有 `.next/`、`tsconfig.tsbuildinfo`、`.playwright-mcp/`、`test-results/`、`e2e.db*` 等生成产物；搜索和编辑时避开。
 - `.github/workflows/ci.yml` 在 push/master 和 PR 上跑 `lint → typecheck → test:schema → build → test:e2e`。
-- `.github/workflows/r2-delete-cron.yml` 每 15 分钟触发 R2 清理 cron，部署时需配 GitHub Secrets `CRON_ENDPOINT`、`CRON_SECRET`。
+- `.github/workflows/r2-delete-cron.yml` 当前只保留手动触发；需要自动定时运行时再加 `schedule` 并配 GitHub Secrets `CRON_ENDPOINT`、`CRON_SECRET`。日常清理用后台「容量」页的「立即清理」即可。
 
 <!-- BEGIN:nextjs-agent-rules -->
 

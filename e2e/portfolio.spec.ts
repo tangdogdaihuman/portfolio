@@ -209,6 +209,15 @@ async function findR2DeleteJobContaining(value: string) {
   }
 }
 
+async function clearR2DeleteJobs() {
+  const client = createClient({ url: "file:./e2e.db" });
+  try {
+    await client.execute("DELETE FROM r2_delete_jobs");
+  } finally {
+    client.close();
+  }
+}
+
 function workRow(page: Page, title: string) {
   return page
     .getByRole("heading", { name: title, exact: true })
@@ -410,6 +419,19 @@ test("替换只有封面旧数据的作品时会排队清理旧 R2 文件", asyn
     await api.delete(`/api/works/${workId}`);
     await api.dispose();
   }
+});
+
+test("后台容量页提供立即清理入口", async ({ page, baseURL }) => {
+  if (!baseURL) throw new Error("baseURL is required");
+  await clearR2DeleteJobs();
+  const adminBaseURL = toAdminBaseURL(baseURL);
+  await page.goto(`${adminBaseURL}/admin?key=${ADMIN_SECRET}`);
+  await page.goto(`${adminBaseURL}/admin?tab=storage`);
+
+  const cleanupButton = page.getByRole("button", { name: "立即清理" });
+  await expect(cleanupButton).toBeVisible();
+  await cleanupButton.click();
+  await expect(page.getByText(/已清理|没有需要清理的内容/)).toBeVisible();
 });
 
 test("后台连续排序不会因为本地版本号过期而冲突", async ({ page, baseURL }) => {

@@ -166,6 +166,7 @@ Strict-Transport-Security: max-age=15552000; includeSubDomains
 | visits 回显 XSS | 误报：`components/admin/visitors-panel.tsx` 全部 React 文本插值自动转义，无 `dangerouslySetInnerHTML` |
 | SQL 注入（新增代码） | 全参数化；`rate_limits` upsert、`verification_codes`、`visits` 的 `IN` 占位符均安全 |
 | cron 鉴权 | `CRON_SECRET` 缺失时默认 403，`safeEqual` 恒定时间比较，`limit` clamp 1-100 |
+| 后台维护接口 | `POST /api/maintenance` 先 Origin 后 Auth，未登录返回 401；e2e 覆盖 |
 | API 路由鉴权覆盖 | 全部写路由 Origin+Auth 双校验（logout 仅 Origin，幂等清 cookie 无危害）；公开 GET 均为作品集内容 |
 | 依赖 | `npm audit` = 0 漏洞 |
 

@@ -9,7 +9,15 @@ function formatSize(bytes: number): string {
   return `${(bytes / 1048576).toFixed(2)} MB`;
 }
 
-export default function StoragePanel({ works }: { works: Work[] }) {
+export default function StoragePanel({
+  works,
+  onMaintenance,
+  maintenanceRunning,
+}: {
+  works: Work[];
+  onMaintenance: () => void;
+  maintenanceRunning: boolean;
+}) {
   const getSize = (work: Work) => work.total_size || work.image_size || 0;
   const totalBytes = works.reduce((sum, w) => sum + getSize(w), 0);
   const maxGB = 10;
@@ -18,6 +26,26 @@ export default function StoragePanel({ works }: { works: Work[] }) {
 
   return (
     <div>
+      <div className="glass-strong mb-6 rounded-[28px] p-6 md:p-7">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm text-text">存储清理</p>
+            <p className="mt-1 text-xs leading-relaxed text-text-muted">
+              清理已删除作品残留的云文件，并删除过期日志和统计。打开后台时也会自动补一次。
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onMaintenance}
+            disabled={maintenanceRunning}
+            data-hover
+            className="min-h-10 shrink-0 rounded-full bg-accent px-6 py-2 text-xs font-medium text-on-accent transition-transform duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50"
+          >
+            {maintenanceRunning ? "清理中..." : "立即清理"}
+          </button>
+        </div>
+      </div>
+
       <div className="glass-strong rounded-[28px] p-6 md:p-7 mb-6">
         <div className="flex items-end justify-between mb-4">
           <div>
